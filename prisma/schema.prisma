@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  // Vercel Postgres (Storage → Create Database) inyecta estas variables
+  // automáticamente en el proyecto; POSTGRES_PRISMA_URL va con pooling
+  // (pgbouncer) para runtime, POSTGRES_URL_NON_POOLING es la directa,
+  // usada solo para migraciones.
+  url       = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
+}
+
+enum ProjectType {
+  civil
+  electrico
+  vial
+}
+
+enum ProjectStatus {
+  planificado
+  en_curso
+  pausado
+  finalizado
+}
+
+model Project {
+  id        String        @id @default(cuid())
+  name      String
+  type      ProjectType
+  status    ProjectStatus @default(planificado)
+  manager   String
+  start     DateTime      @db.Date
+  end       DateTime      @db.Date
+  budget    Decimal       @default(0) @db.Decimal(14, 2)
+  spent     Decimal       @default(0) @db.Decimal(14, 2)
+  progress  Int           @default(0)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([status])
+  @@index([type])
+}
