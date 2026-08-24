@@ -1,21 +1,27 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   CCard, CCardBody, CCardHeader, CNav, CNavItem, CNavLink,
-  CButton, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
+  CButton, CButtonGroup, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
   CForm, CFormLabel, CFormInput, CFormSelect,
   CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell,
   CBadge, CAlert, CInputGroup,
 } from "@coreui/react";
+import { CChartDoughnut, CChartBar } from "@coreui/react-chartjs";
 import CIcon from "@coreui/icons-react";
-import { cilPlus, cilArrowLeft, cilArrowRight, cilCloudDownload, cilPencil, cilTrash } from "@coreui/icons";
+import {
+  cilPlus, cilArrowLeft, cilArrowRight, cilCloudDownload, cilPencil, cilTrash,
+  cilPeople, cilStar, cilSpeedometer, cilFlagAlt, cilCalculator, cilListRich, cilViewColumn,
+} from "@coreui/icons";
 import AppShell from "@/components/AppShell";
-import type { ProjectDTO, ProjectInput, ProjectStatus, ProjectType } from "@/lib/types";
+import type { ProjectDTO, ProjectInput, ProjectStatus, ProjectType, DashboardSummaryDTO } from "@/lib/types";
 
 const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial" };
 const TYPE_COLOR: Record<ProjectType, string> = { civil: "info", electrico: "warning", vial: "secondary" };
+const TYPE_HEX: Record<ProjectType, string> = { civil: "#2c4a6e", electrico: "#a4780f", vial: "#6b7785" };
 const STATUS_LABEL: Record<ProjectStatus, string> = {
   planificado: "Planificado",
   en_curso: "En curso",
@@ -33,7 +39,6 @@ const TABS = [
   { key: "dashboard", label: "Dashboard" },
   { key: "kanban", label: "Tablero" },
   { key: "tabla", label: "Tabla" },
-  { key: "gantt", label: "Cronograma" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
@@ -63,12 +68,29 @@ const EMPTY_FORM: ProjectInput = {
 };
 
 export default function Home() {
+  return (
+    <Suspense fallback={<div id="app"><p className="state-message">Cargando…</p></div>}>
+      <HomeInner />
+    </Suspense>
+  );
+}
+
+function HomeInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [projects, setProjects] = useState<ProjectDTO[]>([]);
+  const [summary, setSummary] = useState<DashboardSummaryDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [tab, setTab] = useState<TabKey>("dashboard");
+  const initialTab = (searchParams.get("tab") as TabKey) || "dashboard";
+  const [tab, setTabState] = useState<TabKey>(TABS.some((t) => t.key === initialTab) ? initialTab : "dashboard");
   const [saveState, setSaveState] = useState<string>("");
   const [toast, setToast] = useState<string | null>(null);
+
+  function setTab(next: TabKey) {
+    setTabState(next);
+    router.push(next === "dashboard" ? "/" : `/?tab=${next}`, { scroll: false });
+  }
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -76,7 +98,7 @@ export default function Home() {
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { loadProjects(); }, []);
+  useEffect(() => { loadProjects(); loadSummary(); }, []);
 
   useEffect(() => {
     if (!toast) return;
@@ -96,6 +118,15 @@ export default function Home() {
       setLoadError("No se pudieron cargar los proyectos. Verificá la conexión a la base de datos.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadSummary() {
+    try {
+      const res = await fetch("/api/dashboard");
+      if (res.ok) setSummary(await res.json());
+    } catch {
+      /* el dashboard funciona igual sin estos extras */
     }
   }
 
@@ -254,10 +285,9 @@ export default function Home() {
 
       {!loading && !loadError && (
         <>
-          {tab === "dashboard" && <DashboardView projects={projects} metrics={metrics} />}
-          {tab === "kanban" && <KanbanView projects={projects} onEdit={openModal} onMove={moveStatus} />}
+          {tab === "dashboard" && <DashboardView projects={projects} metrics={metrics} summary={summary} onNewProject={() => openModal(null)} />}
+          {tab === "kanban" && <BoardView projects={projects} onEdit={openModal} onMove={moveStatus} />}
           {tab === "tabla" && <TablaView projects={projects} onEdit={openModal} onDelete={deleteProject} />}
-          {tab === "gantt" && <GanttView projects={projects} />}
         </>
       )}
 
@@ -329,16 +359,20 @@ export default function Home() {
   );
 }
 
-function Kpi({ label, value, sub }: { label: string; value: string | number; sub: string }) {
-  return (
-    <CCard className="h-100">
+function Kpi({ label, value, sub, icon, href }: { label: string; value: string | number; sub: string; icon?: any; href?: string }) {
+  const body = (
+    <CCard className="h-100 kpi-card">
       <CCardBody>
-        <div className="text-uppercase text-body-secondary small mb-1">{label}</div>
+        <div className="d-flex justify-content-between align-items-start">
+          <div className="text-uppercase text-body-secondary small mb-1">{label}</div>
+          {icon && <CIcon icon={icon} className="text-body-secondary" />}
+        </div>
         <div className="fs-3 fw-bold mono">{value}</div>
         <div className="text-body-secondary small">{sub}</div>
       </CCardBody>
     </CCard>
   );
+  return href ? <Link href={href} className="text-decoration-none text-reset d-block h-100">{body}</Link> : body;
 }
 
 interface DashboardMetrics {
@@ -351,7 +385,14 @@ interface DashboardMetrics {
   finished: number;
 }
 
-function DashboardView({ projects, metrics }: { projects: ProjectDTO[]; metrics: DashboardMetrics }) {
+function DashboardView({
+  projects, metrics, summary, onNewProject,
+}: {
+  projects: ProjectDTO[];
+  metrics: DashboardMetrics;
+  summary: DashboardSummaryDTO | null;
+  onNewProject: () => void;
+}) {
   const { byType, totalBudget, totalSpent, avgProgress, execPct, active, finished } = metrics;
   const sortedByProgress = [...projects].sort((a, b) => clampPct(b.progress) - clampPct(a.progress));
 
@@ -362,8 +403,25 @@ function DashboardView({ projects, metrics }: { projects: ProjectDTO[]; metrics:
     .map((p) => ({ p, daysLeft: Math.ceil((new Date(p.end).getTime() - now) / 86400000) }))
     .filter((x) => x.daysLeft <= 7);
 
+  const isDark = typeof document !== "undefined" && document.documentElement.getAttribute("data-coreui-theme") === "dark";
+  const gridColor = isDark ? "rgba(255,255,255,.08)" : "rgba(0,0,0,.06)";
+  const tickColor = isDark ? "#9099a6" : "#6b7785";
+
   return (
     <>
+      {/* Accesos directos */}
+      <div className="quick-actions mb-4">
+        <button className="quick-action" onClick={onNewProject}>
+          <CIcon icon={cilPlus} /> Nuevo proyecto
+        </button>
+        <Link href="/contratistas" className="quick-action">
+          <CIcon icon={cilPeople} /> Contratistas
+        </Link>
+        <Link href="/contratistas" className="quick-action">
+          <CIcon icon={cilPlus} /> Nuevo contratista
+        </Link>
+      </div>
+
       {(overBudget.length > 0 || dueSoon.length > 0) && (
         <div className="row g-3 mb-4">
           {dueSoon.length > 0 && (
@@ -397,34 +455,65 @@ function DashboardView({ projects, metrics }: { projects: ProjectDTO[]; metrics:
         </div>
       )}
 
-      <div className="row row-cols-1 row-cols-md-4 g-3 mb-4">
-        <div className="col"><Kpi label="Proyectos totales" value={projects.length} sub={`${active} en curso · ${finished} finalizados`} /></div>
-        <div className="col"><Kpi label="Presupuesto total" value={fmtMoney(totalBudget)} sub={`${fmtMoney(totalSpent)} ejecutado`} /></div>
-        <div className="col"><Kpi label="Ejecución presupuestaria" value={`${execPct}%`} sub={execPct > 100 ? "sobre presupuesto" : "del total planificado"} /></div>
-        <div className="col"><Kpi label="Avance promedio" value={`${avgProgress}%`} sub={`sobre ${projects.length} proyectos`} /></div>
+      <div className="row row-cols-2 row-cols-md-4 g-3 mb-3">
+        <div className="col"><Kpi label="Proyectos totales" value={projects.length} sub={`${active} en curso · ${finished} finalizados`} icon={cilSpeedometer} href="/?tab=tabla" /></div>
+        <div className="col"><Kpi label="Presupuesto total" value={fmtMoney(totalBudget)} sub={`${fmtMoney(totalSpent)} ejecutado`} icon={cilCalculator} /></div>
+        <div className="col"><Kpi label="Ejecución presupuestaria" value={`${execPct}%`} sub={execPct > 100 ? "sobre presupuesto" : "del total planificado"} icon={cilCalculator} /></div>
+        <div className="col"><Kpi label="Avance promedio" value={`${avgProgress}%`} sub={`sobre ${projects.length} proyectos`} icon={cilListRich} /></div>
       </div>
 
-      <CCard className="mb-4">
-        <CCardHeader className="fw-semibold">Presupuesto por tipo de obra</CCardHeader>
-        <CCardBody>
-          {(["civil", "electrico", "vial"] as ProjectType[]).map((t) => {
-            const d = byType[t];
-            const pct = totalBudget ? Math.round((d.budget / totalBudget) * 100) : 0;
-            return (
-              <div className="bar-row" key={t}>
-                <CBadge color={TYPE_COLOR[t]}>{TYPE_LABEL[t]}</CBadge>
-                <div className="bar-track">
-                  <div className="bar-fill" style={{ width: `${pct}%`, background: `var(--${t})` }} />
-                </div>
-                <span className="mono">{fmtMoney(d.budget)} · {d.count} proy.</span>
-              </div>
-            );
-          })}
-        </CCardBody>
-      </CCard>
+      <div className="row row-cols-2 row-cols-md-4 g-3 mb-4">
+        <div className="col"><Kpi label="Contratistas activos" value={summary?.contractorsActive ?? "—"} sub="en el directorio" icon={cilPeople} href="/contratistas" /></div>
+        <div className="col"><Kpi label="Calificación prom." value={summary?.contractorsAvgRating != null ? `${summary.contractorsAvgRating.toFixed(1)} ★` : "—"} sub="de contratistas" icon={cilStar} href="/contratistas" /></div>
+        <div className="col"><Kpi label="Relevamientos abiertos" value={summary?.openRelevamientos ?? "—"} sub="pendientes o en proceso" icon={cilListRich} /></div>
+        <div className="col"><Kpi label="Cotizaciones pendientes" value={summary?.pendingCotizaciones ?? "—"} sub="esperando decisión" icon={cilFlagAlt} /></div>
+      </div>
+
+      <div className="row g-3 mb-4">
+        <div className="col-lg-5">
+          <CCard className="h-100">
+            <CCardHeader className="fw-semibold">Presupuesto por tipo de obra</CCardHeader>
+            <CCardBody className="d-flex align-items-center justify-content-center">
+              {totalBudget > 0 ? (
+                <CChartDoughnut
+                  style={{ maxHeight: 240 }}
+                  data={{
+                    labels: ["Civil", "Eléctrico", "Vial"],
+                    datasets: [{ data: [byType.civil.budget, byType.electrico.budget, byType.vial.budget], backgroundColor: [TYPE_HEX.civil, TYPE_HEX.electrico, TYPE_HEX.vial] }],
+                  }}
+                  options={{ plugins: { legend: { position: "bottom", labels: { color: tickColor } } } }}
+                />
+              ) : <EmptyMsg />}
+            </CCardBody>
+          </CCard>
+        </div>
+        <div className="col-lg-7">
+          <CCard className="h-100">
+            <CCardHeader className="fw-semibold">Avance por proyecto</CCardHeader>
+            <CCardBody>
+              {sortedByProgress.length > 0 ? (
+                <CChartBar
+                  style={{ maxHeight: 240 }}
+                  data={{
+                    labels: sortedByProgress.map((p) => p.name.length > 18 ? p.name.slice(0, 17) + "…" : p.name),
+                    datasets: [{ label: "Avance %", data: sortedByProgress.map((p) => clampPct(p.progress)), backgroundColor: sortedByProgress.map((p) => TYPE_HEX[p.type]) }],
+                  }}
+                  options={{
+                    plugins: { legend: { display: false } },
+                    scales: {
+                      y: { beginAtZero: true, max: 100, grid: { color: gridColor }, ticks: { color: tickColor } },
+                      x: { grid: { display: false }, ticks: { color: tickColor } },
+                    },
+                  }}
+                />
+              ) : <EmptyMsg />}
+            </CCardBody>
+          </CCard>
+        </div>
+      </div>
 
       <CCard>
-        <CCardHeader className="fw-semibold">Avance por proyecto</CCardHeader>
+        <CCardHeader className="fw-semibold">Seguimiento rápido</CCardHeader>
         <CCardBody>
           {sortedByProgress.length === 0 && <EmptyMsg />}
           {sortedByProgress.map((p) => {
@@ -432,7 +521,7 @@ function DashboardView({ projects, metrics }: { projects: ProjectDTO[]; metrics:
             const over = p.spent > p.budget;
             return (
               <div className="bar-row" key={p.id}>
-                <span title={p.name} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
+                <Link href={`/project/${p.id}`} title={p.name} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</Link>
                 <div className="bar-track">
                   <div className="bar-fill" style={{ width: `${pct}%`, background: `var(--${p.type})` }} />
                 </div>
@@ -447,6 +536,46 @@ function DashboardView({ projects, metrics }: { projects: ProjectDTO[]; metrics:
 }
 function EmptyMsg() {
   return <p className="empty-col">Sin proyectos todavía. Creá el primero con &quot;Nuevo proyecto&quot;.</p>;
+}
+
+/** Tablero unificado: Kanban (estilo Trello, con badge de vencimiento por
+ * tarjeta) y Cronograma (Gantt con línea de "hoy") como dos vistas de la
+ * misma pestaña, en vez de pestañas separadas. */
+function BoardView({
+  projects, onEdit, onMove,
+}: {
+  projects: ProjectDTO[];
+  onEdit: (p: ProjectDTO) => void;
+  onMove: (p: ProjectDTO, dir: 1 | -1) => void;
+}) {
+  const [view, setView] = useState<"board" | "timeline">("board");
+  return (
+    <>
+      <div className="d-flex justify-content-end mb-3">
+        <CButtonGroup role="group">
+          <CButton color="secondary" variant={view === "board" ? undefined : "outline"} onClick={() => setView("board")}>
+            <CIcon icon={cilViewColumn} className="me-1" /> Tablero
+          </CButton>
+          <CButton color="secondary" variant={view === "timeline" ? undefined : "outline"} onClick={() => setView("timeline")}>
+            <CIcon icon={cilListRich} className="me-1" /> Cronograma
+          </CButton>
+        </CButtonGroup>
+      </div>
+      {view === "board" ? <KanbanView projects={projects} onEdit={onEdit} onMove={onMove} /> : <GanttView projects={projects} />}
+    </>
+  );
+}
+
+function DueBadge({ end, status }: { end: string; status: ProjectStatus }) {
+  if (status === "finalizado") return null;
+  const daysLeft = Math.ceil((new Date(end).getTime() - Date.now()) / 86400000);
+  let color: string | null = null;
+  let text = "";
+  if (daysLeft < 0) { color = "danger"; text = `Vencido ${Math.abs(daysLeft)}d`; }
+  else if (daysLeft <= 3) { color = "danger"; text = `${daysLeft}d`; }
+  else if (daysLeft <= 7) { color = "warning"; text = `${daysLeft}d`; }
+  if (!color) return null;
+  return <CBadge color={color} className="due-badge">{text}</CBadge>;
 }
 
 function KanbanView({
@@ -474,7 +603,10 @@ function KanbanView({
                   const idx = STATUS_ORDER.indexOf(p.status);
                   return (
                     <div className={`card type-border-${p.type} mb-2`} key={p.id}>
-                      <div className="name"><Link href={`/project/${p.id}`}>{p.name}</Link></div>
+                      <div className="name d-flex justify-content-between align-items-start gap-2">
+                        <Link href={`/project/${p.id}`}>{p.name}</Link>
+                        <DueBadge end={p.end} status={p.status} />
+                      </div>
                       <div className="meta">
                         <CBadge color={TYPE_COLOR[p.type]}>{TYPE_LABEL[p.type]}</CBadge> · {p.manager}
                       </div>
@@ -628,6 +760,8 @@ function GanttView({ projects }: { projects: ProjectDTO[] }) {
   const sorted = [...projects].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
   const minISO = new Date(min).toISOString().slice(0, 10);
   const maxISO = new Date(max).toISOString().slice(0, 10);
+  const todayPct = Math.max(0, Math.min(100, ((Date.now() - min) / span) * 100));
+  const showToday = Date.now() >= min && Date.now() <= max;
 
   return (
     <CCard>
@@ -642,24 +776,30 @@ function GanttView({ projects }: { projects: ProjectDTO[] }) {
                 <span style={{ position: "absolute", right: 0 }}>{fmtDate(maxISO)}</span>
               </div>
             </div>
-            {sorted.map((p) => {
-              const s = new Date(p.start).getTime();
-              const e = new Date(p.end).getTime();
-              const left = ((s - min) / span) * 100;
-              const width = Math.max(((e - s) / span) * 100, 1);
-              return (
-                <div className="gantt-row" key={p.id}>
-                  <div className="label" title={p.name}>{p.name}</div>
-                  <div className="gantt-track">
-                    <div
-                      className={`gantt-bar type-${p.type}`}
-                      style={{ left: `${left}%`, width: `${width}%` }}
-                      title={`${p.name} · ${fmtDate(p.start)} → ${fmtDate(p.end)}`}
-                    />
+            <div className="gantt-body">
+              {showToday && <div className="gantt-today" style={{ left: `${todayPct}%` }} title="Hoy" />}
+              {sorted.map((p) => {
+                const s = new Date(p.start).getTime();
+                const e = new Date(p.end).getTime();
+                const left = ((s - min) / span) * 100;
+                const width = Math.max(((e - s) / span) * 100, 1);
+                return (
+                  <div className="gantt-row" key={p.id}>
+                    <Link href={`/project/${p.id}`} className="label" title={p.name}>{p.name}</Link>
+                    <div className="gantt-track">
+                      <Link
+                        href={`/project/${p.id}`}
+                        className={`gantt-bar type-${p.type}`}
+                        style={{ left: `${left}%`, width: `${width}%` }}
+                        title={`${p.name} · ${fmtDate(p.start)} → ${fmtDate(p.end)} · ${clampPct(p.progress)}%`}
+                      >
+                        <span className="gantt-bar-fill" style={{ width: `${clampPct(p.progress)}%` }} />
+                      </Link>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
       </CCardBody>

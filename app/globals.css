@@ -180,13 +180,29 @@ table.projects tr:hover td{background:var(--paper);}
 .gantt{min-width:760px;}
 .gantt-scale{display:grid;grid-template-columns:190px 1fr;font-size:.72rem;color:var(--ink-soft);margin-bottom:6px;}
 .gantt-scale .marks{position:relative;height:16px;border-bottom:1px solid var(--line);}
+.gantt-body{position:relative;}
+.gantt-today{position:absolute;top:0;bottom:0;width:2px;background:var(--crit);z-index:2;}
+.gantt-today::before{content:"Hoy";position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:.65rem;color:var(--crit);white-space:nowrap;}
 .gantt-row{display:grid;grid-template-columns:190px 1fr;align-items:center;gap:0;min-height:38px;border-bottom:1px solid var(--line);}
-.gantt-row .label{font-size:.8rem;padding-right:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.gantt-row .label{font-size:.8rem;padding-right:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);text-decoration:none;}
+.gantt-row .label:hover{text-decoration:underline;}
 .gantt-track{position:relative;height:22px;}
-.gantt-bar{position:absolute;top:2px;height:18px;border-radius:4px;min-width:6px;}
-.gantt-bar.type-civil{background:var(--civil);}
-.gantt-bar.type-electrico{background:var(--electrico);}
-.gantt-bar.type-vial{background:var(--vial);}
+.gantt-bar{position:absolute;top:2px;height:18px;border-radius:4px;min-width:6px;display:block;overflow:hidden;text-decoration:none;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);}
+.gantt-bar.type-civil{background:color-mix(in srgb, var(--civil) 35%, var(--surface));}
+.gantt-bar.type-electrico{background:color-mix(in srgb, var(--electrico) 35%, var(--surface));}
+.gantt-bar.type-vial{background:color-mix(in srgb, var(--vial) 35%, var(--surface));}
+.gantt-bar-fill{position:absolute;inset:0;display:block;border-radius:4px 0 0 4px;}
+.gantt-bar.type-civil .gantt-bar-fill{background:var(--civil);}
+.gantt-bar.type-electrico .gantt-bar-fill{background:var(--electrico);}
+.gantt-bar.type-vial .gantt-bar-fill{background:var(--vial);}
+
+/* Dashboard: accesos directos y KPI clicables */
+.quick-actions{display:flex;gap:10px;flex-wrap:wrap;}
+.quick-action{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:.85rem;font-weight:500;text-decoration:none;cursor:pointer;box-shadow:var(--shadow);}
+.quick-action:hover{border-color:var(--accent);color:var(--accent-ink);}
+.kpi-card{transition:box-shadow .15s ease, transform .15s ease;}
+a:has(> .kpi-card):hover .kpi-card{box-shadow:0 4px 16px -4px rgba(0,0,0,.18);transform:translateY(-1px);}
+.due-badge{white-space:nowrap;flex-shrink:0;}
 
 .modal-backdrop{position:fixed;inset:0;background:rgba(20,16,10,.45);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50;}
 .modal{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:22px;width:100%;max-width:480px;box-shadow:var(--shadow);max-height:90vh;overflow-y:auto;}

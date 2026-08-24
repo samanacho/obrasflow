@@ -17,8 +17,10 @@
     "@coreui/icons": "^3.1.0",
     "@coreui/icons-react": "^2.3.0",
     "@coreui/react": "^5.13.0",
+    "@coreui/react-chartjs": "^3.0.0",
     "@prisma/client": "^5.20.0",
     "bootstrap": "^5.3.8",
+    "chart.js": "^4.5.1",
     "next": "^14.2.15",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

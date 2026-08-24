@@ -92,10 +92,9 @@ Otros comandos útiles: `npm run db:studio` (explorador visual de la base) y `np
 
 ## Vistas
 
-- **Dashboard**: KPIs, barras de presupuesto/avance, y alertas de vencimientos próximos y sobre-presupuesto.
-- **Tablero (Kanban)**: mover proyectos entre estados.
+- **Dashboard**: 8 KPIs (4 de proyectos + 4 agregados de `/api/dashboard`: contratistas activos, calificación promedio, relevamientos abiertos, cotizaciones pendientes), accesos directos, 2 gráficos (Chart.js vía `@coreui/react-chartjs`: dona de presupuesto por rubro, barras de avance por proyecto), alertas de vencimientos/sobre-presupuesto, y deep links desde cada tarjeta/gráfico al proyecto o vista correspondiente. El tab activo se sincroniza con la URL (`/?tab=tabla`) para poder linkear directo a una vista.
+- **Tablero**: Kanban (estilo Trello, con badge de vencimiento por tarjeta) y Cronograma (Gantt con línea de "hoy" y barra de avance dentro de cada fila) fusionados en una sola pestaña, alternables con un selector Tablero/Cronograma.
 - **Tabla**: alta, edición, eliminación, búsqueda, filtros por tipo/estado y exportación a CSV.
-- **Cronograma**: vista tipo Gantt según fechas.
 - **Tema oscuro**: toggle manual en el header (persiste en `localStorage`).
 
 ## Detalle de proyecto (`/project/[id]`)

@@ -83,6 +83,14 @@ export interface ContractorDTO {
   createdAt: string;
 }
 
+export interface DashboardSummaryDTO {
+  contractorsActive: number;
+  contractorsAvgRating: number | null;
+  openRelevamientos: number;
+  pendingCotizaciones: number;
+  pendingMilestones: number;
+}
+
 export interface ContractorInput {
   name: string;
   ruc?: string | null;
