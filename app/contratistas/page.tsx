@@ -2,22 +2,22 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import {
+  CCard, CCardBody, CButton, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
+  CForm, CFormLabel, CFormInput, CFormSelect, CFormTextarea, CFormCheck,
+  CBadge, CAlert, CRow, CCol,
+} from "@coreui/react";
+import CIcon from "@coreui/icons-react";
+import { cilPlus, cilLocationPin, cilPhone } from "@coreui/icons";
+import AppShell from "@/components/AppShell";
 import type { ContractorDTO, ContractorInput, ProjectType, ContractorStatus } from "@/lib/types";
 
 const RUBRO_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial" };
+const RUBRO_COLOR: Record<ProjectType, string> = { civil: "info", electrico: "warning", vial: "secondary" };
 const RUBROS: ProjectType[] = ["civil", "electrico", "vial"];
 
 const EMPTY_FORM: ContractorInput = {
-  name: "",
-  ruc: "",
-  contactName: "",
-  phone: "",
-  email: "",
-  city: "",
-  province: "",
-  rubros: [],
-  status: "activo",
-  notes: "",
+  name: "", ruc: "", contactName: "", phone: "", email: "", city: "", province: "", rubros: [], status: "activo", notes: "",
 };
 
 function Stars({ value }: { value: number | null }) {
@@ -102,129 +102,111 @@ export default function ContratistasPage() {
   }
 
   return (
-    <div id="app">
-      <header className="top">
-        <div className="brand">
-          <Link href="/" className="back-link">← ObrasFlow</Link>
-        </div>
-        <div className="actions">
-          <button className="btn primary" type="button" onClick={() => openModal(null)}>+ Nuevo contratista</button>
-        </div>
-      </header>
+    <AppShell
+      crumbs={[{ label: "Contratistas" }]}
+      headerActions={
+        <CButton color="primary" size="sm" onClick={() => openModal(null)}>
+          <CIcon icon={cilPlus} className="me-1" /> Nuevo contratista
+        </CButton>
+      }
+    >
+      <h1 className="of-page-title">🧰 Directorio de contratistas</h1>
+      <p className="module-desc mb-4">Todas las obras, todos los rubros — comparalos antes de contratar.</p>
 
-      <h1 className="project-title" style={{ fontSize: "1.9rem", margin: "10px 0 4px" }}>🧰 Directorio de contratistas</h1>
-      <p className="module-desc" style={{ marginBottom: 18 }}>Todas las obras, todos los rubros — comparalos antes de contratar.</p>
-
-      <div className="table-filters">
-        <input className="table-search" type="text" placeholder="Buscar por nombre o contacto…" value={search} onChange={(e) => setSearch(e.target.value)} />
-        <select value={rubroFilter} onChange={(e) => setRubroFilter(e.target.value as ProjectType | "")}>
-          <option value="">Todos los rubros</option>
-          {RUBROS.map((r) => <option key={r} value={r}>{RUBRO_LABEL[r]}</option>)}
-        </select>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as ContractorStatus | "")}>
-          <option value="">Todos los estados</option>
-          <option value="activo">Activo</option>
-          <option value="inactivo">Inactivo</option>
-        </select>
-      </div>
+      <CRow className="g-2 mb-4">
+        <CCol md={6}><CFormInput placeholder="Buscar por nombre o contacto…" value={search} onChange={(e) => setSearch(e.target.value)} /></CCol>
+        <CCol md={3}>
+          <CFormSelect value={rubroFilter} onChange={(e) => setRubroFilter(e.target.value as ProjectType | "")}>
+            <option value="">Todos los rubros</option>
+            {RUBROS.map((r) => <option key={r} value={r}>{RUBRO_LABEL[r]}</option>)}
+          </CFormSelect>
+        </CCol>
+        <CCol md={3}>
+          <CFormSelect value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as ContractorStatus | "")}>
+            <option value="">Todos los estados</option>
+            <option value="activo">Activo</option>
+            <option value="inactivo">Inactivo</option>
+          </CFormSelect>
+        </CCol>
+      </CRow>
 
       {loading && <p className="state-message">Cargando contratistas…</p>}
       {!loading && contractors.length === 0 && <p className="empty-col">Sin contratistas todavía. Agregá el primero con &quot;+ Nuevo contratista&quot;.</p>}
 
-      <div className="contractor-grid">
+      <CRow className="g-3">
         {contractors.map((c) => (
-          <div className="contractor-card" key={c.id}>
-            <div className="contractor-card-head">
-              <Link href={`/contratistas/${c.id}`} className="contractor-name">{c.name}</Link>
-              <span className={"status-chip " + (c.status === "activo" ? "status-cumplido" : "status-no_aplica")}>{c.status}</span>
-            </div>
-            <div className="contractor-rubros">
-              {c.rubros.map((r) => <span key={r} className={`type-pill type-${r}`}>{RUBRO_LABEL[r]}</span>)}
-            </div>
-            <div className="contractor-meta">
-              {c.city && <span>📍 {c.city}{c.province ? `, ${c.province}` : ""}</span>}
-              {c.phone && <span>📞 {c.phone}</span>}
-            </div>
-            <Stars value={c.avgRating} />
-            <div className="contractor-card-actions">
-              <Link href={`/contratistas/${c.id}`} className="btn small">Ver ficha</Link>
-              <button className="btn small" type="button" onClick={() => openModal(c)}>Editar</button>
-            </div>
-          </div>
+          <CCol md={4} key={c.id}>
+            <CCard className="h-100">
+              <CCardBody className="d-flex flex-column gap-2">
+                <div className="d-flex justify-content-between align-items-start">
+                  <Link href={`/contratistas/${c.id}`} className="contractor-name">{c.name}</Link>
+                  <CBadge color={c.status === "activo" ? "success" : "secondary"}>{c.status}</CBadge>
+                </div>
+                <div className="d-flex gap-1 flex-wrap">
+                  {c.rubros.map((r) => <CBadge key={r} color={RUBRO_COLOR[r]}>{RUBRO_LABEL[r]}</CBadge>)}
+                </div>
+                <div className="contractor-meta">
+                  {c.city && <span><CIcon icon={cilLocationPin} size="sm" className="me-1" />{c.city}{c.province ? `, ${c.province}` : ""}</span>}
+                  {c.phone && <span><CIcon icon={cilPhone} size="sm" className="me-1" />{c.phone}</span>}
+                </div>
+                <Stars value={c.avgRating} />
+                <div className="d-flex gap-2 mt-1">
+                  <Link href={`/contratistas/${c.id}`} className="btn btn-sm btn-outline-secondary">Ver ficha</Link>
+                  <CButton size="sm" color="secondary" variant="outline" onClick={() => openModal(c)}>Editar</CButton>
+                </div>
+              </CCardBody>
+            </CCard>
+          </CCol>
         ))}
-      </div>
+      </CRow>
 
-      {modalOpen && (
-        <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setModalOpen(false)}>
-          <div className="modal">
-            <h3>{editing ? "Editar" : "Nuevo"} contratista</h3>
-            {formError && <p className="form-error">{formError}</p>}
-            <form onSubmit={handleSubmit}>
-              <div className="field">
-                <label>Nombre / razón social</label>
-                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+      <CModal visible={modalOpen} onClose={() => setModalOpen(false)} alignment="center">
+        <CModalHeader><CModalTitle>{editing ? "Editar" : "Nuevo"} contratista</CModalTitle></CModalHeader>
+        <CForm onSubmit={handleSubmit}>
+          <CModalBody>
+            {formError && <CAlert color="danger">{formError}</CAlert>}
+            <div className="mb-3">
+              <CFormLabel>Nombre / razón social</CFormLabel>
+              <CFormInput value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+            </div>
+            <div className="mb-3">
+              <CFormLabel>Rubros</CFormLabel>
+              <div className="d-flex gap-3">
+                {RUBROS.map((r) => (
+                  <CFormCheck key={r} id={`rubro-${r}`} label={RUBRO_LABEL[r]} checked={form.rubros.includes(r)} onChange={() => toggleRubro(r)} />
+                ))}
               </div>
-              <div className="field">
-                <label>Rubros</label>
-                <div className="checkbox-row">
-                  {RUBROS.map((r) => (
-                    <label key={r} className="checkbox-pill">
-                      <input type="checkbox" checked={form.rubros.includes(r)} onChange={() => toggleRubro(r)} /> {RUBRO_LABEL[r]}
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div className="field-row">
-                <div className="field">
-                  <label>Ciudad</label>
-                  <input value={form.city ?? ""} onChange={(e) => setForm({ ...form, city: e.target.value })} />
-                </div>
-                <div className="field">
-                  <label>Provincia</label>
-                  <input value={form.province ?? ""} onChange={(e) => setForm({ ...form, province: e.target.value })} />
-                </div>
-              </div>
-              <div className="field-row">
-                <div className="field">
-                  <label>Celular</label>
-                  <input value={form.phone ?? ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-                </div>
-                <div className="field">
-                  <label>Email</label>
-                  <input type="email" value={form.email ?? ""} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-                </div>
-              </div>
-              <div className="field-row">
-                <div className="field">
-                  <label>Nombre de contacto</label>
-                  <input value={form.contactName ?? ""} onChange={(e) => setForm({ ...form, contactName: e.target.value })} />
-                </div>
-                <div className="field">
-                  <label>RUC</label>
-                  <input value={form.ruc ?? ""} onChange={(e) => setForm({ ...form, ruc: e.target.value })} />
-                </div>
-              </div>
-              <div className="field">
-                <label>Estado</label>
-                <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as ContractorStatus })}>
-                  <option value="activo">Activo</option>
-                  <option value="inactivo">Inactivo</option>
-                </select>
-              </div>
-              <div className="field">
-                <label>Notas</label>
-                <textarea rows={3} value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-              </div>
-              <div className="modal-actions">
-                <button type="button" className="btn ghost" onClick={() => setModalOpen(false)}>Cancelar</button>
-                <button type="submit" className="btn primary" disabled={saving}>{saving ? "Guardando…" : "Guardar"}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      <footer className="credit">Directorio global — visible desde cualquier proyecto.</footer>
-    </div>
+            </div>
+            <CRow className="mb-3 g-2">
+              <CCol><CFormLabel>Ciudad</CFormLabel><CFormInput value={form.city ?? ""} onChange={(e) => setForm({ ...form, city: e.target.value })} /></CCol>
+              <CCol><CFormLabel>Provincia</CFormLabel><CFormInput value={form.province ?? ""} onChange={(e) => setForm({ ...form, province: e.target.value })} /></CCol>
+            </CRow>
+            <CRow className="mb-3 g-2">
+              <CCol><CFormLabel>Celular</CFormLabel><CFormInput value={form.phone ?? ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></CCol>
+              <CCol><CFormLabel>Email</CFormLabel><CFormInput type="email" value={form.email ?? ""} onChange={(e) => setForm({ ...form, email: e.target.value })} /></CCol>
+            </CRow>
+            <CRow className="mb-3 g-2">
+              <CCol><CFormLabel>Nombre de contacto</CFormLabel><CFormInput value={form.contactName ?? ""} onChange={(e) => setForm({ ...form, contactName: e.target.value })} /></CCol>
+              <CCol><CFormLabel>RUC</CFormLabel><CFormInput value={form.ruc ?? ""} onChange={(e) => setForm({ ...form, ruc: e.target.value })} /></CCol>
+            </CRow>
+            <div className="mb-3">
+              <CFormLabel>Estado</CFormLabel>
+              <CFormSelect value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as ContractorStatus })}>
+                <option value="activo">Activo</option>
+                <option value="inactivo">Inactivo</option>
+              </CFormSelect>
+            </div>
+            <div className="mb-1">
+              <CFormLabel>Notas</CFormLabel>
+              <CFormTextarea rows={3} value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+            </div>
+          </CModalBody>
+          <CModalFooter>
+            <CButton color="secondary" variant="ghost" onClick={() => setModalOpen(false)}>Cancelar</CButton>
+            <CButton color="primary" type="submit" disabled={saving}>{saving ? "Guardando…" : "Guardar"}</CButton>
+          </CModalFooter>
+        </CForm>
+      </CModal>
+    </AppShell>
   );
 }

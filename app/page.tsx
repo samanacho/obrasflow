@@ -2,14 +2,31 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import {
+  CCard, CCardBody, CCardHeader, CNav, CNavItem, CNavLink,
+  CButton, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
+  CForm, CFormLabel, CFormInput, CFormSelect,
+  CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell,
+  CBadge, CAlert, CInputGroup,
+} from "@coreui/react";
+import CIcon from "@coreui/icons-react";
+import { cilPlus, cilArrowLeft, cilArrowRight, cilCloudDownload, cilPencil, cilTrash } from "@coreui/icons";
+import AppShell from "@/components/AppShell";
 import type { ProjectDTO, ProjectInput, ProjectStatus, ProjectType } from "@/lib/types";
 
 const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial" };
+const TYPE_COLOR: Record<ProjectType, string> = { civil: "info", electrico: "warning", vial: "secondary" };
 const STATUS_LABEL: Record<ProjectStatus, string> = {
   planificado: "Planificado",
   en_curso: "En curso",
   pausado: "Pausado",
   finalizado: "Finalizado",
+};
+const STATUS_COLOR: Record<ProjectStatus, string> = {
+  planificado: "info",
+  en_curso: "warning",
+  pausado: "secondary",
+  finalizado: "success",
 };
 const STATUS_ORDER: ProjectStatus[] = ["planificado", "en_curso", "pausado", "finalizado"];
 const TABS = [
@@ -58,23 +75,8 @@ export default function Home() {
   const [form, setForm] = useState<ProjectInput>(EMPTY_FORM);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [theme, setTheme] = useState<"light" | "dark" | null>(null);
 
-  useEffect(() => {
-    loadProjects();
-    const saved = typeof window !== "undefined" ? (localStorage.getItem("obrasflow-theme") as "light" | "dark" | null) : null;
-    if (saved) {
-      setTheme(saved);
-      document.documentElement.setAttribute("data-theme", saved);
-    }
-  }, []);
-
-  function toggleTheme() {
-    const next = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    document.documentElement.setAttribute("data-theme", next);
-    localStorage.setItem("obrasflow-theme", next);
-  }
+  useEffect(() => { loadProjects(); }, []);
 
   useEffect(() => {
     if (!toast) return;
@@ -220,194 +222,122 @@ export default function Home() {
   }, [projects]);
 
   return (
-    <div id="app">
-      <header className="top">
-        <div className="brand">
-          <span className="mark">🏗️ ObrasFlow</span>
-          <span className="tag">Civil · Eléctrico · Vial</span>
-        </div>
-        <div className="actions">
-          <span className="save-state">{saveState}</span>
-          <Link href="/contratistas" className="btn">🧰 Contratistas</Link>
-          <button className="btn ghost icon-btn" type="button" onClick={toggleTheme} title="Cambiar tema" aria-label="Cambiar tema claro/oscuro">
-            {theme === "dark" ? "☀️" : "🌙"}
-          </button>
-          <button className="btn primary" type="button" onClick={() => openModal(null)}>
-            + Nuevo proyecto
-          </button>
-        </div>
-      </header>
+    <AppShell
+      crumbs={[{ label: "Proyectos" }]}
+      headerActions={
+        <>
+          {saveState && <span className="text-body-secondary small d-none d-md-inline">{saveState}</span>}
+          <CButton color="primary" size="sm" onClick={() => openModal(null)}>
+            <CIcon icon={cilPlus} className="me-1" /> Nuevo proyecto
+          </CButton>
+        </>
+      }
+    >
+      <h1 className="of-page-title">Proyectos</h1>
 
-      <nav className="tabs">
+      <CNav variant="underline" className="mb-4">
         {TABS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            className={"tab-btn" + (tab === t.key ? " active" : "")}
-            onClick={() => setTab(t.key)}
-          >
-            {t.label}
-          </button>
+          <CNavItem key={t.key}>
+            <CNavLink active={tab === t.key} onClick={() => setTab(t.key)} style={{ cursor: "pointer" }}>
+              {t.label}
+            </CNavLink>
+          </CNavItem>
         ))}
-      </nav>
+      </CNav>
 
       {loading && <p className="state-message">Cargando proyectos…</p>}
       {!loading && loadError && (
-        <p className="state-message form-error">
-          {loadError} <button className="btn small" onClick={loadProjects}>Reintentar</button>
-        </p>
+        <CAlert color="danger" className="d-flex align-items-center justify-content-between">
+          {loadError} <CButton size="sm" color="danger" variant="outline" onClick={loadProjects}>Reintentar</CButton>
+        </CAlert>
       )}
 
       {!loading && !loadError && (
-        <section className="view active">
+        <>
           {tab === "dashboard" && <DashboardView projects={projects} metrics={metrics} />}
           {tab === "kanban" && <KanbanView projects={projects} onEdit={openModal} onMove={moveStatus} />}
           {tab === "tabla" && <TablaView projects={projects} onEdit={openModal} onDelete={deleteProject} />}
           {tab === "gantt" && <GanttView projects={projects} />}
-        </section>
+        </>
       )}
 
-      <footer className="credit">Datos en Postgres vía Prisma — cada cambio se guarda con la API.</footer>
-
-      {modalOpen && (
-        <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && closeModal()}>
-          <div className="modal">
-            <h3>{editingId ? "Editar proyecto" : "Nuevo proyecto"}</h3>
-            {formError && <p className="form-error">{formError}</p>}
-            <form onSubmit={handleSubmit}>
-              <div className="field">
-                <label htmlFor="f-name">Nombre del proyecto</label>
-                <input
-                  id="f-name"
-                  required
-                  placeholder="Ej. Puente Río Claro"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                />
+      <CModal visible={modalOpen} onClose={closeModal} alignment="center">
+        <CModalHeader>
+          <CModalTitle>{editingId ? "Editar proyecto" : "Nuevo proyecto"}</CModalTitle>
+        </CModalHeader>
+        <CForm onSubmit={handleSubmit}>
+          <CModalBody>
+            {formError && <CAlert color="danger">{formError}</CAlert>}
+            <div className="mb-3">
+              <CFormLabel>Nombre del proyecto</CFormLabel>
+              <CFormInput required placeholder="Ej. Puente Río Claro" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            </div>
+            <div className="row mb-3">
+              <div className="col">
+                <CFormLabel>Tipo</CFormLabel>
+                <CFormSelect value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as ProjectType })}>
+                  <option value="civil">Civil</option>
+                  <option value="electrico">Eléctrico</option>
+                  <option value="vial">Vial</option>
+                </CFormSelect>
               </div>
-              <div className="field-row">
-                <div className="field">
-                  <label htmlFor="f-type">Tipo</label>
-                  <select
-                    id="f-type"
-                    value={form.type}
-                    onChange={(e) => setForm({ ...form, type: e.target.value as ProjectType })}
-                  >
-                    <option value="civil">Civil</option>
-                    <option value="electrico">Eléctrico</option>
-                    <option value="vial">Vial</option>
-                  </select>
-                </div>
-                <div className="field">
-                  <label htmlFor="f-status">Estado</label>
-                  <select
-                    id="f-status"
-                    value={form.status}
-                    onChange={(e) => setForm({ ...form, status: e.target.value as ProjectStatus })}
-                  >
-                    <option value="planificado">Planificado</option>
-                    <option value="en_curso">En curso</option>
-                    <option value="pausado">Pausado</option>
-                    <option value="finalizado">Finalizado</option>
-                  </select>
-                </div>
+              <div className="col">
+                <CFormLabel>Estado</CFormLabel>
+                <CFormSelect value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as ProjectStatus })}>
+                  {STATUS_ORDER.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
+                </CFormSelect>
               </div>
-              <div className="field">
-                <label htmlFor="f-manager">Responsable</label>
-                <input
-                  id="f-manager"
-                  required
-                  placeholder="Ej. Ana Torres"
-                  value={form.manager}
-                  onChange={(e) => setForm({ ...form, manager: e.target.value })}
-                />
+            </div>
+            <div className="mb-3">
+              <CFormLabel>Responsable</CFormLabel>
+              <CFormInput required placeholder="Ej. Ana Torres" value={form.manager} onChange={(e) => setForm({ ...form, manager: e.target.value })} />
+            </div>
+            <div className="row mb-3">
+              <div className="col">
+                <CFormLabel>Fecha inicio</CFormLabel>
+                <CFormInput type="date" required value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} />
               </div>
-              <div className="field-row">
-                <div className="field">
-                  <label htmlFor="f-start">Fecha inicio</label>
-                  <input
-                    id="f-start"
-                    type="date"
-                    required
-                    value={form.start}
-                    onChange={(e) => setForm({ ...form, start: e.target.value })}
-                  />
-                </div>
-                <div className="field">
-                  <label htmlFor="f-end">Fecha fin</label>
-                  <input
-                    id="f-end"
-                    type="date"
-                    required
-                    value={form.end}
-                    onChange={(e) => setForm({ ...form, end: e.target.value })}
-                  />
-                </div>
+              <div className="col">
+                <CFormLabel>Fecha fin</CFormLabel>
+                <CFormInput type="date" required value={form.end} onChange={(e) => setForm({ ...form, end: e.target.value })} />
               </div>
-              <div className="field-row">
-                <div className="field">
-                  <label htmlFor="f-budget">Presupuesto (USD)</label>
-                  <input
-                    id="f-budget"
-                    type="number"
-                    min={0}
-                    step={1}
-                    required
-                    value={form.budget}
-                    onChange={(e) => setForm({ ...form, budget: Number(e.target.value) })}
-                  />
-                </div>
-                <div className="field">
-                  <label htmlFor="f-spent">Ejecutado (USD)</label>
-                  <input
-                    id="f-spent"
-                    type="number"
-                    min={0}
-                    step={1}
-                    required
-                    value={form.spent}
-                    onChange={(e) => setForm({ ...form, spent: Number(e.target.value) })}
-                  />
-                </div>
+            </div>
+            <div className="row mb-3">
+              <div className="col">
+                <CFormLabel>Presupuesto (USD)</CFormLabel>
+                <CFormInput type="number" min={0} step={1} required value={form.budget} onChange={(e) => setForm({ ...form, budget: Number(e.target.value) })} />
               </div>
-              <div className="field">
-                <label htmlFor="f-progress">Avance (%)</label>
-                <input
-                  id="f-progress"
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={1}
-                  required
-                  value={form.progress}
-                  onChange={(e) => setForm({ ...form, progress: Number(e.target.value) })}
-                />
+              <div className="col">
+                <CFormLabel>Ejecutado (USD)</CFormLabel>
+                <CFormInput type="number" min={0} step={1} required value={form.spent} onChange={(e) => setForm({ ...form, spent: Number(e.target.value) })} />
               </div>
-              <div className="modal-actions">
-                <button type="button" className="btn ghost" onClick={closeModal}>
-                  Cancelar
-                </button>
-                <button type="submit" className="btn primary" disabled={saving}>
-                  {saving ? "Guardando…" : "Guardar"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            </div>
+            <div className="mb-1">
+              <CFormLabel>Avance (%)</CFormLabel>
+              <CFormInput type="number" min={0} max={100} step={1} required value={form.progress} onChange={(e) => setForm({ ...form, progress: Number(e.target.value) })} />
+            </div>
+          </CModalBody>
+          <CModalFooter>
+            <CButton color="secondary" variant="ghost" onClick={closeModal}>Cancelar</CButton>
+            <CButton color="primary" type="submit" disabled={saving}>{saving ? "Guardando…" : "Guardar"}</CButton>
+          </CModalFooter>
+        </CForm>
+      </CModal>
 
       <div className={"toast" + (toast ? " show" : "")}>{toast}</div>
-    </div>
+    </AppShell>
   );
 }
 
 function Kpi({ label, value, sub }: { label: string; value: string | number; sub: string }) {
   return (
-    <div className="kpi">
-      <div className="label">{label}</div>
-      <div className="value mono">{value}</div>
-      <div className="sub">{sub}</div>
-    </div>
+    <CCard className="h-100">
+      <CCardBody>
+        <div className="text-uppercase text-body-secondary small mb-1">{label}</div>
+        <div className="fs-3 fw-bold mono">{value}</div>
+        <div className="text-body-secondary small">{sub}</div>
+      </CCardBody>
+    </CCard>
   );
 }
 
@@ -435,85 +365,83 @@ function DashboardView({ projects, metrics }: { projects: ProjectDTO[]; metrics:
   return (
     <>
       {(overBudget.length > 0 || dueSoon.length > 0) && (
-        <div className="alert-row">
+        <div className="row g-3 mb-4">
           {dueSoon.length > 0 && (
-            <div className="alert-card alert-warn">
-              <div className="alert-card-title">⏰ Vencimientos próximos</div>
-              <ul>
-                {dueSoon.map(({ p, daysLeft }) => (
-                  <li key={p.id}>
-                    <Link href={`/project/${p.id}`}>{p.name}</Link> — {daysLeft < 0 ? `vencido hace ${Math.abs(daysLeft)}d` : daysLeft === 0 ? "vence hoy" : `${daysLeft}d restantes`}
-                  </li>
-                ))}
-              </ul>
+            <div className="col-md-6">
+              <CAlert color="warning" className="mb-0">
+                <div className="fw-semibold mb-1">⏰ Vencimientos próximos</div>
+                <ul className="mb-0 ps-3 small">
+                  {dueSoon.map(({ p, daysLeft }) => (
+                    <li key={p.id}>
+                      <Link href={`/project/${p.id}`}>{p.name}</Link> — {daysLeft < 0 ? `vencido hace ${Math.abs(daysLeft)}d` : daysLeft === 0 ? "vence hoy" : `${daysLeft}d restantes`}
+                    </li>
+                  ))}
+                </ul>
+              </CAlert>
             </div>
           )}
           {overBudget.length > 0 && (
-            <div className="alert-card alert-crit">
-              <div className="alert-card-title">💸 Sobre presupuesto</div>
-              <ul>
-                {overBudget.map((p) => (
-                  <li key={p.id}>
-                    <Link href={`/project/${p.id}`}>{p.name}</Link> — {fmtMoney(p.spent)} / {fmtMoney(p.budget)}
-                  </li>
-                ))}
-              </ul>
+            <div className="col-md-6">
+              <CAlert color="danger" className="mb-0">
+                <div className="fw-semibold mb-1">💸 Sobre presupuesto</div>
+                <ul className="mb-0 ps-3 small">
+                  {overBudget.map((p) => (
+                    <li key={p.id}>
+                      <Link href={`/project/${p.id}`}>{p.name}</Link> — {fmtMoney(p.spent)} / {fmtMoney(p.budget)}
+                    </li>
+                  ))}
+                </ul>
+              </CAlert>
             </div>
           )}
         </div>
       )}
 
-      <div className="kpi-row">
-        <Kpi label="Proyectos totales" value={projects.length} sub={`${active} en curso · ${finished} finalizados`} />
-        <Kpi label="Presupuesto total" value={fmtMoney(totalBudget)} sub={`${fmtMoney(totalSpent)} ejecutado`} />
-        <Kpi
-          label="Ejecución presupuestaria"
-          value={`${execPct}%`}
-          sub={execPct > 100 ? "sobre presupuesto" : "del total planificado"}
-        />
-        <Kpi label="Avance promedio" value={`${avgProgress}%`} sub={`sobre ${projects.length} proyectos`} />
+      <div className="row row-cols-1 row-cols-md-4 g-3 mb-4">
+        <div className="col"><Kpi label="Proyectos totales" value={projects.length} sub={`${active} en curso · ${finished} finalizados`} /></div>
+        <div className="col"><Kpi label="Presupuesto total" value={fmtMoney(totalBudget)} sub={`${fmtMoney(totalSpent)} ejecutado`} /></div>
+        <div className="col"><Kpi label="Ejecución presupuestaria" value={`${execPct}%`} sub={execPct > 100 ? "sobre presupuesto" : "del total planificado"} /></div>
+        <div className="col"><Kpi label="Avance promedio" value={`${avgProgress}%`} sub={`sobre ${projects.length} proyectos`} /></div>
       </div>
 
-      <div className="panel">
-        <h3>Presupuesto por tipo de obra</h3>
-        {(["civil", "electrico", "vial"] as ProjectType[]).map((t) => {
-          const d = byType[t];
-          const pct = totalBudget ? Math.round((d.budget / totalBudget) * 100) : 0;
-          return (
-            <div className="bar-row" key={t}>
-              <span className={`type-pill type-${t}`}>{TYPE_LABEL[t]}</span>
-              <div className="bar-track">
-                <div className="bar-fill" style={{ width: `${pct}%`, background: `var(--${t})` }} />
+      <CCard className="mb-4">
+        <CCardHeader className="fw-semibold">Presupuesto por tipo de obra</CCardHeader>
+        <CCardBody>
+          {(["civil", "electrico", "vial"] as ProjectType[]).map((t) => {
+            const d = byType[t];
+            const pct = totalBudget ? Math.round((d.budget / totalBudget) * 100) : 0;
+            return (
+              <div className="bar-row" key={t}>
+                <CBadge color={TYPE_COLOR[t]}>{TYPE_LABEL[t]}</CBadge>
+                <div className="bar-track">
+                  <div className="bar-fill" style={{ width: `${pct}%`, background: `var(--${t})` }} />
+                </div>
+                <span className="mono">{fmtMoney(d.budget)} · {d.count} proy.</span>
               </div>
-              <span className="mono">
-                {fmtMoney(d.budget)} · {d.count} proy.
-              </span>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </CCardBody>
+      </CCard>
 
-      <div className="panel">
-        <h3>Avance por proyecto</h3>
-        {sortedByProgress.length === 0 && <EmptyMsg />}
-        {sortedByProgress.map((p) => {
-          const pct = clampPct(p.progress);
-          const over = p.spent > p.budget;
-          return (
-            <div className="bar-row" key={p.id}>
-              <span title={p.name} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {p.name}
-              </span>
-              <div className="bar-track">
-                <div className="bar-fill" style={{ width: `${pct}%`, background: `var(--${p.type})` }} />
+      <CCard>
+        <CCardHeader className="fw-semibold">Avance por proyecto</CCardHeader>
+        <CCardBody>
+          {sortedByProgress.length === 0 && <EmptyMsg />}
+          {sortedByProgress.map((p) => {
+            const pct = clampPct(p.progress);
+            const over = p.spent > p.budget;
+            return (
+              <div className="bar-row" key={p.id}>
+                <span title={p.name} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
+                <div className="bar-track">
+                  <div className="bar-fill" style={{ width: `${pct}%`, background: `var(--${p.type})` }} />
+                </div>
+                <span className="mono" style={{ color: over ? "var(--crit)" : "var(--ink-soft)" }}>{pct}%</span>
               </div>
-              <span className="mono" style={{ color: over ? "var(--crit)" : "var(--ink-soft)" }}>
-                {pct}%
-              </span>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </CCardBody>
+      </CCard>
     </>
   );
 }
@@ -522,57 +450,50 @@ function EmptyMsg() {
 }
 
 function KanbanView({
-  projects,
-  onEdit,
-  onMove,
+  projects, onEdit, onMove,
 }: {
   projects: ProjectDTO[];
   onEdit: (p: ProjectDTO) => void;
   onMove: (p: ProjectDTO, dir: 1 | -1) => void;
 }) {
   return (
-    <div className="kanban">
+    <div className="row row-cols-1 row-cols-md-4 g-3">
       {STATUS_ORDER.map((status) => {
         const items = projects.filter((p) => p.status === status);
         return (
-          <div className="kanban-col" key={status}>
-            <h3>
-              {STATUS_LABEL[status]} <span className="count mono">{items.length}</span>
-            </h3>
-            {items.length === 0 && <p className="empty-col">Vacío</p>}
-            {items.map((p) => {
-              const pct = clampPct(p.progress);
-              const idx = STATUS_ORDER.indexOf(p.status);
-              return (
-                <div className={`card type-border-${p.type}`} key={p.id}>
-                  <div className="name"><Link href={`/project/${p.id}`}>{p.name}</Link></div>
-                  <div className="meta">
-                    <span className={`type-pill type-${p.type}`}>{TYPE_LABEL[p.type]}</span> · {p.manager}
-                  </div>
-                  <div className="progress-line">
-                    <div className="bar-track">
-                      <div className="bar-fill" style={{ width: `${pct}%`, background: `var(--${p.type})` }} />
+          <div className="col" key={status}>
+            <CCard className="h-100">
+              <CCardHeader className="d-flex justify-content-between align-items-center">
+                <span className="fw-semibold">{STATUS_LABEL[status]}</span>
+                <CBadge color="secondary" shape="rounded-pill">{items.length}</CBadge>
+              </CCardHeader>
+              <CCardBody>
+                {items.length === 0 && <p className="empty-col">Vacío</p>}
+                {items.map((p) => {
+                  const pct = clampPct(p.progress);
+                  const idx = STATUS_ORDER.indexOf(p.status);
+                  return (
+                    <div className={`card type-border-${p.type} mb-2`} key={p.id}>
+                      <div className="name"><Link href={`/project/${p.id}`}>{p.name}</Link></div>
+                      <div className="meta">
+                        <CBadge color={TYPE_COLOR[p.type]}>{TYPE_LABEL[p.type]}</CBadge> · {p.manager}
+                      </div>
+                      <div className="progress-line">
+                        <div className="bar-track">
+                          <div className="bar-fill" style={{ width: `${pct}%`, background: `var(--${p.type})` }} />
+                        </div>
+                        <span className="mono">{pct}%</span>
+                      </div>
+                      <div className="card-actions">
+                        <CButton size="sm" color="secondary" variant="outline" onClick={() => onEdit(p)}><CIcon icon={cilPencil} size="sm" /></CButton>
+                        {idx > 0 && <CButton size="sm" color="secondary" variant="outline" onClick={() => onMove(p, -1)}><CIcon icon={cilArrowLeft} size="sm" /></CButton>}
+                        {idx < STATUS_ORDER.length - 1 && <CButton size="sm" color="secondary" variant="outline" onClick={() => onMove(p, 1)}><CIcon icon={cilArrowRight} size="sm" /></CButton>}
+                      </div>
                     </div>
-                    <span className="mono">{pct}%</span>
-                  </div>
-                  <div className="card-actions">
-                    <button className="btn small" type="button" onClick={() => onEdit(p)}>
-                      Editar
-                    </button>
-                    {idx > 0 && (
-                      <button className="btn small" type="button" onClick={() => onMove(p, -1)}>
-                        ←
-                      </button>
-                    )}
-                    {idx < STATUS_ORDER.length - 1 && (
-                      <button className="btn small" type="button" onClick={() => onMove(p, 1)}>
-                        →
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </CCardBody>
+            </CCard>
           </div>
         );
       })}
@@ -598,9 +519,7 @@ function exportCSV(projects: ProjectDTO[]) {
 }
 
 function TablaView({
-  projects,
-  onEdit,
-  onDelete,
+  projects, onEdit, onDelete,
 }: {
   projects: ProjectDTO[];
   onEdit: (p: ProjectDTO) => void;
@@ -618,95 +537,87 @@ function TablaView({
   });
 
   return (
-    <div className="panel">
-      <div className="module-panel-head">
-        <h3>Seguimiento de proyectos</h3>
-        <button className="btn" type="button" onClick={() => exportCSV(filtered)}>⬇ Exportar CSV</button>
-      </div>
+    <CCard>
+      <CCardHeader className="d-flex justify-content-between align-items-center">
+        <span className="fw-semibold">Seguimiento de proyectos</span>
+        <CButton size="sm" color="secondary" variant="outline" onClick={() => exportCSV(filtered)}>
+          <CIcon icon={cilCloudDownload} className="me-1" /> Exportar CSV
+        </CButton>
+      </CCardHeader>
+      <CCardBody>
+        <div className="row g-2 mb-3">
+          <div className="col-md-6">
+            <CInputGroup>
+              <CFormInput placeholder="Buscar por nombre o responsable…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            </CInputGroup>
+          </div>
+          <div className="col-md-3">
+            <CFormSelect value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as ProjectType | "")}>
+              <option value="">Todos los tipos</option>
+              <option value="civil">Civil</option>
+              <option value="electrico">Eléctrico</option>
+              <option value="vial">Vial</option>
+            </CFormSelect>
+          </div>
+          <div className="col-md-3">
+            <CFormSelect value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as ProjectStatus | "")}>
+              <option value="">Todos los estados</option>
+              {STATUS_ORDER.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
+            </CFormSelect>
+          </div>
+        </div>
 
-      <div className="table-filters">
-        <input
-          className="table-search"
-          type="text"
-          placeholder="Buscar por nombre o responsable…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as ProjectType | "")}>
-          <option value="">Todos los tipos</option>
-          <option value="civil">Civil</option>
-          <option value="electrico">Eléctrico</option>
-          <option value="vial">Vial</option>
-        </select>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as ProjectStatus | "")}>
-          <option value="">Todos los estados</option>
-          {STATUS_ORDER.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
-        </select>
-      </div>
-
-      <div className="table-wrap">
-        <table className="projects">
-          <thead>
-            <tr>
-              <th>Proyecto</th>
-              <th>Tipo</th>
-              <th>Responsable</th>
-              <th>Inicio</th>
-              <th>Fin</th>
-              <th>Estado</th>
-              <th>Presupuesto</th>
-              <th>Avance</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={9} className="empty-col">
-                  {projects.length === 0 ? "Sin proyectos todavía." : "Ningún proyecto coincide con el filtro."}
-                </td>
-              </tr>
-            )}
-            {filtered.map((p) => (
-              <tr key={p.id}>
-                <td>
-                  <Link href={`/project/${p.id}`}><strong>{p.name}</strong></Link>
-                </td>
-                <td>
-                  <span className={`type-pill type-${p.type}`}>{TYPE_LABEL[p.type]}</span>
-                </td>
-                <td>{p.manager}</td>
-                <td className="mono">{fmtDate(p.start)}</td>
-                <td className="mono">{fmtDate(p.end)}</td>
-                <td>
-                  <span className={`status-chip status-${p.status}`}>{STATUS_LABEL[p.status]}</span>
-                </td>
-                <td className="mono">{fmtMoney(p.budget)}</td>
-                <td className="mono">{clampPct(p.progress)}%</td>
-                <td className="row-actions">
-                  <button className="btn small" type="button" onClick={() => onEdit(p)}>
-                    Editar
-                  </button>
-                  <button className="btn small danger" type="button" onClick={() => onDelete(p)}>
-                    Eliminar
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+        <div className="table-responsive">
+          <CTable hover align="middle">
+            <CTableHead>
+              <CTableRow>
+                <CTableHeaderCell>Proyecto</CTableHeaderCell>
+                <CTableHeaderCell>Tipo</CTableHeaderCell>
+                <CTableHeaderCell>Responsable</CTableHeaderCell>
+                <CTableHeaderCell>Inicio</CTableHeaderCell>
+                <CTableHeaderCell>Fin</CTableHeaderCell>
+                <CTableHeaderCell>Estado</CTableHeaderCell>
+                <CTableHeaderCell>Presupuesto</CTableHeaderCell>
+                <CTableHeaderCell>Avance</CTableHeaderCell>
+                <CTableHeaderCell />
+              </CTableRow>
+            </CTableHead>
+            <CTableBody>
+              {filtered.length === 0 && (
+                <CTableRow>
+                  <CTableDataCell colSpan={9} className="empty-col">
+                    {projects.length === 0 ? "Sin proyectos todavía." : "Ningún proyecto coincide con el filtro."}
+                  </CTableDataCell>
+                </CTableRow>
+              )}
+              {filtered.map((p) => (
+                <CTableRow key={p.id}>
+                  <CTableDataCell><Link href={`/project/${p.id}`}><strong>{p.name}</strong></Link></CTableDataCell>
+                  <CTableDataCell><CBadge color={TYPE_COLOR[p.type]}>{TYPE_LABEL[p.type]}</CBadge></CTableDataCell>
+                  <CTableDataCell>{p.manager}</CTableDataCell>
+                  <CTableDataCell className="mono">{fmtDate(p.start)}</CTableDataCell>
+                  <CTableDataCell className="mono">{fmtDate(p.end)}</CTableDataCell>
+                  <CTableDataCell><CBadge color={STATUS_COLOR[p.status]}>{STATUS_LABEL[p.status]}</CBadge></CTableDataCell>
+                  <CTableDataCell className="mono">{fmtMoney(p.budget)}</CTableDataCell>
+                  <CTableDataCell className="mono">{clampPct(p.progress)}%</CTableDataCell>
+                  <CTableDataCell className="text-end">
+                    <CButton size="sm" color="secondary" variant="outline" className="me-1" onClick={() => onEdit(p)}><CIcon icon={cilPencil} size="sm" /></CButton>
+                    <CButton size="sm" color="danger" variant="outline" onClick={() => onDelete(p)}><CIcon icon={cilTrash} size="sm" /></CButton>
+                  </CTableDataCell>
+                </CTableRow>
+              ))}
+            </CTableBody>
+          </CTable>
+        </div>
+      </CCardBody>
+    </CCard>
   );
 }
 
 function GanttView({ projects }: { projects: ProjectDTO[] }) {
   if (projects.length === 0) {
     return (
-      <div className="panel">
-        <h3>Cronograma</h3>
-        <EmptyMsg />
-      </div>
+      <CCard><CCardHeader className="fw-semibold">Cronograma</CCardHeader><CCardBody><EmptyMsg /></CCardBody></CCard>
     );
   }
   const starts = projects.map((p) => new Date(p.start).getTime());
@@ -719,39 +630,39 @@ function GanttView({ projects }: { projects: ProjectDTO[] }) {
   const maxISO = new Date(max).toISOString().slice(0, 10);
 
   return (
-    <div className="panel">
-      <h3>Cronograma</h3>
-      <div className="gantt-wrap">
-        <div className="gantt">
-          <div className="gantt-scale">
-            <div />
-            <div className="marks">
-              <span style={{ position: "absolute", left: 0 }}>{fmtDate(minISO)}</span>
-              <span style={{ position: "absolute", right: 0 }}>{fmtDate(maxISO)}</span>
-            </div>
-          </div>
-          {sorted.map((p) => {
-            const s = new Date(p.start).getTime();
-            const e = new Date(p.end).getTime();
-            const left = ((s - min) / span) * 100;
-            const width = Math.max(((e - s) / span) * 100, 1);
-            return (
-              <div className="gantt-row" key={p.id}>
-                <div className="label" title={p.name}>
-                  {p.name}
-                </div>
-                <div className="gantt-track">
-                  <div
-                    className={`gantt-bar type-${p.type}`}
-                    style={{ left: `${left}%`, width: `${width}%` }}
-                    title={`${p.name} · ${fmtDate(p.start)} → ${fmtDate(p.end)}`}
-                  />
-                </div>
+    <CCard>
+      <CCardHeader className="fw-semibold">Cronograma</CCardHeader>
+      <CCardBody>
+        <div className="gantt-wrap">
+          <div className="gantt">
+            <div className="gantt-scale">
+              <div />
+              <div className="marks">
+                <span style={{ position: "absolute", left: 0 }}>{fmtDate(minISO)}</span>
+                <span style={{ position: "absolute", right: 0 }}>{fmtDate(maxISO)}</span>
               </div>
-            );
-          })}
+            </div>
+            {sorted.map((p) => {
+              const s = new Date(p.start).getTime();
+              const e = new Date(p.end).getTime();
+              const left = ((s - min) / span) * 100;
+              const width = Math.max(((e - s) / span) * 100, 1);
+              return (
+                <div className="gantt-row" key={p.id}>
+                  <div className="label" title={p.name}>{p.name}</div>
+                  <div className="gantt-track">
+                    <div
+                      className={`gantt-bar type-${p.type}`}
+                      style={{ left: `${left}%`, width: `${width}%` }}
+                      title={`${p.name} · ${fmtDate(p.start)} → ${fmtDate(p.end)}`}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
-    </div>
+      </CCardBody>
+    </CCard>
   );
 }

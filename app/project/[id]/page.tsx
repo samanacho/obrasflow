@@ -2,8 +2,21 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import {
+  CCard, CCardBody, CCardHeader, CNav, CNavItem, CNavLink,
+  CButton, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
+  CForm, CFormLabel, CFormInput, CFormSelect, CFormTextarea,
+  CBadge, CAlert, CListGroup, CListGroupItem, CRow, CCol,
+} from "@coreui/react";
+import CIcon from "@coreui/icons-react";
+import { cilPlus, cilPencil, cilTrash } from "@coreui/icons";
+import AppShell from "@/components/AppShell";
 import type { ProjectDTO, ProjectItemDTO, ContractorDTO } from "@/lib/types";
 import { ITEM_KINDS, ITEM_KIND_ORDER, ItemField } from "@/lib/itemKinds";
+
+const TYPE_LABEL: Record<string, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial" };
+const TYPE_COLOR: Record<string, string> = { civil: "info", electrico: "warning", vial: "secondary" };
+const STATUS_COLOR: Record<string, string> = { planificado: "info", en_curso: "warning", pausado: "secondary", finalizado: "success" };
 
 function fmtMoney(n: number) {
   return "$" + Number(n || 0).toLocaleString("es-AR");
@@ -36,54 +49,45 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
     })();
   }, [id]);
 
-  if (loading) return <div id="app"><p className="state-message">Cargando proyecto…</p></div>;
-  if (error || !project) return <div id="app"><p className="state-message form-error">{error || "Proyecto no encontrado."}</p></div>;
+  if (loading) return <AppShell crumbs={[{ label: "Proyectos", href: "/" }]}><p className="state-message">Cargando proyecto…</p></AppShell>;
+  if (error || !project) return <AppShell crumbs={[{ label: "Proyectos", href: "/" }]}><p className="state-message form-error">{error || "Proyecto no encontrado."}</p></AppShell>;
 
   const overBudget = project.spent > project.budget;
   const daysLeft = Math.ceil((new Date(project.end).getTime() - Date.now()) / 86400000);
 
   return (
-    <div id="app">
-      <header className="top">
-        <div className="brand">
-          <Link href="/" className="back-link">← ObrasFlow</Link>
-        </div>
-        <div className="actions">
-          <Link href="/contratistas" className="btn">🧰 Contratistas</Link>
-        </div>
-      </header>
-
+    <AppShell crumbs={[{ label: "Proyectos", href: "/" }, { label: project.name }]}>
       <div className="project-hero">
         <div>
-          <h1 className="project-title">{project.name}</h1>
+          <h1 className="of-page-title mb-2">{project.name}</h1>
           <div className="project-hero-meta">
-            <span className={`type-pill type-${project.type}`}>{project.type === "civil" ? "Civil" : project.type === "electrico" ? "Eléctrico" : "Vial"}</span>
-            <span className={`status-chip status-${project.status}`}>{project.status.replace("_", " ")}</span>
+            <CBadge color={TYPE_COLOR[project.type]}>{TYPE_LABEL[project.type]}</CBadge>
+            <CBadge color={STATUS_COLOR[project.status]}>{project.status.replace("_", " ")}</CBadge>
             <span>{project.manager}</span>
           </div>
         </div>
         <div className="project-hero-kpis">
-          <div className="kpi"><div className="label">Presupuesto</div><div className="value mono">{fmtMoney(project.budget)}</div><div className={"sub" + (overBudget ? " alert-text" : "")}>{fmtMoney(project.spent)} ejecutado{overBudget ? " · sobre presupuesto" : ""}</div></div>
-          <div className="kpi"><div className="label">Avance</div><div className="value mono">{project.progress}%</div><div className="sub">Estado: {project.status.replace("_", " ")}</div></div>
-          <div className="kpi"><div className="label">Fecha fin</div><div className="value mono">{project.end.split("-").reverse().join("/")}</div><div className={"sub" + (daysLeft < 7 && daysLeft >= 0 ? " alert-text" : daysLeft < 0 ? " alert-text" : "")}>{daysLeft < 0 ? `Vencido hace ${Math.abs(daysLeft)}d` : `${daysLeft} días restantes`}</div></div>
+          <CCard><CCardBody><div className="label">Presupuesto</div><div className="value mono">{fmtMoney(project.budget)}</div><div className={"sub" + (overBudget ? " alert-text" : "")}>{fmtMoney(project.spent)} ejecutado{overBudget ? " · sobre presupuesto" : ""}</div></CCardBody></CCard>
+          <CCard><CCardBody><div className="label">Avance</div><div className="value mono">{project.progress}%</div><div className="sub">Estado: {project.status.replace("_", " ")}</div></CCardBody></CCard>
+          <CCard><CCardBody><div className="label">Fecha fin</div><div className="value mono">{project.end.split("-").reverse().join("/")}</div><div className={"sub" + (daysLeft < 7 ? " alert-text" : "")}>{daysLeft < 0 ? `Vencido hace ${Math.abs(daysLeft)}d` : `${daysLeft} días restantes`}</div></CCardBody></CCard>
         </div>
       </div>
 
-      <nav className="tabs module-tabs">
+      <CNav variant="underline" className="mb-4 module-tabs">
         {ITEM_KIND_ORDER.map((k) => {
           const cfg = ITEM_KINDS[k];
           return (
-            <button key={k} type="button" className={"tab-btn" + (tab === k ? " active" : "")} onClick={() => setTab(k)}>
-              {cfg.icon} {cfg.label}
-            </button>
+            <CNavItem key={k}>
+              <CNavLink active={tab === k} onClick={() => setTab(k)} style={{ cursor: "pointer", whiteSpace: "nowrap" }}>
+                {cfg.icon} {cfg.label}
+              </CNavLink>
+            </CNavItem>
           );
         })}
-      </nav>
+      </CNav>
 
       <ModuleView key={tab} projectId={id} kind={tab} />
-
-      <footer className="credit">Módulo de proyecto — ObrasFlow</footer>
-    </div>
+    </AppShell>
   );
 }
 
@@ -112,44 +116,45 @@ function ModuleView({ projectId, kind }: { projectId: string; kind: string }) {
   }
 
   return (
-    <div className="panel">
-      <div className="module-panel-head">
+    <CCard>
+      <CCardHeader className="module-panel-head">
         <div>
-          <h3>{cfg.icon} {cfg.label}</h3>
-          <p className="module-desc">{cfg.description}</p>
+          <span className="fw-semibold fs-5">{cfg.icon} {cfg.label}</span>
+          <p className="module-desc mb-0">{cfg.description}</p>
         </div>
         {!cfg.readOnly && (
-          <button className="btn primary" type="button" onClick={() => { setEditing(null); setShowForm(true); }}>
-            + Agregar {cfg.singular}
-          </button>
+          <CButton color="primary" size="sm" onClick={() => { setEditing(null); setShowForm(true); }}>
+            <CIcon icon={cilPlus} className="me-1" /> Agregar {cfg.singular}
+          </CButton>
         )}
-      </div>
+      </CCardHeader>
+      <CCardBody>
+        {loading && <p className="empty-col">Cargando…</p>}
+        {!loading && items.length === 0 && <p className="empty-col">Sin registros todavía.</p>}
 
-      {loading && <p className="empty-col">Cargando…</p>}
-      {!loading && items.length === 0 && <p className="empty-col">Sin registros todavía.</p>}
-
-      <ul className="item-list">
-        {items.map((item) => (
-          <li className="item-row" key={item.id}>
-            <div className="item-row-main">
-              <span className="item-title">{item.title}</span>
-              {item.status && <span className={"status-chip status-generic status-" + item.status.toLowerCase().replace(/\s+/g, "_")}>{item.status}</span>}
-            </div>
-            <div className="item-row-sub">
-              {cfg.summary(item.data)}{cfg.summary(item.data) ? " · " : ""}{fmtDateTime(item.createdAt)}
-            </div>
-            {item.data?.notas && <div className="item-row-notes">{item.data.notas}</div>}
-            {item.data?.respuesta && <div className="item-row-notes">↳ {item.data.respuesta}</div>}
-            {item.data?.motivo && <div className="item-row-notes">{item.data.motivo}</div>}
-            {!cfg.readOnly && (
-              <div className="item-row-actions">
-                <button className="btn small" type="button" onClick={() => { setEditing(item); setShowForm(true); }}>Editar</button>
-                <button className="btn small danger" type="button" onClick={() => handleDelete(item)}>Eliminar</button>
+        <CListGroup>
+          {items.map((item) => (
+            <CListGroupItem key={item.id} className="item-row border-0 border-bottom rounded-0 px-0">
+              <div className="item-row-main">
+                <span className="item-title">{item.title}</span>
+                {item.status && <span className={"status-chip status-generic status-" + item.status.toLowerCase().replace(/\s+/g, "_")}>{item.status}</span>}
               </div>
-            )}
-          </li>
-        ))}
-      </ul>
+              <div className="item-row-sub">
+                {cfg.summary(item.data)}{cfg.summary(item.data) ? " · " : ""}{fmtDateTime(item.createdAt)}
+              </div>
+              {item.data?.notas && <div className="item-row-notes">{item.data.notas}</div>}
+              {item.data?.respuesta && <div className="item-row-notes">↳ {item.data.respuesta}</div>}
+              {item.data?.motivo && <div className="item-row-notes">{item.data.motivo}</div>}
+              {!cfg.readOnly && (
+                <div className="item-row-actions">
+                  <CButton size="sm" color="secondary" variant="outline" onClick={() => { setEditing(item); setShowForm(true); }}><CIcon icon={cilPencil} size="sm" /></CButton>
+                  <CButton size="sm" color="danger" variant="outline" onClick={() => handleDelete(item)}><CIcon icon={cilTrash} size="sm" /></CButton>
+                </div>
+              )}
+            </CListGroupItem>
+          ))}
+        </CListGroup>
+      </CCardBody>
 
       {showForm && (
         <ItemFormModal
@@ -167,7 +172,7 @@ function ModuleView({ projectId, kind }: { projectId: string; kind: string }) {
           }}
         />
       )}
-    </div>
+    </CCard>
   );
 }
 
@@ -231,51 +236,51 @@ function ItemFormModal({
   }
 
   return (
-    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal">
-        <h3>{existing ? "Editar" : "Nuevo"} {cfg.singular}</h3>
-        {error && <p className="form-error">{error}</p>}
-        <form onSubmit={handleSubmit}>
-          <div className="field">
-            <label>{cfg.titleLabel}</label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} required />
+    <CModal visible onClose={onClose} alignment="center">
+      <CModalHeader>
+        <CModalTitle>{existing ? "Editar" : "Nuevo"} {cfg.singular}</CModalTitle>
+      </CModalHeader>
+      <CForm onSubmit={handleSubmit}>
+        <CModalBody>
+          {error && <CAlert color="danger">{error}</CAlert>}
+          <div className="mb-3">
+            <CFormLabel>{cfg.titleLabel}</CFormLabel>
+            <CFormInput value={title} onChange={(e) => setTitle(e.target.value)} required />
           </div>
           {cfg.statusOptions && (
-            <div className="field">
-              <label>Estado</label>
-              <select value={status} onChange={(e) => setStatus(e.target.value)}>
+            <div className="mb-3">
+              <CFormLabel>Estado</CFormLabel>
+              <CFormSelect value={status} onChange={(e) => setStatus(e.target.value)}>
                 {cfg.statusOptions.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
+              </CFormSelect>
             </div>
           )}
           {cfg.fields.map((f: ItemField) => (
-            <div className="field" key={f.key}>
-              <label>{f.label}</label>
+            <div className="mb-3" key={f.key}>
+              <CFormLabel>{f.label}</CFormLabel>
               {f.type === "textarea" ? (
-                <textarea rows={3} value={data[f.key] ?? ""} onChange={(e) => setField(f.key, e.target.value)} required={f.required} />
+                <CFormTextarea rows={3} value={data[f.key] ?? ""} onChange={(e) => setField(f.key, e.target.value)} required={f.required} />
               ) : f.type === "contractor" ? (
-                <select value={data[f.key] ?? ""} onChange={(e) => setContractorField(f.key, e.target.value)} required={f.required}>
+                <CFormSelect value={data[f.key] ?? ""} onChange={(e) => setContractorField(f.key, e.target.value)} required={f.required}>
                   <option value="">Seleccioná un contratista…</option>
                   {contractors.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}{c.city ? ` — ${c.city}` : ""}
-                    </option>
+                    <option key={c.id} value={c.id}>{c.name}{c.city ? ` — ${c.city}` : ""}</option>
                   ))}
-                </select>
+                </CFormSelect>
               ) : (
-                <input type={f.type} value={data[f.key] ?? ""} onChange={(e) => setField(f.key, e.target.value)} required={f.required} placeholder={f.placeholder} />
+                <CFormInput type={f.type} value={data[f.key] ?? ""} onChange={(e) => setField(f.key, e.target.value)} required={f.required} placeholder={f.placeholder} />
               )}
             </div>
           ))}
           {cfg.fields.some((f) => f.type === "contractor") && contractors.length === 0 && (
             <p className="form-hint">No hay contratistas activos todavía. <Link href="/contratistas">Cargá uno en el directorio</Link> primero.</p>
           )}
-          <div className="modal-actions">
-            <button type="button" className="btn ghost" onClick={onClose}>Cancelar</button>
-            <button type="submit" className="btn primary" disabled={saving}>{saving ? "Guardando…" : "Guardar"}</button>
-          </div>
-        </form>
-      </div>
-    </div>
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" variant="ghost" onClick={onClose}>Cancelar</CButton>
+          <CButton color="primary" type="submit" disabled={saving}>{saving ? "Guardando…" : "Guardar"}</CButton>
+        </CModalFooter>
+      </CForm>
+    </CModal>
   );
 }

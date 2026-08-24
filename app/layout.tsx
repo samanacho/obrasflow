@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import "bootstrap/dist/css/bootstrap.min.css";
+import "@coreui/coreui/dist/css/coreui.min.css";
 import "./globals.css";
 
 export const metadata: Metadata = {

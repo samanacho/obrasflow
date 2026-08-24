@@ -7,6 +7,7 @@ Panel de gestión de proyectos de obras civiles, eléctricas y viales — Next.j
 - **Next.js 14 (App Router)** — API routes (`app/api/projects`) y frontend (`app/page.tsx`) en el mismo proyecto.
 - **Prisma** — ORM sobre Postgres (`prisma/schema.prisma`).
 - **Postgres** — pensado para [Neon](https://neon.tech) o Vercel Postgres (ambos son Postgres serverless compatibles con Prisma).
+- **Bootstrap 5 + CoreUI** (`@coreui/react`) — admin template open source elegido tras comparar AdminLTE, Tabler y CoreUI; se usó CoreUI por tener componentes React reales en vez de HTML/jQuery estático. Layout tipo Odoo: sidebar izquierdo persistente ([components/AppShell.tsx](components/AppShell.tsx)) + breadcrumbs, en vez de las pestañas horizontales de la primera versión.
 
 El prototipo estático original (un solo `index.html` con datos embebidos) quedó en [`legacy/index.html`](legacy/index.html) como referencia.
 

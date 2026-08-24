@@ -1,10 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import {
+  CCard, CCardBody, CCardHeader, CButton, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
+  CForm, CFormLabel, CFormInput, CFormSelect, CFormTextarea, CBadge, CAlert, CListGroup, CListGroupItem, CRow, CCol,
+} from "@coreui/react";
+import CIcon from "@coreui/icons-react";
+import { cilPlus } from "@coreui/icons";
+import AppShell from "@/components/AppShell";
 import type { ContractorDTO, ContractorHistoryDTO, ContractorHistoryInput, ProjectDTO, ProjectType } from "@/lib/types";
 
 const RUBRO_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial" };
+const RUBRO_COLOR: Record<ProjectType, string> = { civil: "info", electrico: "warning", vial: "secondary" };
 
 function fmtDate(d: string | null) {
   if (!d) return "—";
@@ -83,110 +90,108 @@ export default function ContractorDetail({ params }: { params: { id: string } })
     }
   }
 
-  if (loading) return <div id="app"><p className="state-message">Cargando…</p></div>;
-  if (error || !contractor) return <div id="app"><p className="state-message form-error">{error || "Contratista no encontrado."}</p></div>;
+  if (loading) return <AppShell crumbs={[{ label: "Contratistas", href: "/contratistas" }]}><p className="state-message">Cargando…</p></AppShell>;
+  if (error || !contractor) return <AppShell crumbs={[{ label: "Contratistas", href: "/contratistas" }]}><p className="state-message form-error">{error || "Contratista no encontrado."}</p></AppShell>;
 
   return (
-    <div id="app">
-      <header className="top">
-        <div className="brand">
-          <Link href="/contratistas" className="back-link">← Contratistas</Link>
-        </div>
-      </header>
-
+    <AppShell crumbs={[{ label: "Contratistas", href: "/contratistas" }, { label: contractor.name }]}>
       <div className="project-hero">
         <div>
-          <h1 className="project-title">{contractor.name}</h1>
+          <h1 className="of-page-title mb-2">{contractor.name}</h1>
           <div className="project-hero-meta">
-            {contractor.rubros.map((r) => <span key={r} className={`type-pill type-${r}`}>{RUBRO_LABEL[r]}</span>)}
-            <span className={"status-chip " + (contractor.status === "activo" ? "status-cumplido" : "status-no_aplica")}>{contractor.status}</span>
+            {contractor.rubros.map((r) => <CBadge key={r} color={RUBRO_COLOR[r]}>{RUBRO_LABEL[r]}</CBadge>)}
+            <CBadge color={contractor.status === "activo" ? "success" : "secondary"}>{contractor.status}</CBadge>
             {contractor.city && <span>📍 {contractor.city}{contractor.province ? `, ${contractor.province}` : ""}</span>}
           </div>
         </div>
         <div className="project-hero-kpis">
-          <div className="kpi"><div className="label">Calificación promedio</div><div className="value"><Stars value={contractor.avgRating} size="lg" /></div><div className="sub">{contractor.historyCount} obra(s) registradas</div></div>
+          <CCard><CCardBody>
+            <div className="label">Calificación promedio</div>
+            <div className="value"><Stars value={contractor.avgRating} size="lg" /></div>
+            <div className="sub">{contractor.historyCount} obra(s) registradas</div>
+          </CCardBody></CCard>
         </div>
       </div>
 
-      <div className="panel">
-        <h3>Datos de contacto</h3>
-        <div className="contact-grid">
-          <div><span className="module-desc">Contacto</span><div>{contractor.contactName || "—"}</div></div>
-          <div><span className="module-desc">Celular</span><div>{contractor.phone || "—"}</div></div>
-          <div><span className="module-desc">Email</span><div>{contractor.email || "—"}</div></div>
-          <div><span className="module-desc">RUC</span><div>{contractor.ruc || "—"}</div></div>
-        </div>
-        {contractor.notes && <p className="item-row-notes" style={{ marginTop: 12 }}>{contractor.notes}</p>}
-      </div>
+      <CCard className="mb-4">
+        <CCardHeader className="fw-semibold">Datos de contacto</CCardHeader>
+        <CCardBody>
+          <CRow className="g-3">
+            <CCol md={3}><span className="module-desc">Contacto</span><div>{contractor.contactName || "—"}</div></CCol>
+            <CCol md={3}><span className="module-desc">Celular</span><div>{contractor.phone || "—"}</div></CCol>
+            <CCol md={3}><span className="module-desc">Email</span><div>{contractor.email || "—"}</div></CCol>
+            <CCol md={3}><span className="module-desc">RUC</span><div>{contractor.ruc || "—"}</div></CCol>
+          </CRow>
+          {contractor.notes && <p className="item-row-notes mt-3 mb-0">{contractor.notes}</p>}
+        </CCardBody>
+      </CCard>
 
-      <div className="panel">
-        <div className="module-panel-head">
+      <CCard>
+        <CCardHeader className="module-panel-head">
           <div>
-            <h3>Historial de obras</h3>
-            <p className="module-desc">Cada obra trabajada junto a este contratista, con su propia calificación.</p>
+            <span className="fw-semibold fs-5">Historial de obras</span>
+            <p className="module-desc mb-0">Cada obra trabajada junto a este contratista, con su propia calificación.</p>
           </div>
-          <button className="btn primary" type="button" onClick={() => setShowForm(true)}>+ Agregar obra al historial</button>
-        </div>
-
-        {history.length === 0 && <p className="empty-col">Sin obras registradas todavía.</p>}
-        <ul className="item-list">
-          {history.map((h) => (
-            <li className="item-row" key={h.id}>
-              <div className="item-row-main">
-                <span className="item-title">{h.obraNombre}</span>
-                {h.rating !== null && <span className="stars">{"★".repeat(h.rating)}{"☆".repeat(5 - h.rating)}</span>}
-              </div>
-              <div className="item-row-sub">{fmtDate(h.fecha)}</div>
-              {h.comentario && <div className="item-row-notes">{h.comentario}</div>}
-            </li>
-          ))}
-        </ul>
+          <CButton color="primary" size="sm" onClick={() => setShowForm(true)}>
+            <CIcon icon={cilPlus} className="me-1" /> Agregar obra
+          </CButton>
+        </CCardHeader>
+        <CCardBody>
+          {history.length === 0 && <p className="empty-col">Sin obras registradas todavía.</p>}
+          <CListGroup>
+            {history.map((h) => (
+              <CListGroupItem key={h.id} className="item-row border-0 border-bottom rounded-0 px-0">
+                <div className="item-row-main">
+                  <span className="item-title">{h.obraNombre}</span>
+                  {h.rating !== null && <span className="stars">{"★".repeat(h.rating)}{"☆".repeat(5 - h.rating)}</span>}
+                </div>
+                <div className="item-row-sub">{fmtDate(h.fecha)}</div>
+                {h.comentario && <div className="item-row-notes">{h.comentario}</div>}
+              </CListGroupItem>
+            ))}
+          </CListGroup>
+        </CCardBody>
 
         {showForm && (
-          <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setShowForm(false)}>
-            <div className="modal">
-              <h3>Agregar obra al historial</h3>
-              {formError && <p className="form-error">{formError}</p>}
-              <form onSubmit={handleSubmit}>
-                <div className="field">
-                  <label>Nombre de la obra</label>
-                  <input value={form.obraNombre} onChange={(e) => setForm({ ...form, obraNombre: e.target.value })} required />
+          <CModal visible onClose={() => setShowForm(false)} alignment="center">
+            <CModalHeader><CModalTitle>Agregar obra al historial</CModalTitle></CModalHeader>
+            <CForm onSubmit={handleSubmit}>
+              <CModalBody>
+                {formError && <CAlert color="danger">{formError}</CAlert>}
+                <div className="mb-3">
+                  <CFormLabel>Nombre de la obra</CFormLabel>
+                  <CFormInput value={form.obraNombre} onChange={(e) => setForm({ ...form, obraNombre: e.target.value })} required />
                 </div>
-                <div className="field">
-                  <label>Vincular a un proyecto existente (opcional)</label>
-                  <select value={form.projectId ?? ""} onChange={(e) => setForm({ ...form, projectId: e.target.value })}>
+                <div className="mb-3">
+                  <CFormLabel>Vincular a un proyecto existente (opcional)</CFormLabel>
+                  <CFormSelect value={form.projectId ?? ""} onChange={(e) => setForm({ ...form, projectId: e.target.value })}>
                     <option value="">— Ninguno —</option>
                     {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
+                  </CFormSelect>
                 </div>
-                <div className="field-row">
-                  <div className="field">
-                    <label>Fecha</label>
-                    <input type="date" value={form.fecha ?? ""} onChange={(e) => setForm({ ...form, fecha: e.target.value })} />
-                  </div>
-                  <div className="field">
-                    <label>Calificación (1-5)</label>
-                    <select value={form.rating ?? ""} onChange={(e) => setForm({ ...form, rating: e.target.value ? Number(e.target.value) : null })}>
+                <CRow className="mb-3 g-2">
+                  <CCol><CFormLabel>Fecha</CFormLabel><CFormInput type="date" value={form.fecha ?? ""} onChange={(e) => setForm({ ...form, fecha: e.target.value })} /></CCol>
+                  <CCol>
+                    <CFormLabel>Calificación (1-5)</CFormLabel>
+                    <CFormSelect value={form.rating ?? ""} onChange={(e) => setForm({ ...form, rating: e.target.value ? Number(e.target.value) : null })}>
                       <option value="">Sin calificar</option>
                       {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{"★".repeat(n)} ({n})</option>)}
-                    </select>
-                  </div>
+                    </CFormSelect>
+                  </CCol>
+                </CRow>
+                <div className="mb-1">
+                  <CFormLabel>Comentario</CFormLabel>
+                  <CFormTextarea rows={3} value={form.comentario ?? ""} onChange={(e) => setForm({ ...form, comentario: e.target.value })} />
                 </div>
-                <div className="field">
-                  <label>Comentario</label>
-                  <textarea rows={3} value={form.comentario ?? ""} onChange={(e) => setForm({ ...form, comentario: e.target.value })} />
-                </div>
-                <div className="modal-actions">
-                  <button type="button" className="btn ghost" onClick={() => setShowForm(false)}>Cancelar</button>
-                  <button type="submit" className="btn primary" disabled={saving}>{saving ? "Guardando…" : "Guardar"}</button>
-                </div>
-              </form>
-            </div>
-          </div>
+              </CModalBody>
+              <CModalFooter>
+                <CButton color="secondary" variant="ghost" onClick={() => setShowForm(false)}>Cancelar</CButton>
+                <CButton color="primary" type="submit" disabled={saving}>{saving ? "Guardando…" : "Guardar"}</CButton>
+              </CModalFooter>
+            </CForm>
+          </CModal>
         )}
-      </div>
-
-      <footer className="credit">Ficha de contratista — ObrasFlow</footer>
-    </div>
+      </CCard>
+    </AppShell>
   );
 }
