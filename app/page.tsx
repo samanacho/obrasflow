@@ -258,20 +258,12 @@ export default function Home() {
       )}
 
       {!loading && !loadError && (
-        <>
-          <section className="view active" hidden={tab !== "dashboard"}>
-            <DashboardView projects={projects} metrics={metrics} />
-          </section>
-          <section className="view active" hidden={tab !== "kanban"}>
-            <KanbanView projects={projects} onEdit={openModal} onMove={moveStatus} />
-          </section>
-          <section className="view active" hidden={tab !== "tabla"}>
-            <TablaView projects={projects} onEdit={openModal} onDelete={deleteProject} />
-          </section>
-          <section className="view active" hidden={tab !== "gantt"}>
-            <GanttView projects={projects} />
-          </section>
-        </>
+        <section className="view active">
+          {tab === "dashboard" && <DashboardView projects={projects} metrics={metrics} />}
+          {tab === "kanban" && <KanbanView projects={projects} onEdit={openModal} onMove={moveStatus} />}
+          {tab === "tabla" && <TablaView projects={projects} onEdit={openModal} onDelete={deleteProject} />}
+          {tab === "gantt" && <GanttView projects={projects} />}
+        </section>
       )}
 
       <footer className="credit">Datos en Postgres vía Prisma — cada cambio se guarda con la API.</footer>
