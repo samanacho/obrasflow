@@ -91,7 +91,28 @@ Otros comandos útiles: `npm run db:studio` (explorador visual de la base) y `np
 
 ## Vistas
 
-- **Dashboard**: KPIs y barras de presupuesto/avance.
+- **Dashboard**: KPIs, barras de presupuesto/avance, y alertas de vencimientos próximos y sobre-presupuesto.
 - **Tablero (Kanban)**: mover proyectos entre estados.
-- **Tabla**: alta, edición y eliminación.
+- **Tabla**: alta, edición, eliminación, búsqueda, filtros por tipo/estado y exportación a CSV.
 - **Cronograma**: vista tipo Gantt según fechas.
+- **Tema oscuro**: toggle manual en el header (persiste en `localStorage`).
+
+## Detalle de proyecto (`/project/[id]`)
+
+Cada proyecto tiene una página propia con 10 módulos adicionales, todos con alta/edición/eliminación:
+
+| Módulo | Para qué sirve |
+|---|---|
+| ❓ RFIs | Solicitudes de información pendientes de respuesta técnica |
+| 🧾 Punch List | Pendientes de cierre antes de terminar el proyecto |
+| 📋 Bitácora diaria | Registro diario de avance, clima y personal en obra |
+| 🔁 Órdenes de cambio | Cambios de alcance con impacto en presupuesto |
+| 👷 Equipo | Responsables y contactos asignados |
+| ✅ Checklist de seguridad | Inspecciones y controles del sitio |
+| 🚩 Hitos | Fechas clave del proyecto |
+| 📎 Documentos | Enlaces a planos, contratos y permisos |
+| 📷 Fotos de avance | Registro fotográfico del progreso |
+| 💵 Presupuesto detallado | Desglose por partidas de costo |
+| 🕒 Actividad | Historial automático (solo lectura) de todo lo anterior |
+
+Estos módulos comparten un solo modelo de datos (`ProjectItem`, ver `prisma/schema.prisma`) con un campo `data` en JSON — la config de campos/estados por módulo vive en [lib/itemKinds.ts](lib/itemKinds.ts).

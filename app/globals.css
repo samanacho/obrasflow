@@ -190,3 +190,54 @@ table.projects tr:hover td{background:var(--paper);}
 footer.credit{margin-top:30px;color:var(--ink-soft);font-size:.72rem;text-align:center;}
 
 .state-message{padding:40px 0;text-align:center;color:var(--ink-soft);}
+
+.icon-btn{font-size:1rem;line-height:1;padding:6px 9px;}
+a{color:inherit;}
+.back-link{font-family:'Barlow Condensed';font-weight:700;font-size:1.3rem;color:var(--ink);text-decoration:none;}
+.back-link:hover{color:var(--accent-ink);}
+
+/* Alerts */
+.alert-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:20px;}
+.alert-card{border-radius:10px;padding:14px 16px;border:1px solid var(--line);}
+.alert-card-title{font-weight:600;margin-bottom:6px;font-size:.9rem;}
+.alert-card ul{margin:0;padding-left:18px;font-size:.85rem;}
+.alert-card li{margin-bottom:3px;}
+.alert-card a{text-decoration:underline;}
+.alert-warn{background:var(--warn-soft);color:var(--warn);border-color:var(--warn);}
+.alert-warn a{color:var(--accent-ink);}
+.alert-crit{background:var(--crit-soft);color:var(--crit);border-color:var(--crit);}
+.alert-crit a{color:var(--accent-ink);}
+.alert-text{color:var(--crit) !important;font-weight:600;}
+
+/* Table filters */
+.table-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+.table-filters select{padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);font-size:.85rem;}
+.table-search{flex:1;min-width:180px;padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);font-size:.85rem;}
+.module-panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
+.module-panel-head h3{margin:0;}
+.module-desc{margin:4px 0 0;font-size:.8rem;color:var(--ink-soft);}
+
+/* Project detail hero */
+.project-hero{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap;margin:18px 0 20px;padding-bottom:18px;border-bottom:1px solid var(--line);}
+.project-title{margin:0 0 8px;font-size:2.2rem;}
+.project-hero-meta{display:flex;align-items:center;gap:10px;color:var(--ink-soft);font-size:.9rem;flex-wrap:wrap;}
+.project-hero-kpis{display:flex;gap:10px;flex-wrap:wrap;}
+.project-hero-kpis .kpi{min-width:150px;}
+
+.module-tabs{overflow-x:auto;flex-wrap:nowrap;}
+.module-tabs .tab-btn{white-space:nowrap;}
+
+/* Generic item list (RFIs, punch list, bitácora, etc.) */
+.item-list{list-style:none;margin:0;padding:0;}
+.item-row{border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-bottom:10px;background:var(--paper);}
+.item-row-main{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px;}
+.item-title{font-weight:600;}
+.item-row-sub{font-size:.8rem;color:var(--ink-soft);}
+.item-row-notes{font-size:.82rem;color:var(--ink);margin-top:6px;white-space:pre-wrap;}
+.item-row-actions{display:flex;gap:6px;margin-top:10px;}
+.status-generic{background:var(--vial-soft);color:var(--vial);}
+.status-abierta,.status-pendiente{background:var(--warn-soft);color:var(--warn);}
+.status-respondida,.status-en_revisión,.status-en_revision{background:var(--civil-soft);color:var(--civil);}
+.status-cerrada,.status-resuelto,.status-aprobada,.status-cumplido{background:var(--ok-soft);color:var(--ok);}
+.status-rechazada{background:var(--crit-soft);color:var(--crit);}
+.status-no_aplica{background:var(--vial-soft);color:var(--vial);}

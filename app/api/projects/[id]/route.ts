@@ -10,6 +10,12 @@ interface Params {
   params: { id: string };
 }
 
+export async function GET(_req: NextRequest, { params }: Params) {
+  const project = await prisma.project.findUnique({ where: { id: params.id } });
+  if (!project) return NextResponse.json({ error: "Proyecto no encontrado." }, { status: 404 });
+  return NextResponse.json(serializeProject(project));
+}
+
 /** Reemplazo completo del proyecto (usado por el formulario de edición). */
 export async function PUT(req: NextRequest, { params }: Params) {
   try {

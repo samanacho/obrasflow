@@ -26,3 +26,21 @@ export interface ProjectInput {
   spent: number;
   progress: number;
 }
+
+export interface ProjectItemDTO {
+  id: string;
+  projectId: string;
+  kind: string;
+  title: string;
+  status: string | null;
+  data: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectItemInput {
+  kind: string;
+  title: string;
+  status?: string | null;
+  data: Record<string, any>;
+}

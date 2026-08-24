@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import type { ProjectDTO, ProjectInput, ProjectStatus, ProjectType } from "@/lib/types";
 
 const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial" };
@@ -57,10 +58,23 @@ export default function Home() {
   const [form, setForm] = useState<ProjectInput>(EMPTY_FORM);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark" | null>(null);
 
   useEffect(() => {
     loadProjects();
+    const saved = typeof window !== "undefined" ? (localStorage.getItem("obrasflow-theme") as "light" | "dark" | null) : null;
+    if (saved) {
+      setTheme(saved);
+      document.documentElement.setAttribute("data-theme", saved);
+    }
   }, []);
+
+  function toggleTheme() {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem("obrasflow-theme", next);
+  }
 
   useEffect(() => {
     if (!toast) return;
@@ -214,6 +228,9 @@ export default function Home() {
         </div>
         <div className="actions">
           <span className="save-state">{saveState}</span>
+          <button className="btn ghost icon-btn" type="button" onClick={toggleTheme} title="Cambiar tema" aria-label="Cambiar tema claro/oscuro">
+            {theme === "dark" ? "☀️" : "🌙"}
+          </button>
           <button className="btn primary" type="button" onClick={() => openModal(null)}>
             + Nuevo proyecto
           </button>
@@ -415,8 +432,44 @@ function DashboardView({ projects, metrics }: { projects: ProjectDTO[]; metrics:
   const { byType, totalBudget, totalSpent, avgProgress, execPct, active, finished } = metrics;
   const sortedByProgress = [...projects].sort((a, b) => clampPct(b.progress) - clampPct(a.progress));
 
+  const now = Date.now();
+  const overBudget = projects.filter((p) => p.spent > p.budget);
+  const dueSoon = projects
+    .filter((p) => p.status !== "finalizado")
+    .map((p) => ({ p, daysLeft: Math.ceil((new Date(p.end).getTime() - now) / 86400000) }))
+    .filter((x) => x.daysLeft <= 7);
+
   return (
     <>
+      {(overBudget.length > 0 || dueSoon.length > 0) && (
+        <div className="alert-row">
+          {dueSoon.length > 0 && (
+            <div className="alert-card alert-warn">
+              <div className="alert-card-title">⏰ Vencimientos próximos</div>
+              <ul>
+                {dueSoon.map(({ p, daysLeft }) => (
+                  <li key={p.id}>
+                    <Link href={`/project/${p.id}`}>{p.name}</Link> — {daysLeft < 0 ? `vencido hace ${Math.abs(daysLeft)}d` : daysLeft === 0 ? "vence hoy" : `${daysLeft}d restantes`}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {overBudget.length > 0 && (
+            <div className="alert-card alert-crit">
+              <div className="alert-card-title">💸 Sobre presupuesto</div>
+              <ul>
+                {overBudget.map((p) => (
+                  <li key={p.id}>
+                    <Link href={`/project/${p.id}`}>{p.name}</Link> — {fmtMoney(p.spent)} / {fmtMoney(p.budget)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="kpi-row">
         <Kpi label="Proyectos totales" value={projects.length} sub={`${active} en curso · ${finished} finalizados`} />
         <Kpi label="Presupuesto total" value={fmtMoney(totalBudget)} sub={`${fmtMoney(totalSpent)} ejecutado`} />
@@ -499,7 +552,7 @@ function KanbanView({
               const idx = STATUS_ORDER.indexOf(p.status);
               return (
                 <div className={`card type-border-${p.type}`} key={p.id}>
-                  <div className="name">{p.name}</div>
+                  <div className="name"><Link href={`/project/${p.id}`}>{p.name}</Link></div>
                   <div className="meta">
                     <span className={`type-pill type-${p.type}`}>{TYPE_LABEL[p.type]}</span> · {p.manager}
                   </div>
@@ -534,6 +587,23 @@ function KanbanView({
   );
 }
 
+function exportCSV(projects: ProjectDTO[]) {
+  const headers = ["Nombre", "Tipo", "Responsable", "Inicio", "Fin", "Estado", "Presupuesto", "Ejecutado", "Avance"];
+  const rows = projects.map((p) => [
+    p.name, TYPE_LABEL[p.type], p.manager, p.start, p.end, STATUS_LABEL[p.status], p.budget, p.spent, `${p.progress}%`,
+  ]);
+  const csv = [headers, ...rows]
+    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `obrasflow-proyectos-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function TablaView({
   projects,
   onEdit,
@@ -543,9 +613,44 @@ function TablaView({
   onEdit: (p: ProjectDTO) => void;
   onDelete: (p: ProjectDTO) => void;
 }) {
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<ProjectType | "">("");
+  const [statusFilter, setStatusFilter] = useState<ProjectStatus | "">("");
+
+  const filtered = projects.filter((p) => {
+    if (typeFilter && p.type !== typeFilter) return false;
+    if (statusFilter && p.status !== statusFilter) return false;
+    if (search && !(`${p.name} ${p.manager}`.toLowerCase().includes(search.toLowerCase()))) return false;
+    return true;
+  });
+
   return (
     <div className="panel">
-      <h3>Seguimiento de proyectos</h3>
+      <div className="module-panel-head">
+        <h3>Seguimiento de proyectos</h3>
+        <button className="btn" type="button" onClick={() => exportCSV(filtered)}>⬇ Exportar CSV</button>
+      </div>
+
+      <div className="table-filters">
+        <input
+          className="table-search"
+          type="text"
+          placeholder="Buscar por nombre o responsable…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as ProjectType | "")}>
+          <option value="">Todos los tipos</option>
+          <option value="civil">Civil</option>
+          <option value="electrico">Eléctrico</option>
+          <option value="vial">Vial</option>
+        </select>
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as ProjectStatus | "")}>
+          <option value="">Todos los estados</option>
+          {STATUS_ORDER.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
+        </select>
+      </div>
+
       <div className="table-wrap">
         <table className="projects">
           <thead>
@@ -562,17 +667,17 @@ function TablaView({
             </tr>
           </thead>
           <tbody>
-            {projects.length === 0 && (
+            {filtered.length === 0 && (
               <tr>
                 <td colSpan={9} className="empty-col">
-                  Sin proyectos todavía.
+                  {projects.length === 0 ? "Sin proyectos todavía." : "Ningún proyecto coincide con el filtro."}
                 </td>
               </tr>
             )}
-            {projects.map((p) => (
+            {filtered.map((p) => (
               <tr key={p.id}>
                 <td>
-                  <strong>{p.name}</strong>
+                  <Link href={`/project/${p.id}`}><strong>{p.name}</strong></Link>
                 </td>
                 <td>
                   <span className={`type-pill type-${p.type}`}>{TYPE_LABEL[p.type]}</span>

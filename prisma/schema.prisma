@@ -39,6 +39,28 @@ model Project {
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
+  items ProjectItem[]
+
   @@index([status])
   @@index([type])
+}
+
+/// Registro genérico para los módulos secundarios de un proyecto (RFIs,
+/// punch list, bitácora diaria, órdenes de cambio, equipo, checklist,
+/// hitos, documentos, fotos, partidas de presupuesto y el feed de
+/// actividad). `kind` distingue el módulo; `data` guarda los campos
+/// propios de cada uno como JSON — evita una tabla por módulo para un
+/// set de features que comparten el mismo patrón CRUD.
+model ProjectItem {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  kind      String
+  title     String
+  status    String?
+  data      Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId, kind])
 }
