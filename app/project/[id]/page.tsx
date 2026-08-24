@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { ProjectDTO, ProjectItemDTO } from "@/lib/types";
+import type { ProjectDTO, ProjectItemDTO, ContractorDTO } from "@/lib/types";
 import { ITEM_KINDS, ITEM_KIND_ORDER, ItemField } from "@/lib/itemKinds";
 
 function fmtMoney(n: number) {
@@ -47,6 +47,9 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
       <header className="top">
         <div className="brand">
           <Link href="/" className="back-link">← ObrasFlow</Link>
+        </div>
+        <div className="actions">
+          <Link href="/contratistas" className="btn">🧰 Contratistas</Link>
         </div>
       </header>
 
@@ -183,9 +186,23 @@ function ItemFormModal({
   const [data, setData] = useState<Record<string, any>>(existing?.data ?? {});
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [contractors, setContractors] = useState<ContractorDTO[]>([]);
+
+  useEffect(() => {
+    if (!cfg.fields.some((f) => f.type === "contractor")) return;
+    fetch("/api/contractors?status=activo")
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setContractors)
+      .catch(() => setContractors([]));
+  }, []);
 
   function setField(key: string, value: string) {
     setData((d) => ({ ...d, [key]: value }));
+  }
+
+  function setContractorField(key: string, contractorId: string) {
+    const chosen = contractors.find((c) => c.id === contractorId);
+    setData((d) => ({ ...d, [key]: contractorId, [key + "Nombre"]: chosen?.name ?? "" }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -236,11 +253,23 @@ function ItemFormModal({
               <label>{f.label}</label>
               {f.type === "textarea" ? (
                 <textarea rows={3} value={data[f.key] ?? ""} onChange={(e) => setField(f.key, e.target.value)} required={f.required} />
+              ) : f.type === "contractor" ? (
+                <select value={data[f.key] ?? ""} onChange={(e) => setContractorField(f.key, e.target.value)} required={f.required}>
+                  <option value="">Seleccioná un contratista…</option>
+                  {contractors.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}{c.city ? ` — ${c.city}` : ""}
+                    </option>
+                  ))}
+                </select>
               ) : (
-                <input type={f.type} value={data[f.key] ?? ""} onChange={(e) => setField(f.key, e.target.value)} required={f.required} />
+                <input type={f.type} value={data[f.key] ?? ""} onChange={(e) => setField(f.key, e.target.value)} required={f.required} placeholder={f.placeholder} />
               )}
             </div>
           ))}
+          {cfg.fields.some((f) => f.type === "contractor") && contractors.length === 0 && (
+            <p className="form-hint">No hay contratistas activos todavía. <Link href="/contratistas">Cargá uno en el directorio</Link> primero.</p>
+          )}
           <div className="modal-actions">
             <button type="button" className="btn ghost" onClick={onClose}>Cancelar</button>
             <button type="submit" className="btn primary" disabled={saving}>{saving ? "Guardando…" : "Guardar"}</button>

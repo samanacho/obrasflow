@@ -64,3 +64,48 @@ model ProjectItem {
 
   @@index([projectId, kind])
 }
+
+enum ContractorStatus {
+  activo
+  inactivo
+}
+
+/// Directorio global de contratistas (no pertenece a ningún proyecto en
+/// particular — se reutiliza entre obras de distinto rubro y ciudad para
+/// poder comparar opciones antes de contratar).
+model Contractor {
+  id          String           @id @default(cuid())
+  name        String
+  ruc         String?
+  contactName String?
+  phone       String?
+  email       String?
+  city        String?
+  province    String?
+  rubros      ProjectType[]
+  status      ContractorStatus @default(activo)
+  notes       String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  history ContractorHistoryEntry[]
+
+  @@index([status])
+}
+
+/// Una entrada por cada obra trabajada junto al contratista, con su propia
+/// calificación 1-5 (el promedio se calcula en la app a partir de estas
+/// entradas, no se guarda como campo aparte).
+model ContractorHistoryEntry {
+  id           String     @id @default(cuid())
+  contractorId String
+  contractor   Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  obraNombre   String
+  projectId    String?
+  rating       Int?
+  comentario   String?
+  fecha        DateTime?  @db.Date
+  createdAt    DateTime   @default(now())
+
+  @@index([contractorId])
+}

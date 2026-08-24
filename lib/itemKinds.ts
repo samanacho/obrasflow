@@ -2,7 +2,7 @@
 // Cada "kind" comparte el mismo modelo (ProjectItem) y el mismo patrón de
 // lista + formulario en el frontend; lo único que cambia es esta config.
 
-export type FieldType = "text" | "textarea" | "number" | "date";
+export type FieldType = "text" | "textarea" | "number" | "date" | "contractor";
 
 export interface ItemField {
   key: string;
@@ -28,21 +28,42 @@ export interface ItemKindConfig {
 }
 
 export const ITEM_KINDS: Record<string, ItemKindConfig> = {
+  // La clave interna sigue siendo "rfi" (así no se pierde lo ya cargado en
+  // producción bajo ese kind) aunque ahora representa el módulo de
+  // Relevamiento — el paso de campo previo a la cotización.
   rfi: {
     key: "rfi",
-    label: "RFIs",
-    singular: "RFI",
-    icon: "❓",
-    description: "Solicitudes de información pendientes de respuesta técnica.",
-    titleLabel: "Asunto",
-    statusOptions: ["Abierta", "Respondida", "Cerrada"],
-    defaultStatus: "Abierta",
+    label: "Relevamiento",
+    singular: "relevamiento",
+    icon: "📐",
+    description: "Información de campo previa a la obra: ubicación, mediciones y condiciones del terreno.",
+    titleLabel: "Nombre / zona del relevamiento",
+    statusOptions: ["Pendiente", "En proceso", "Completado"],
+    defaultStatus: "Pendiente",
     fields: [
-      { key: "pregunta", label: "Pregunta / detalle", type: "textarea", required: true },
-      { key: "solicitante", label: "Solicitante", type: "text" },
-      { key: "respuesta", label: "Respuesta", type: "textarea" },
+      { key: "ubicacion", label: "Ubicación / dirección del sitio", type: "text" },
+      { key: "coordenadas", label: "Coordenadas (opcional)", type: "text", placeholder: "lat, long" },
+      { key: "mediciones", label: "Mediciones / cantidades estimadas", type: "textarea" },
+      { key: "observaciones", label: "Observaciones técnicas y condiciones del terreno", type: "textarea" },
+      { key: "responsable", label: "Responsable del relevamiento", type: "text" },
     ],
-    summary: (d) => d.solicitante ? `Pidió: ${d.solicitante}` : "",
+    summary: (d) => [d.ubicacion, d.responsable].filter(Boolean).join(" · "),
+  },
+  cotizacion: {
+    key: "cotizacion",
+    label: "Cotización",
+    singular: "cotización",
+    icon: "💰",
+    description: "Cotizaciones de distintos contratistas para comparar y elegir la más conveniente.",
+    titleLabel: "Título de la cotización",
+    statusOptions: ["Pendiente", "Seleccionada", "Descartada"],
+    defaultStatus: "Pendiente",
+    fields: [
+      { key: "contratistaId", label: "Contratista", type: "contractor", required: true },
+      { key: "monto", label: "Monto cotizado (USD)", type: "number", required: true },
+      { key: "notas", label: "Notas", type: "textarea" },
+    ],
+    summary: (d) => [d.contratistaNombre, d.monto ? `$${Number(d.monto).toLocaleString("es-AR")}` : ""].filter(Boolean).join(" · "),
   },
   punch: {
     key: "punch",
@@ -187,6 +208,7 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
 
 export const ITEM_KIND_ORDER = [
   "rfi",
+  "cotizacion",
   "punch",
   "daily_log",
   "change_order",

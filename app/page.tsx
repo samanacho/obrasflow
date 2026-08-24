@@ -228,6 +228,7 @@ export default function Home() {
         </div>
         <div className="actions">
           <span className="save-state">{saveState}</span>
+          <Link href="/contratistas" className="btn">🧰 Contratistas</Link>
           <button className="btn ghost icon-btn" type="button" onClick={toggleTheme} title="Cambiar tema" aria-label="Cambiar tema claro/oscuro">
             {theme === "dark" ? "☀️" : "🌙"}
           </button>

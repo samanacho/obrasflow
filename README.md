@@ -103,7 +103,8 @@ Cada proyecto tiene una página propia con 10 módulos adicionales, todos con al
 
 | Módulo | Para qué sirve |
 |---|---|
-| ❓ RFIs | Solicitudes de información pendientes de respuesta técnica |
+| 📐 Relevamiento | Información de campo previa a la obra: ubicación, coordenadas, mediciones y condiciones del terreno |
+| 💰 Cotización | Varias cotizaciones por proyecto, cada una vinculada a un contratista del directorio, para comparar y marcar la elegida |
 | 🧾 Punch List | Pendientes de cierre antes de terminar el proyecto |
 | 📋 Bitácora diaria | Registro diario de avance, clima y personal en obra |
 | 🔁 Órdenes de cambio | Cambios de alcance con impacto en presupuesto |
@@ -116,3 +117,12 @@ Cada proyecto tiene una página propia con 10 módulos adicionales, todos con al
 | 🕒 Actividad | Historial automático (solo lectura) de todo lo anterior |
 
 Estos módulos comparten un solo modelo de datos (`ProjectItem`, ver `prisma/schema.prisma`) con un campo `data` en JSON — la config de campos/estados por módulo vive en [lib/itemKinds.ts](lib/itemKinds.ts).
+
+## Directorio de contratistas (`/contratistas`)
+
+Sección **global** (no pertenece a ningún proyecto) para comparar contratistas de distintos rubros y ciudades antes de contratar. Cada ficha (`/contratistas/[id]`) tiene:
+
+- Rubros (civil/eléctrico/vial, uno o varios), ciudad/provincia, celular, email, contacto, RUC, estado activo/inactivo.
+- **Historial de obras**: una entrada por cada obra trabajada junto al contratista, opcionalmente vinculada a un proyecto existente, con su propia calificación 1-5 (tipo Uber) y comentario. La ficha muestra el promedio.
+
+El módulo Cotización de cada proyecto se alimenta de este directorio (`GET /api/contractors`) para elegir el contratista al cargar una cotización.

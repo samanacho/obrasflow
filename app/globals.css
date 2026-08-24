@@ -239,5 +239,32 @@ a{color:inherit;}
 .status-abierta,.status-pendiente{background:var(--warn-soft);color:var(--warn);}
 .status-respondida,.status-en_revisión,.status-en_revision{background:var(--civil-soft);color:var(--civil);}
 .status-cerrada,.status-resuelto,.status-aprobada,.status-cumplido{background:var(--ok-soft);color:var(--ok);}
-.status-rechazada{background:var(--crit-soft);color:var(--crit);}
+.status-rechazada,.status-descartada{background:var(--crit-soft);color:var(--crit);}
 .status-no_aplica{background:var(--vial-soft);color:var(--vial);}
+.status-en_proceso{background:var(--civil-soft);color:var(--civil);}
+.status-completado,.status-seleccionada{background:var(--ok-soft);color:var(--ok);}
+
+.form-hint{font-size:.8rem;color:var(--ink-soft);margin:-4px 0 12px;}
+.form-hint a{text-decoration:underline;}
+
+/* Contratistas */
+.contractor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;}
+.contractor-card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px;}
+.contractor-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+.contractor-name{font-family:'Barlow Condensed';font-weight:700;font-size:1.2rem;text-decoration:none;color:var(--ink);}
+.contractor-name:hover{color:var(--accent-ink);}
+.contractor-rubros{display:flex;gap:6px;flex-wrap:wrap;}
+.contractor-meta{display:flex;flex-direction:column;gap:2px;font-size:.82rem;color:var(--ink-soft);}
+.contractor-card-actions{display:flex;gap:6px;margin-top:6px;}
+
+.stars{color:var(--warn);letter-spacing:1px;font-size:.95rem;}
+.stars-lg{font-size:1.4rem;}
+.stars-value{color:var(--ink-soft);font-size:.75rem;letter-spacing:0;margin-left:4px;}
+.stars-empty{color:var(--ink-soft);font-size:.82rem;font-style:italic;}
+
+.checkbox-row{display:flex;gap:10px;flex-wrap:wrap;}
+.checkbox-pill{display:flex;align-items:center;gap:6px;font-size:.85rem;border:1px solid var(--line);border-radius:999px;padding:5px 12px;cursor:pointer;background:var(--paper);}
+.checkbox-pill input{accent-color:var(--accent);}
+
+.contact-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;}
+.contact-grid .module-desc{margin:0 0 2px;}
