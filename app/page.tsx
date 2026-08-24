@@ -428,9 +428,6 @@ function DashboardView({
         <Link href="/contratistas" className="quick-action">
           <CIcon icon={cilPeople} /> Contratistas
         </Link>
-        <Link href="/contratistas" className="quick-action">
-          <CIcon icon={cilPlus} /> Nuevo contratista
-        </Link>
       </div>
 
       {(overBudget.length > 0 || dueSoon.length > 0) && (
