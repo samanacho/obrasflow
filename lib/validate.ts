@@ -1,6 +1,6 @@
 import type { ProjectInput } from "./types";
 
-const TYPES = ["civil", "electrico", "vial"];
+const TYPES = ["civil", "electrico", "vial", "otro"];
 const STATUSES = ["planificado", "en_curso", "pausado", "finalizado"];
 
 export class ValidationError extends Error {}

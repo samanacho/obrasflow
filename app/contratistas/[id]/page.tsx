@@ -10,8 +10,8 @@ import { cilPlus } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
 import type { ContractorDTO, ContractorHistoryDTO, ContractorHistoryInput, ProjectDTO, ProjectType } from "@/lib/types";
 
-const RUBRO_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial" };
-const RUBRO_COLOR: Record<ProjectType, string> = { civil: "info", electrico: "warning", vial: "secondary" };
+const RUBRO_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
+const RUBRO_COLOR: Record<ProjectType, string> = { civil: "info", electrico: "warning", vial: "secondary", otro: "dark" };
 
 function fmtDate(d: string | null) {
   if (!d) return "—";

@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import "dhtmlx-gantt/codebase/dhtmlxgantt.css";
 import type { ProjectDTO, ProjectType } from "@/lib/types";
 
-const TYPE_HEX: Record<ProjectType, string> = { civil: "#2c4a6e", electrico: "#a4780f", vial: "#6b7785" };
-const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial" };
+const TYPE_HEX: Record<ProjectType, string> = { civil: "#2c4a6e", electrico: "#a4780f", vial: "#6b7785", otro: "#6b3fa0" };
+const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
 
 /**
  * Cronograma interactivo con dhtmlx Gantt (Community Edition, MIT) — a

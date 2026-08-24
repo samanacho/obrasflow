@@ -1,4 +1,4 @@
-export type ProjectType = "civil" | "electrico" | "vial";
+export type ProjectType = "civil" | "electrico" | "vial" | "otro";
 export type ProjectStatus = "planificado" | "en_curso" | "pausado" | "finalizado";
 
 /** Forma que usa el frontend: fechas como "YYYY-MM-DD", montos como number. */

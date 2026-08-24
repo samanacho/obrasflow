@@ -14,12 +14,12 @@ import AppShell from "@/components/AppShell";
 import type { ProjectDTO, ProjectItemDTO, ContractorDTO } from "@/lib/types";
 import { ITEM_KINDS, ITEM_KIND_ORDER, ItemField } from "@/lib/itemKinds";
 
-const TYPE_LABEL: Record<string, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial" };
-const TYPE_COLOR: Record<string, string> = { civil: "info", electrico: "warning", vial: "secondary" };
+const TYPE_LABEL: Record<string, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
+const TYPE_COLOR: Record<string, string> = { civil: "info", electrico: "warning", vial: "secondary", otro: "dark" };
 const STATUS_COLOR: Record<string, string> = { planificado: "info", en_curso: "warning", pausado: "secondary", finalizado: "success" };
 
 function fmtMoney(n: number) {
-  return "$" + Number(n || 0).toLocaleString("es-AR");
+  return "Gs. " + Number(n || 0).toLocaleString("es-PY");
 }
 function fmtDateTime(iso: string) {
   const d = new Date(iso);

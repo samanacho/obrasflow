@@ -12,6 +12,8 @@
   --electrico-soft:#f4ecd6;
   --vial:#3a3d42;
   --vial-soft:#e7e6e2;
+  --otro:#6b3fa0;
+  --otro-soft:#ece2f5;
   --ok:#2f7a4f;
   --ok-soft:#e2f0e6;
   --warn:#b5750d;
@@ -35,6 +37,8 @@
     --electrico-soft:#3d3320;
     --vial:#b9bcc4;
     --vial-soft:#302f2e;
+    --otro:#b596e0;
+    --otro-soft:#332946;
     --ok:#6cbf8c;
     --ok-soft:#1f3327;
     --warn:#e0ab4f;
@@ -133,6 +137,7 @@ button.btn.danger{color:var(--crit);}
 .type-civil{background:var(--civil-soft);color:var(--civil);}
 .type-electrico{background:var(--electrico-soft);color:var(--electrico);}
 .type-vial{background:var(--vial-soft);color:var(--vial);}
+.type-otro{background:var(--otro-soft);color:var(--otro);}
 
 .status-chip{display:inline-flex;align-items:center;gap:5px;font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;}
 .status-planificado{background:var(--civil-soft);color:var(--civil);}
@@ -162,6 +167,7 @@ button.btn.danger{color:var(--crit);}
 .card.type-border-civil{border-left-color:var(--civil);}
 .card.type-border-electrico{border-left-color:var(--electrico);}
 .card.type-border-vial{border-left-color:var(--vial);}
+.card.type-border-otro{border-left-color:var(--otro);}
 .card .name{font-weight:600;margin-bottom:4px;}
 .card .meta{font-size:.78rem;color:var(--ink-soft);margin-bottom:8px;}
 .card .progress-line{display:flex;align-items:center;gap:6px;font-size:.72rem;color:var(--ink-soft);margin-bottom:8px;}
@@ -191,10 +197,12 @@ table.projects tr:hover td{background:var(--paper);}
 .gantt-bar.type-civil{background:color-mix(in srgb, var(--civil) 35%, var(--surface));}
 .gantt-bar.type-electrico{background:color-mix(in srgb, var(--electrico) 35%, var(--surface));}
 .gantt-bar.type-vial{background:color-mix(in srgb, var(--vial) 35%, var(--surface));}
+.gantt-bar.type-otro{background:color-mix(in srgb, var(--otro) 35%, var(--surface));}
 .gantt-bar-fill{position:absolute;inset:0;display:block;border-radius:4px 0 0 4px;}
 .gantt-bar.type-civil .gantt-bar-fill{background:var(--civil);}
 .gantt-bar.type-electrico .gantt-bar-fill{background:var(--electrico);}
 .gantt-bar.type-vial .gantt-bar-fill{background:var(--vial);}
+.gantt-bar.type-otro .gantt-bar-fill{background:var(--otro);}
 
 /* Dashboard: accesos directos y KPI clicables */
 .quick-actions{display:flex;gap:10px;flex-wrap:wrap;}

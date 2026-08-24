@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { ProjectDTO, ProjectType } from "@/lib/types";
 
-const TYPE_HEX: Record<ProjectType, number> = { civil: 0x2c4a6e, electrico: 0xa4780f, vial: 0x6b7785 };
+const TYPE_HEX: Record<ProjectType, number> = { civil: 0x2c4a6e, electrico: 0xa4780f, vial: 0x6b7785, otro: 0x6b3fa0 };
 
 /**
  * "Skyline" 3D de la cartera de obras — cada proyecto es un edificio: la

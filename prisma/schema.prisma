@@ -16,6 +16,7 @@ enum ProjectType {
   civil
   electrico
   vial
+  otro
 }
 
 enum ProjectStatus {

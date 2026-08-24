@@ -60,10 +60,10 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
     defaultStatus: "Pendiente",
     fields: [
       { key: "contratistaId", label: "Contratista", type: "contractor", required: true },
-      { key: "monto", label: "Monto cotizado (USD)", type: "number", required: true },
+      { key: "monto", label: "Monto cotizado (Gs.)", type: "number", required: true },
       { key: "notas", label: "Notas", type: "textarea" },
     ],
-    summary: (d) => [d.contratistaNombre, d.monto ? `$${Number(d.monto).toLocaleString("es-AR")}` : ""].filter(Boolean).join(" · "),
+    summary: (d) => [d.contratistaNombre, d.monto ? `Gs. ${Number(d.monto).toLocaleString("es-PY")}` : ""].filter(Boolean).join(" · "),
   },
   punch: {
     key: "punch",
@@ -107,10 +107,10 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
     statusOptions: ["Pendiente", "Aprobada", "Rechazada"],
     defaultStatus: "Pendiente",
     fields: [
-      { key: "impacto", label: "Impacto en presupuesto (USD)", type: "number" },
+      { key: "impacto", label: "Impacto en presupuesto (Gs.)", type: "number" },
       { key: "motivo", label: "Motivo", type: "textarea" },
     ],
-    summary: (d) => (d.impacto ? `Impacto: $${Number(d.impacto).toLocaleString("es-AR")}` : ""),
+    summary: (d) => (d.impacto ? `Impacto: Gs. ${Number(d.impacto).toLocaleString("es-PY")}` : ""),
   },
   team: {
     key: "team",
@@ -187,10 +187,10 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
     titleLabel: "Partida",
     statusOptions: null,
     fields: [
-      { key: "monto", label: "Monto (USD)", type: "number", required: true },
+      { key: "monto", label: "Monto (Gs.)", type: "number", required: true },
       { key: "categoria", label: "Categoría (materiales, mano de obra...)", type: "text" },
     ],
-    summary: (d) => (d.monto ? `$${Number(d.monto).toLocaleString("es-AR")}` : ""),
+    summary: (d) => (d.monto ? `Gs. ${Number(d.monto).toLocaleString("es-PY")}` : ""),
   },
   activity: {
     key: "activity",

@@ -4,7 +4,7 @@ import { serializeContractor } from "@/lib/serialize";
 
 export const dynamic = "force-dynamic";
 
-const RUBROS = ["civil", "electrico", "vial"];
+const RUBROS = ["civil", "electrico", "vial", "otro"];
 const STATUSES = ["activo", "inactivo"];
 
 /** Lista contratistas, con filtros opcionales ?rubro=&ciudad=&status=&q= */

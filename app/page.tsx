@@ -30,9 +30,9 @@ const DhtmlxGanttChart = dynamic(() => import("@/components/DhtmlxGanttChart"), 
 });
 import type { ProjectDTO, ProjectInput, ProjectStatus, ProjectType, DashboardSummaryDTO } from "@/lib/types";
 
-const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial" };
-const TYPE_COLOR: Record<ProjectType, string> = { civil: "info", electrico: "warning", vial: "secondary" };
-const TYPE_HEX: Record<ProjectType, string> = { civil: "#2c4a6e", electrico: "#a4780f", vial: "#6b7785" };
+const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
+const TYPE_COLOR: Record<ProjectType, string> = { civil: "info", electrico: "warning", vial: "secondary", otro: "dark" };
+const TYPE_HEX: Record<ProjectType, string> = { civil: "#2c4a6e", electrico: "#a4780f", vial: "#6b7785", otro: "#6b3fa0" };
 const STATUS_LABEL: Record<ProjectStatus, string> = {
   planificado: "Planificado",
   en_curso: "En curso",
@@ -54,7 +54,7 @@ const TABS = [
 type TabKey = (typeof TABS)[number]["key"];
 
 function fmtMoney(n: number) {
-  return "$" + Number(n || 0).toLocaleString("es-AR");
+  return "Gs. " + Number(n || 0).toLocaleString("es-PY");
 }
 function fmtDate(d: string) {
   if (!d) return "—";
@@ -243,6 +243,7 @@ function HomeInner() {
       civil: { count: 0, budget: 0 },
       electrico: { count: 0, budget: 0 },
       vial: { count: 0, budget: 0 },
+      otro: { count: 0, budget: 0 },
     };
     let totalBudget = 0,
       totalSpent = 0,
@@ -320,6 +321,7 @@ function HomeInner() {
                   <option value="civil">Civil</option>
                   <option value="electrico">Eléctrico</option>
                   <option value="vial">Vial</option>
+                  <option value="otro">Otro</option>
                 </CFormSelect>
               </div>
               <div className="col">
@@ -345,11 +347,11 @@ function HomeInner() {
             </div>
             <div className="row mb-3">
               <div className="col">
-                <CFormLabel>Presupuesto (USD)</CFormLabel>
+                <CFormLabel>Presupuesto (Gs.)</CFormLabel>
                 <CFormInput type="number" min={0} step={1} required value={form.budget} onChange={(e) => setForm({ ...form, budget: Number(e.target.value) })} />
               </div>
               <div className="col">
-                <CFormLabel>Ejecutado (USD)</CFormLabel>
+                <CFormLabel>Ejecutado (Gs.)</CFormLabel>
                 <CFormInput type="number" min={0} step={1} required value={form.spent} onChange={(e) => setForm({ ...form, spent: Number(e.target.value) })} />
               </div>
             </div>
@@ -486,8 +488,8 @@ function DashboardView({
                 <CChartDoughnut
                   style={{ maxHeight: 220 }}
                   data={{
-                    labels: ["Civil", "Eléctrico", "Vial"],
-                    datasets: [{ data: [byType.civil.budget, byType.electrico.budget, byType.vial.budget], backgroundColor: [TYPE_HEX.civil, TYPE_HEX.electrico, TYPE_HEX.vial] }],
+                    labels: ["Civil", "Eléctrico", "Vial", "Otro"],
+                    datasets: [{ data: [byType.civil.budget, byType.electrico.budget, byType.vial.budget, byType.otro.budget], backgroundColor: [TYPE_HEX.civil, TYPE_HEX.electrico, TYPE_HEX.vial, TYPE_HEX.otro] }],
                   }}
                   options={{ plugins: { legend: { position: "bottom", labels: { color: tickColor } } } }}
                 />
@@ -730,6 +732,7 @@ function TablaView({
               <option value="civil">Civil</option>
               <option value="electrico">Eléctrico</option>
               <option value="vial">Vial</option>
+              <option value="otro">Otro</option>
             </CFormSelect>
           </div>
           <div className="col-md-3">

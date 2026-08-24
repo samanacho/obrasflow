@@ -12,9 +12,9 @@ import { cilPlus, cilLocationPin, cilPhone } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
 import type { ContractorDTO, ContractorInput, ProjectType, ContractorStatus } from "@/lib/types";
 
-const RUBRO_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial" };
-const RUBRO_COLOR: Record<ProjectType, string> = { civil: "info", electrico: "warning", vial: "secondary" };
-const RUBROS: ProjectType[] = ["civil", "electrico", "vial"];
+const RUBRO_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
+const RUBRO_COLOR: Record<ProjectType, string> = { civil: "info", electrico: "warning", vial: "secondary", otro: "dark" };
+const RUBROS: ProjectType[] = ["civil", "electrico", "vial", "otro"];
 
 const EMPTY_FORM: ContractorInput = {
   name: "", ruc: "", contactName: "", phone: "", email: "", city: "", province: "", rubros: [], status: "activo", notes: "",
