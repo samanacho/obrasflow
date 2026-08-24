@@ -299,3 +299,15 @@ a{color:inherit;}
 
 .contact-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;}
 .contact-grid .module-desc{margin:0 0 2px;}
+
+/* dhtmlx Gantt (Dashboard) */
+.of-dhtmlx-gantt{height:360px;border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+.gantt_task_line.of-gantt-task{border:none;border-radius:4px;}
+.gantt_task_line.of-gantt-task .gantt_task_progress{background:rgba(0,0,0,.28);border-radius:4px 0 0 4px;}
+.gantt_grid_scale,.gantt_task_scale{background:var(--surface);color:var(--ink-soft);}
+.gantt_row,.gantt_cell{background:var(--surface);color:var(--ink);}
+.gantt_row.odd,.gantt_task_row.odd{background:var(--paper);}
+
+/* Three.js skyline (Dashboard) */
+.of-skyline{height:320px;border:1px solid var(--line);border-radius:8px;overflow:hidden;cursor:grab;}
+.of-skyline canvas{display:block;}

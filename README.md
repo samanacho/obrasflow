@@ -92,7 +92,11 @@ Otros comandos útiles: `npm run db:studio` (explorador visual de la base) y `np
 
 ## Vistas
 
-- **Dashboard**: 8 KPIs (4 de proyectos + 4 agregados de `/api/dashboard`: contratistas activos, calificación promedio, relevamientos abiertos, cotizaciones pendientes), accesos directos, gráficos con dos librerías distintas — Chart.js (`@coreui/react-chartjs`: dona de presupuesto por rubro, barras de avance por proyecto) y **Plotly.js** (`react-plotly.js` + `plotly.js-dist-min`, [components/PlotlyGauge.tsx](components/PlotlyGauge.tsx): gauges de ejecución presupuestaria y avance promedio — el tipo de indicador circular que Plotly resuelve mejor que Chart.js) —, alertas de vencimientos/sobre-presupuesto, y deep links desde cada tarjeta/gráfico al proyecto o vista correspondiente. El tab activo se sincroniza con la URL (`/?tab=tabla`) para poder linkear directo a una vista.
+- **Dashboard**: 8 KPIs (4 de proyectos + 4 agregados de `/api/dashboard`: contratistas activos, calificación promedio, relevamientos abiertos, cotizaciones pendientes), accesos directos, alertas de vencimientos/sobre-presupuesto, y deep links desde cada tarjeta/gráfico al proyecto o vista correspondiente. El tab activo se sincroniza con la URL (`/?tab=tabla`) para poder linkear directo a una vista. Cuatro librerías de visualización, cada una para lo que mejor resuelve:
+  - **Chart.js** (`@coreui/react-chartjs`) — dona de presupuesto por rubro, barras de avance por proyecto.
+  - **Plotly.js** (`react-plotly.js` + `plotly.js-dist-min`, [components/PlotlyGauge.tsx](components/PlotlyGauge.tsx)) — gauges de ejecución presupuestaria y avance promedio.
+  - **dhtmlx Gantt** (Community Edition, MIT, [components/DhtmlxGanttChart.tsx](components/DhtmlxGanttChart.tsx)) — cronograma interactivo con zoom de escala y arrastre, mucho más completo que el Gantt casero del Tablero.
+  - **Three.js** ([components/ThreeSkyline.tsx](components/ThreeSkyline.tsx)) — "skyline 3D" de la cartera: cada proyecto es un edificio cuya altura es el avance, el color el rubro, y se ilumina en rojo si está sobre presupuesto; se puede orbitar con el mouse y clickear un edificio abre el proyecto.
 - **Tablero**: Kanban (estilo Trello, con badge de vencimiento por tarjeta) y Cronograma (Gantt con línea de "hoy" y barra de avance dentro de cada fila) fusionados en una sola pestaña, alternables con un selector Tablero/Cronograma.
 - **Tabla**: alta, edición, eliminación, búsqueda, filtros por tipo/estado y exportación a CSV.
 - **Tema oscuro**: toggle manual en el header (persiste en `localStorage`).

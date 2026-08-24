@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   CCard, CCardBody, CCardHeader, CNav, CNavItem, CNavLink,
@@ -18,6 +19,15 @@ import {
 } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
 import PlotlyGauge from "@/components/PlotlyGauge";
+
+const ThreeSkyline = dynamic(() => import("@/components/ThreeSkyline"), {
+  ssr: false,
+  loading: () => <p className="empty-col">Cargando skyline 3D…</p>,
+});
+const DhtmlxGanttChart = dynamic(() => import("@/components/DhtmlxGanttChart"), {
+  ssr: false,
+  loading: () => <p className="empty-col">Cargando cronograma…</p>,
+});
 import type { ProjectDTO, ProjectInput, ProjectStatus, ProjectType, DashboardSummaryDTO } from "@/lib/types";
 
 const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial" };
@@ -547,6 +557,22 @@ function DashboardView({
               </div>
             );
           })}
+        </CCardBody>
+      </CCard>
+
+      <CCard className="mt-4">
+        <CCardHeader className="fw-semibold">Cronograma interactivo</CCardHeader>
+        <CCardBody>
+          <p className="module-desc mb-3">Arrastrá tareas, cambiá la escala (semana/mes) y hacé clic en un proyecto para abrirlo — motor <strong>dhtmlx Gantt</strong>.</p>
+          <DhtmlxGanttChart projects={projects} />
+        </CCardBody>
+      </CCard>
+
+      <CCard className="mt-4">
+        <CCardHeader className="fw-semibold">Skyline 3D de la cartera</CCardHeader>
+        <CCardBody>
+          <p className="module-desc mb-3">Cada edificio es un proyecto: la altura es el avance, el color el rubro, y se ilumina en rojo si está sobre presupuesto. Arrastrá para rotar, clic para abrir — <strong>Three.js</strong>.</p>
+          <ThreeSkyline projects={projects} />
         </CCardBody>
       </CCard>
     </>
