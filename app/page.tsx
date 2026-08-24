@@ -17,6 +17,7 @@ import {
   cilPeople, cilStar, cilSpeedometer, cilFlagAlt, cilCalculator, cilListRich, cilViewColumn,
 } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
+import PlotlyGauge from "@/components/PlotlyGauge";
 import type { ProjectDTO, ProjectInput, ProjectStatus, ProjectType, DashboardSummaryDTO } from "@/lib/types";
 
 const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial" };
@@ -470,13 +471,13 @@ function DashboardView({
       </div>
 
       <div className="row g-3 mb-4">
-        <div className="col-lg-5">
+        <div className="col-lg-4">
           <CCard className="h-100">
             <CCardHeader className="fw-semibold">Presupuesto por tipo de obra</CCardHeader>
             <CCardBody className="d-flex align-items-center justify-content-center">
               {totalBudget > 0 ? (
                 <CChartDoughnut
-                  style={{ maxHeight: 240 }}
+                  style={{ maxHeight: 220 }}
                   data={{
                     labels: ["Civil", "Eléctrico", "Vial"],
                     datasets: [{ data: [byType.civil.budget, byType.electrico.budget, byType.vial.budget], backgroundColor: [TYPE_HEX.civil, TYPE_HEX.electrico, TYPE_HEX.vial] }],
@@ -487,30 +488,47 @@ function DashboardView({
             </CCardBody>
           </CCard>
         </div>
-        <div className="col-lg-7">
+        <div className="col-lg-4">
           <CCard className="h-100">
-            <CCardHeader className="fw-semibold">Avance por proyecto</CCardHeader>
-            <CCardBody>
-              {sortedByProgress.length > 0 ? (
-                <CChartBar
-                  style={{ maxHeight: 240 }}
-                  data={{
-                    labels: sortedByProgress.map((p) => p.name.length > 18 ? p.name.slice(0, 17) + "…" : p.name),
-                    datasets: [{ label: "Avance %", data: sortedByProgress.map((p) => clampPct(p.progress)), backgroundColor: sortedByProgress.map((p) => TYPE_HEX[p.type]) }],
-                  }}
-                  options={{
-                    plugins: { legend: { display: false } },
-                    scales: {
-                      y: { beginAtZero: true, max: 100, grid: { color: gridColor }, ticks: { color: tickColor } },
-                      x: { grid: { display: false }, ticks: { color: tickColor } },
-                    },
-                  }}
-                />
+            <CCardHeader className="fw-semibold">Ejecución presupuestaria</CCardHeader>
+            <CCardBody className="d-flex align-items-center justify-content-center">
+              {totalBudget > 0 ? (
+                <PlotlyGauge value={execPct} color={execPct > 100 ? "#b3392f" : "#321fdb"} />
               ) : <EmptyMsg />}
             </CCardBody>
           </CCard>
         </div>
+        <div className="col-lg-4">
+          <CCard className="h-100">
+            <CCardHeader className="fw-semibold">Avance promedio</CCardHeader>
+            <CCardBody className="d-flex align-items-center justify-content-center">
+              <PlotlyGauge value={avgProgress} max={100} color="#2f7a4f" />
+            </CCardBody>
+          </CCard>
+        </div>
       </div>
+
+      <CCard className="mb-4">
+        <CCardHeader className="fw-semibold">Avance por proyecto</CCardHeader>
+        <CCardBody>
+          {sortedByProgress.length > 0 ? (
+            <CChartBar
+              style={{ maxHeight: 240 }}
+              data={{
+                labels: sortedByProgress.map((p) => p.name.length > 18 ? p.name.slice(0, 17) + "…" : p.name),
+                datasets: [{ label: "Avance %", data: sortedByProgress.map((p) => clampPct(p.progress)), backgroundColor: sortedByProgress.map((p) => TYPE_HEX[p.type]) }],
+              }}
+              options={{
+                plugins: { legend: { display: false } },
+                scales: {
+                  y: { beginAtZero: true, max: 100, grid: { color: gridColor }, ticks: { color: tickColor } },
+                  x: { grid: { display: false }, ticks: { color: tickColor } },
+                },
+              }}
+            />
+          ) : <EmptyMsg />}
+        </CCardBody>
+      </CCard>
 
       <CCard>
         <CCardHeader className="fw-semibold">Seguimiento rápido</CCardHeader>
