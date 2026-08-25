@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   CCard, CCardBody, CCardHeader, CButton, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
   CForm, CFormLabel, CFormInput, CFormSelect, CFormTextarea, CBadge, CAlert, CListGroup, CListGroupItem, CRow, CCol,
 } from "@coreui/react";
 import CIcon from "@coreui/icons-react";
-import { cilPlus } from "@coreui/icons";
+import { cilPlus, cilTrash } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
 import type { ContractorDTO, ContractorHistoryDTO, ContractorHistoryInput, ProjectDTO, ProjectType } from "@/lib/types";
 
@@ -34,6 +35,7 @@ const EMPTY_HISTORY: ContractorHistoryInput = { obraNombre: "", projectId: "", r
 
 export default function ContractorDetail({ params }: { params: { id: string } }) {
   const { id } = params;
+  const router = useRouter();
   const [contractor, setContractor] = useState<ContractorDTO | null>(null);
   const [history, setHistory] = useState<ContractorHistoryDTO[]>([]);
   const [projects, setProjects] = useState<ProjectDTO[]>([]);
@@ -43,6 +45,7 @@ export default function ContractorDetail({ params }: { params: { id: string } })
   const [form, setForm] = useState<ContractorHistoryInput>(EMPTY_HISTORY);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -90,11 +93,32 @@ export default function ContractorDetail({ params }: { params: { id: string } })
     }
   }
 
+  async function handleDelete() {
+    if (!contractor) return;
+    if (!confirm(`¿Eliminar "${contractor.name}"? Esta acción también borra su historial de calificaciones y no se puede deshacer.`)) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/contractors/${contractor.id}`, { method: "DELETE" });
+      if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
+      router.push("/contratistas");
+    } catch {
+      setDeleting(false);
+      alert("No se pudo eliminar el contratista.");
+    }
+  }
+
   if (loading) return <AppShell crumbs={[{ label: "Contratistas", href: "/contratistas" }]}><p className="state-message">Cargando…</p></AppShell>;
   if (error || !contractor) return <AppShell crumbs={[{ label: "Contratistas", href: "/contratistas" }]}><p className="state-message form-error">{error || "Contratista no encontrado."}</p></AppShell>;
 
   return (
-    <AppShell crumbs={[{ label: "Contratistas", href: "/contratistas" }, { label: contractor.name }]}>
+    <AppShell
+      crumbs={[{ label: "Contratistas", href: "/contratistas" }, { label: contractor.name }]}
+      headerActions={
+        <CButton color="danger" variant="outline" size="sm" onClick={handleDelete} disabled={deleting}>
+          <CIcon icon={cilTrash} className="me-1" /> {deleting ? "Eliminando…" : "Eliminar"}
+        </CButton>
+      }
+    >
       <div className="project-hero">
         <div>
           <h1 className="of-page-title mb-2">{contractor.name}</h1>

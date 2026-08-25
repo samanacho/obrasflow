@@ -101,6 +101,19 @@ export default function ContratistasPage() {
     }
   }
 
+  async function deleteContractor(c: ContractorDTO) {
+    if (!confirm(`¿Eliminar "${c.name}"? Esta acción también borra su historial de calificaciones y no se puede deshacer.`)) return;
+    const prev = contractors;
+    setContractors((cur) => cur.filter((x) => x.id !== c.id));
+    try {
+      const res = await fetch(`/api/contractors/${c.id}`, { method: "DELETE" });
+      if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
+    } catch {
+      setContractors(prev);
+      alert("No se pudo eliminar el contratista.");
+    }
+  }
+
   return (
     <AppShell
       crumbs={[{ label: "Contratistas" }]}
@@ -153,6 +166,7 @@ export default function ContratistasPage() {
                 <div className="d-flex gap-2 mt-1">
                   <Link href={`/contratistas/${c.id}`} className="btn btn-sm btn-outline-secondary">Ver ficha</Link>
                   <CButton size="sm" color="secondary" variant="outline" onClick={() => openModal(c)}>Editar</CButton>
+                  <CButton size="sm" color="danger" variant="outline" onClick={() => deleteContractor(c)}>Eliminar</CButton>
                 </div>
               </CCardBody>
             </CCard>
