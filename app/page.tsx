@@ -245,11 +245,11 @@ function HomeInner() {
       )}
 
       {!loading && !loadError && (
-        <>
+        <div className="panel tab-panel">
           {tab === "dashboard" && <DashboardView projects={projects} metrics={metrics} summary={summary} onNewProject={() => openModal(null)} />}
           {tab === "kanban" && <BoardView projects={projects} onEdit={openModal} onMove={moveStatus} />}
           {tab === "tabla" && <TablaView projects={projects} onEdit={openModal} onDelete={deleteProject} />}
-        </>
+        </div>
       )}
 
       <NewProjectWizard

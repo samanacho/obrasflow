@@ -343,6 +343,19 @@ a{color:inherit;}
 .module-tabs{overflow-x:auto;flex-wrap:nowrap;}
 .module-tabs .tab-btn{white-space:nowrap;}
 
+/* Pestañas tipo "underline" (Dashboard/Tablero/Tabla, módulos de un
+   proyecto, etc.) — CoreUI las deja en el índigo/morado por defecto de
+   Bootstrap para el estado inactivo; acá quedan todas en el mismo tono de
+   texto principal y la activa se distingue con negrita (ya la pone CoreUI)
+   más un tamaño levemente mayor, no con un color aparte. */
+.nav-underline .nav-link{color:var(--ink);}
+.nav-underline .nav-link.active{font-size:1.08em;}
+
+/* "Ventanita" propia para cada pestaña del Dashboard (Dashboard/Tablero/
+   Tabla) — mismo tratamiento de caja que las alertas (borde redondeado,
+   fondo diferenciado, sombra cálida en oscuro). */
+.tab-panel{margin-bottom:0;}
+
 /* Generic item list (RFIs, punch list, bitácora, etc.) */
 .item-list{list-style:none;margin:0;padding:0;}
 .item-row{border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-bottom:10px;background:var(--paper);}
