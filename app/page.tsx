@@ -317,11 +317,11 @@ function DashboardView({
       {/* Accesos directos */}
       <div className="row g-3 mb-4">
         <div className="col-md-6">
-          <Link href="/?tab=tabla" className="home-module">
+          <Link href="/rubros" className="home-module">
             <CIcon icon={cilListRich} size="xl" />
             <span>
               <span className="home-module-title">Todas las obras</span>
-              <span className="home-module-sub">{projects.length} proyecto{projects.length === 1 ? "" : "s"} — ver el listado completo</span>
+              <span className="home-module-sub">{projects.length} proyecto{projects.length === 1 ? "" : "s"} — clasificadas por rubro</span>
             </span>
           </Link>
         </div>
@@ -376,7 +376,7 @@ function DashboardView({
       )}
 
       <div className="row row-cols-2 row-cols-md-4 g-3 mb-3">
-        <div className="col"><Kpi label="Proyectos totales" value={projects.length} sub={`${active} en curso · ${finished} finalizados`} icon={cilSpeedometer} href="/?tab=tabla" /></div>
+        <div className="col"><Kpi label="Proyectos totales" value={projects.length} sub={`${active} en curso · ${finished} finalizados`} icon={cilSpeedometer} href="/rubros" /></div>
         <div className="col"><Kpi label="Presupuesto total" value={fmtMoney(totalBudget)} sub={`${fmtMoney(totalSpent)} ejecutado`} icon={cilCalculator} /></div>
         <div className="col"><Kpi label="Ejecución presupuestaria" value={`${execPct}%`} sub={execPct > 100 ? "sobre presupuesto" : "del total planificado"} icon={cilCalculator} /></div>
         <div className="col"><Kpi label="Avance promedio" value={`${avgProgress}%`} sub={`sobre ${projects.length} proyectos`} icon={cilListRich} /></div>

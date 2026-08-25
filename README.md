@@ -34,6 +34,10 @@ Modal de 3 pasos (`size="lg"`, centrado):
 
 Se guardan en `Project.sector` + `Project.sectorData` (JSON flexible, mismo patrón que `ProjectItem.data`) y se muestran en el detalle del proyecto cuando hay datos cargados.
 
+## Obras por rubro ([app/rubros/page.tsx](app/rubros/page.tsx), [app/rubros/[type]/page.tsx](app/rubros/[type]/page.tsx))
+
+Desde el Dashboard, el KPI "Proyectos totales" y el módulo "Todas las obras" llevan a `/rubros`: una vista con una tarjeta por rubro (Civil/Eléctrico/Vial/Otro) con la cantidad de obras, presupuesto total y un desglose rápido por estado. Cada tarjeta lleva a `/rubros/[type]`, donde las obras de ese rubro se ven en 3 columnas por estado — **Proyectada** (planificado), **En curso** (en_curso + pausado, este último con una etiqueta propia para no perder la distinción) y **Terminada** (finalizado) — cada una linkeando a la ficha completa del proyecto.
+
 ## Estructura
 
 ```

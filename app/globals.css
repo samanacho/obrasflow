@@ -407,3 +407,11 @@ a{color:inherit;}
 .home-module:hover{border-color:var(--accent);transform:translateY(-1px);color:var(--ink);}
 .home-module-title{font-family:'Barlow Condensed';font-weight:700;font-size:1.3rem;display:block;}
 .home-module-sub{font-size:.8rem;color:var(--ink-soft);display:block;}
+
+/* Obras por rubro (/rubros, /rubros/[type]) */
+.rubro-card-icon{font-size:1.6rem;line-height:1;}
+.rubro-card-breakdown{display:flex;flex-direction:column;gap:2px;font-size:.78rem;color:var(--ink-soft);border-top:1px solid var(--line);padding-top:8px;margin-top:2px;}
+.rubro-project-card{display:block;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px 12px;text-decoration:none;color:var(--ink);}
+.rubro-project-card:hover{border-color:var(--accent);color:var(--ink);}
+.rubro-project-name{font-weight:600;font-size:.9rem;}
+.rubro-project-meta{font-size:.78rem;color:var(--ink-soft);margin:4px 0 8px;}
