@@ -13,10 +13,12 @@ import { cilPlus, cilPencil, cilTrash } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
 import type { ProjectDTO, ProjectItemDTO, ContractorDTO } from "@/lib/types";
 import { ITEM_KINDS, ITEM_KIND_ORDER, ItemField } from "@/lib/itemKinds";
+import { PUBLIC_FIELDS, PRIVATE_FIELDS } from "@/lib/sectorFields";
 
 const TYPE_LABEL: Record<string, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
 const TYPE_COLOR: Record<string, string> = { civil: "info", electrico: "warning", vial: "secondary", otro: "dark" };
 const STATUS_COLOR: Record<string, string> = { planificado: "info", en_curso: "warning", pausado: "secondary", finalizado: "success" };
+const SECTOR_LABEL: Record<string, string> = { privado: "Obra privada", publico: "Obra pública" };
 
 function fmtMoney(n: number) {
   return "Gs. " + Number(n || 0).toLocaleString("es-PY");
@@ -63,6 +65,7 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
           <div className="project-hero-meta">
             <CBadge color={TYPE_COLOR[project.type]}>{project.type === "otro" && project.customType ? project.customType : TYPE_LABEL[project.type]}</CBadge>
             <CBadge color={STATUS_COLOR[project.status]}>{project.status.replace("_", " ")}</CBadge>
+            {project.sector && <CBadge color={project.sector === "publico" ? "dark" : "info"}>{SECTOR_LABEL[project.sector]}</CBadge>}
             <span>{project.manager}</span>
           </div>
         </div>
@@ -72,6 +75,24 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
           <CCard><CCardBody><div className="label">Fecha fin</div><div className="value mono">{project.end.split("-").reverse().join("/")}</div><div className={"sub" + (daysLeft < 7 ? " alert-text" : "")}>{daysLeft < 0 ? `Vencido hace ${Math.abs(daysLeft)}d` : `${daysLeft} días restantes`}</div></CCardBody></CCard>
         </div>
       </div>
+
+      {project.sector && project.sectorData && Object.values(project.sectorData).some(Boolean) && (
+        <CCard className="mb-4">
+          <CCardHeader className="fw-semibold">{SECTOR_LABEL[project.sector]} — datos adicionales</CCardHeader>
+          <CCardBody>
+            <CRow className="g-3">
+              {(project.sector === "publico" ? PUBLIC_FIELDS : PRIVATE_FIELDS)
+                .filter((f) => project.sectorData?.[f.key])
+                .map((f) => (
+                  <CCol md={4} key={f.key}>
+                    <span className="module-desc">{f.label}</span>
+                    <div>{f.type === "number" ? fmtMoney(Number(project.sectorData?.[f.key])) : String(project.sectorData?.[f.key])}</div>
+                  </CCol>
+                ))}
+            </CRow>
+          </CCardBody>
+        </CCard>
+      )}
 
       <CNav variant="underline" className="mb-4 module-tabs">
         {ITEM_KIND_ORDER.map((k) => {

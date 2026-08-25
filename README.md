@@ -11,6 +11,17 @@ Panel de gestión de proyectos de obras civiles, eléctricas y viales — Next.j
 
 El prototipo estático original (un solo `index.html` con datos embebidos) quedó en [`legacy/index.html`](legacy/index.html) como referencia.
 
+## Wizard "Nuevo proyecto" ([components/NewProjectWizard.tsx](components/NewProjectWizard.tsx))
+
+Modal de 3 pasos (`size="lg"`, centrado):
+1. **General** — los campos de siempre (nombre, tipo, estado, responsable, fechas, presupuesto, avance).
+2. **Sector** — privada o pública, elegido con dos tarjetas grandes.
+3. **Detalles** — campos específicos según el sector, definidos en [lib/sectorFields.ts](lib/sectorFields.ts):
+   - **Pública**: entidad convocante, nombre de la licitación y procedimiento (LPN/LPI) fijos, más 3 campos investigados (N° de proceso, sistema de contratación, monto adjudicado) — terminología y umbrales verificados contra la normativa de la DNCP paraguaya (Ley 2051/03).
+   - **Privada**: cliente/comitente, tipo de contrato, monto contractual y forma de pago — campos estándar de client-intake de una constructora.
+
+Se guardan en `Project.sector` + `Project.sectorData` (JSON flexible, mismo patrón que `ProjectItem.data`) y se muestran en el detalle del proyecto cuando hay datos cargados.
+
 ## Estructura
 
 ```

@@ -6,10 +6,9 @@ import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   CCard, CCardBody, CCardHeader, CNav, CNavItem, CNavLink,
-  CButton, CButtonGroup, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
-  CForm, CFormLabel, CFormInput, CFormSelect,
+  CButton, CButtonGroup, CFormSelect,
   CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell,
-  CBadge, CAlert, CInputGroup,
+  CBadge, CAlert, CInputGroup, CFormInput,
 } from "@coreui/react";
 import { CChartDoughnut, CChartBar } from "@coreui/react-chartjs";
 import CIcon from "@coreui/icons-react";
@@ -19,6 +18,7 @@ import {
 } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
 import PlotlyGauge from "@/components/PlotlyGauge";
+import NewProjectWizard from "@/components/NewProjectWizard";
 
 const ThreeSkyline = dynamic(() => import("@/components/ThreeSkyline"), {
   ssr: false,
@@ -28,7 +28,7 @@ const DhtmlxGanttChart = dynamic(() => import("@/components/DhtmlxGanttChart"), 
   ssr: false,
   loading: () => <p className="empty-col">Cargando cronograma…</p>,
 });
-import type { ProjectDTO, ProjectInput, ProjectStatus, ProjectType, DashboardSummaryDTO } from "@/lib/types";
+import type { ProjectDTO, ProjectStatus, ProjectType, DashboardSummaryDTO } from "@/lib/types";
 
 const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
 const TYPE_COLOR: Record<ProjectType, string> = { civil: "info", electrico: "warning", vial: "secondary", otro: "dark" };
@@ -70,19 +70,6 @@ function clampPct(n: number) {
   return Math.max(0, Math.min(100, Math.round(n || 0)));
 }
 
-const EMPTY_FORM: ProjectInput = {
-  name: "",
-  type: "civil",
-  customType: "",
-  status: "planificado",
-  manager: "",
-  start: "",
-  end: "",
-  budget: 0,
-  spent: 0,
-  progress: 0,
-};
-
 export default function Home() {
   return (
     <Suspense fallback={<div id="app"><p className="state-message">Cargando…</p></div>}>
@@ -109,10 +96,7 @@ function HomeInner() {
   }
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<ProjectInput>(EMPTY_FORM);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [editingProject, setEditingProject] = useState<ProjectDTO | null>(null);
 
   useEffect(() => { loadProjects(); loadSummary(); }, []);
 
@@ -147,66 +131,21 @@ function HomeInner() {
   }
 
   function openModal(project: ProjectDTO | null) {
-    setFormError(null);
-    setEditingId(project ? project.id : null);
-    setForm(
-      project
-        ? {
-            name: project.name,
-            type: project.type,
-            customType: project.customType ?? "",
-            status: project.status,
-            manager: project.manager,
-            start: project.start,
-            end: project.end,
-            budget: project.budget,
-            spent: project.spent,
-            progress: project.progress,
-          }
-        : EMPTY_FORM
-    );
+    setEditingProject(project);
     setModalOpen(true);
   }
   function closeModal() {
     setModalOpen(false);
-    setEditingId(null);
-    setFormError(null);
+    setEditingProject(null);
   }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.name.trim() || !form.manager.trim() || !form.start || !form.end) {
-      setFormError("Completá nombre, responsable y ambas fechas.");
-      return;
-    }
-    if (form.type === "otro" && !form.customType?.trim()) {
-      setFormError("Especificá el rubro cuando el tipo es \"Otro\".");
-      return;
-    }
-    setSaving(true);
-    setFormError(null);
-    try {
-      const res = await fetch(editingId ? `/api/projects/${editingId}` : "/api/projects", {
-        method: editingId ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `HTTP ${res.status}`);
-      }
-      const saved: ProjectDTO = await res.json();
-      setProjects((prev) => {
-        if (editingId) return prev.map((p) => (p.id === editingId ? saved : p));
-        return [...prev, saved];
-      });
-      setSaveState("Guardado");
-      closeModal();
-    } catch (err: any) {
-      setFormError(err.message || "No se pudo guardar el proyecto.");
-    } finally {
-      setSaving(false);
-    }
+  function handleWizardSaved(saved: ProjectDTO) {
+    setProjects((prev) => {
+      const idx = prev.findIndex((p) => p.id === saved.id);
+      if (idx > -1) { const next = [...prev]; next[idx] = saved; return next; }
+      return [...prev, saved];
+    });
+    setSaveState("Guardado");
+    closeModal();
   }
 
   async function deleteProject(p: ProjectDTO) {
@@ -313,80 +252,12 @@ function HomeInner() {
         </>
       )}
 
-      <CModal visible={modalOpen} onClose={closeModal} alignment="center">
-        <CModalHeader>
-          <CModalTitle>{editingId ? "Editar proyecto" : "Nuevo proyecto"}</CModalTitle>
-        </CModalHeader>
-        <CForm onSubmit={handleSubmit}>
-          <CModalBody>
-            {formError && <CAlert color="danger">{formError}</CAlert>}
-            <div className="mb-3">
-              <CFormLabel>Nombre del proyecto</CFormLabel>
-              <CFormInput required placeholder="Ej. Puente Río Claro" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            </div>
-            <div className="row mb-3">
-              <div className="col">
-                <CFormLabel>Tipo</CFormLabel>
-                <CFormSelect value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as ProjectType, customType: e.target.value === "otro" ? form.customType : "" })}>
-                  <option value="civil">Civil</option>
-                  <option value="electrico">Eléctrico</option>
-                  <option value="vial">Vial</option>
-                  <option value="otro">Otro</option>
-                </CFormSelect>
-              </div>
-              <div className="col">
-                <CFormLabel>Estado</CFormLabel>
-                <CFormSelect value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as ProjectStatus })}>
-                  {STATUS_ORDER.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
-                </CFormSelect>
-              </div>
-            </div>
-            {form.type === "otro" && (
-              <div className="mb-3">
-                <CFormLabel>Especificá el rubro</CFormLabel>
-                <CFormInput
-                  required
-                  placeholder="Ej. Saneamiento, forestación, demolición…"
-                  value={form.customType ?? ""}
-                  onChange={(e) => setForm({ ...form, customType: e.target.value })}
-                />
-              </div>
-            )}
-            <div className="mb-3">
-              <CFormLabel>Responsable</CFormLabel>
-              <CFormInput required placeholder="Ej. Ana Torres" value={form.manager} onChange={(e) => setForm({ ...form, manager: e.target.value })} />
-            </div>
-            <div className="row mb-3">
-              <div className="col">
-                <CFormLabel>Fecha inicio</CFormLabel>
-                <CFormInput type="date" required value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} />
-              </div>
-              <div className="col">
-                <CFormLabel>Fecha fin</CFormLabel>
-                <CFormInput type="date" required value={form.end} onChange={(e) => setForm({ ...form, end: e.target.value })} />
-              </div>
-            </div>
-            <div className="row mb-3">
-              <div className="col">
-                <CFormLabel>Presupuesto (Gs.)</CFormLabel>
-                <CFormInput type="number" min={0} step={1} required value={form.budget} onChange={(e) => setForm({ ...form, budget: Number(e.target.value) })} />
-              </div>
-              <div className="col">
-                <CFormLabel>Ejecutado (Gs.)</CFormLabel>
-                <CFormInput type="number" min={0} step={1} required value={form.spent} onChange={(e) => setForm({ ...form, spent: Number(e.target.value) })} />
-              </div>
-            </div>
-            <div className="mb-1">
-              <CFormLabel>Avance (%)</CFormLabel>
-              <CFormInput type="number" min={0} max={100} step={1} required value={form.progress} onChange={(e) => setForm({ ...form, progress: Number(e.target.value) })} />
-            </div>
-          </CModalBody>
-          <CModalFooter>
-            <CButton color="secondary" variant="ghost" onClick={closeModal}>Cancelar</CButton>
-            <CButton color="primary" type="submit" disabled={saving}>{saving ? "Guardando…" : "Guardar"}</CButton>
-          </CModalFooter>
-        </CForm>
-      </CModal>
+      <NewProjectWizard
+        visible={modalOpen}
+        editingProject={editingProject}
+        onClose={closeModal}
+        onSaved={handleWizardSaved}
+      />
 
       <div className={"toast" + (toast ? " show" : "")}>{toast}</div>
     </AppShell>

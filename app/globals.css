@@ -319,3 +319,15 @@ a{color:inherit;}
 /* Three.js skyline (Dashboard) */
 .of-skyline{height:320px;border:1px solid var(--line);border-radius:8px;overflow:hidden;cursor:grab;}
 .of-skyline canvas{display:block;}
+
+/* Wizard "Nuevo proyecto" */
+.wizard-steps{font-size:.78rem;color:var(--ink-soft);}
+.wizard-step{padding:2px 0;}
+.wizard-step.active{color:var(--accent-ink);font-weight:600;}
+.wizard-step:not(:last-child)::after{content:"→";margin-left:8px;color:var(--line);font-weight:400;}
+
+.sector-pick{width:100%;display:flex;flex-direction:column;align-items:center;gap:6px;padding:24px 16px;border:2px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);cursor:pointer;transition:border-color .15s ease, background .15s ease;}
+.sector-pick:hover{border-color:var(--accent);}
+.sector-pick.active{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 8%, var(--surface));color:var(--accent-ink);}
+.sector-pick-title{font-family:'Barlow Condensed';font-weight:700;font-size:1.2rem;}
+.sector-pick-sub{font-size:.78rem;color:var(--ink-soft);text-align:center;}

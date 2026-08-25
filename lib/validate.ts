@@ -2,6 +2,7 @@ import type { ProjectInput } from "./types";
 
 const TYPES = ["civil", "electrico", "vial", "otro"];
 const STATUSES = ["planificado", "en_curso", "pausado", "finalizado"];
+const SECTORS = ["privado", "publico"];
 
 export class ValidationError extends Error {}
 
@@ -41,6 +42,12 @@ export function parseProjectInput(body: unknown): ProjectInput {
     throw new ValidationError("El avance debe estar entre 0 y 100.");
   }
 
+  const sectorRaw = b.sector ? String(b.sector) : "";
+  if (sectorRaw && !SECTORS.includes(sectorRaw)) throw new ValidationError(`Sector inválido: "${sectorRaw}".`);
+  const sector = sectorRaw ? (sectorRaw as ProjectInput["sector"]) : null;
+  const sectorData =
+    sector && b.sectorData && typeof b.sectorData === "object" ? (b.sectorData as Record<string, any>) : null;
+
   return {
     name,
     type: type as ProjectInput["type"],
@@ -52,5 +59,7 @@ export function parseProjectInput(body: unknown): ProjectInput {
     budget,
     spent,
     progress: Math.round(progress),
+    sector,
+    sectorData,
   };
 }

@@ -27,6 +27,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
         ...data,
         start: new Date(data.start),
         end: new Date(data.end),
+        sectorData: data.sectorData === null ? Prisma.JsonNull : data.sectorData,
       },
     });
     return NextResponse.json(serializeProject(updated));

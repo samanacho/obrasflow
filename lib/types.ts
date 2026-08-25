@@ -1,5 +1,6 @@
 export type ProjectType = "civil" | "electrico" | "vial" | "otro";
 export type ProjectStatus = "planificado" | "en_curso" | "pausado" | "finalizado";
+export type ProjectSector = "privado" | "publico";
 
 /** Forma que usa el frontend: fechas como "YYYY-MM-DD", montos como number. */
 export interface ProjectDTO {
@@ -14,6 +15,8 @@ export interface ProjectDTO {
   budget: number;
   spent: number;
   progress: number;
+  sector: ProjectSector | null;
+  sectorData: Record<string, any> | null;
 }
 
 export interface ProjectInput {
@@ -27,6 +30,8 @@ export interface ProjectInput {
   budget: number;
   spent: number;
   progress: number;
+  sector?: ProjectSector | null;
+  sectorData?: Record<string, any> | null;
 }
 
 export interface ProjectItemDTO {

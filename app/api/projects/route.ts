@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { serializeProject } from "@/lib/serialize";
 import { parseProjectInput, ValidationError } from "@/lib/validate";
@@ -19,6 +20,7 @@ export async function POST(req: NextRequest) {
         ...data,
         start: new Date(data.start),
         end: new Date(data.end),
+        sectorData: data.sectorData === null ? Prisma.JsonNull : data.sectorData,
       },
     });
     return NextResponse.json(serializeProject(created), { status: 201 });

@@ -26,6 +26,11 @@ enum ProjectStatus {
   finalizado
 }
 
+enum ProjectSector {
+  privado
+  publico
+}
+
 model Project {
   id         String        @id @default(cuid())
   name       String
@@ -33,14 +38,22 @@ model Project {
   /// Rubro escrito a mano cuando `type` es "otro" — null para el resto.
   customType String?
   status     ProjectStatus @default(planificado)
-  manager   String
-  start     DateTime      @db.Date
-  end       DateTime      @db.Date
-  budget    Decimal       @default(0) @db.Decimal(14, 2)
-  spent     Decimal       @default(0) @db.Decimal(14, 2)
-  progress  Int           @default(0)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  manager    String
+  start      DateTime      @db.Date
+  end        DateTime      @db.Date
+  budget     Decimal       @default(0) @db.Decimal(14, 2)
+  spent      Decimal       @default(0) @db.Decimal(14, 2)
+  progress   Int           @default(0)
+  /// Privado o público — null en proyectos creados antes de este campo.
+  sector     ProjectSector?
+  /// Respuestas del paso 3 del wizard (varían según `sector`): para
+  /// público incluye entidadConvocante/nombreLicitacion/procedimiento +
+  /// extras; para privado, los campos de client-intake. JSON en vez de
+  /// columnas propias porque el set de campos es específico del sector y
+  /// se decide/ajusta desde la config del wizard, no desde el schema.
+  sectorData Json?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 
   items ProjectItem[]
 
