@@ -161,7 +161,7 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
         })}
       </CNav>
 
-      <ModuleView key={tab} projectId={id} kind={tab} />
+      <ModuleView key={tab} projectId={id} kind={tab} project={project} />
 
       <NewProjectWizard
         visible={editOpen}
@@ -173,7 +173,7 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
   );
 }
 
-function ModuleView({ projectId, kind }: { projectId: string; kind: string }) {
+function ModuleView({ projectId, kind, project }: { projectId: string; kind: string; project: ProjectDTO }) {
   const cfg = ITEM_KINDS[kind];
   const [items, setItems] = useState<ProjectItemDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -190,6 +190,13 @@ function ModuleView({ projectId, kind }: { projectId: string; kind: string }) {
     }
   }
   useEffect(() => { load(); }, [projectId, kind]);
+
+  // Cotización: la planilla de presupuesto liga el monto directamente al
+  // presupuesto de la ficha de la obra, y marca cuál cotización ganó.
+  const isCotizacion = kind === "cotizacion";
+  const winner = isCotizacion ? items.find((i) => i.status === "Seleccionada") : undefined;
+  const winnerMonto = winner ? Number(winner.data?.monto ?? 0) : null;
+  const diff = winnerMonto !== null ? winnerMonto - project.budget : null;
 
   async function handleDelete(item: ProjectItemDTO) {
     if (!confirm(`¿Eliminar "${item.title}"?`)) return;
@@ -211,35 +218,62 @@ function ModuleView({ projectId, kind }: { projectId: string; kind: string }) {
         )}
       </CCardHeader>
       <CCardBody>
+        {isCotizacion && !loading && (
+          <div className="quote-budget-panel">
+            <div className="quote-budget-item">
+              <span className="qb-label">Presupuesto de la obra</span>
+              <span className="qb-value mono">{fmtMoney(project.budget)}</span>
+            </div>
+            <div className="quote-budget-item">
+              <span className="qb-label">Cotizaciones cargadas</span>
+              <span className="qb-value mono">{items.length}</span>
+            </div>
+            <div className="quote-budget-item">
+              <span className="qb-label">Cotización ganadora</span>
+              <span className="qb-value mono">{winner ? fmtMoney(winnerMonto!) : "—"}</span>
+            </div>
+            <div className="quote-budget-item">
+              <span className="qb-label">Diferencia vs. presupuesto</span>
+              <span className={"qb-value mono" + (diff !== null && diff > 0 ? " alert-text" : "")}>
+                {diff !== null ? `${diff >= 0 ? "+" : ""}${fmtMoney(diff)}` : "—"}
+              </span>
+            </div>
+          </div>
+        )}
+
         {loading && <p className="empty-col">Cargando…</p>}
         {!loading && items.length === 0 && <p className="empty-col">Sin registros todavía.</p>}
 
         <CListGroup>
-          {items.map((item) => (
-            <CListGroupItem key={item.id} className="item-row border-0 border-bottom rounded-0 px-0">
-              <div className="item-row-main">
-                <span className="item-title">{item.title}</span>
-                {item.status && <span className={"status-chip status-generic status-" + item.status.toLowerCase().replace(/\s+/g, "_")}>{item.status}</span>}
-              </div>
-              {item.data?.contratistaId && (
+          {items.map((item) => {
+            const isWinner = isCotizacion && item.status === "Seleccionada";
+            return (
+              <CListGroupItem key={item.id} className={"item-row border-0 border-bottom rounded-0 px-0" + (isWinner ? " item-row-winner" : "")}>
+                <div className="item-row-main">
+                  {isWinner && <span className="item-row-winner-badge" title="Cotización ganadora">✓</span>}
+                  <span className="item-title">{item.title}</span>
+                  {item.status && <span className={"status-chip status-generic status-" + item.status.toLowerCase().replace(/\s+/g, "_")}>{item.status}</span>}
+                </div>
+                {item.data?.contratistaId && (
+                  <div className="item-row-sub">
+                    <Link href={`/contratistas/${item.data.contratistaId}`}>{item.data.contratistaNombre || "Ver ficha del contratista"} ↗</Link>
+                  </div>
+                )}
                 <div className="item-row-sub">
-                  <Link href={`/contratistas/${item.data.contratistaId}`}>{item.data.contratistaNombre || "Ver ficha del contratista"} ↗</Link>
+                  {cfg.summary(item.data)}{cfg.summary(item.data) ? " · " : ""}{fmtDateTime(item.createdAt)}
                 </div>
-              )}
-              <div className="item-row-sub">
-                {cfg.summary(item.data)}{cfg.summary(item.data) ? " · " : ""}{fmtDateTime(item.createdAt)}
-              </div>
-              {item.data?.notas && <div className="item-row-notes">{item.data.notas}</div>}
-              {item.data?.respuesta && <div className="item-row-notes">↳ {item.data.respuesta}</div>}
-              {item.data?.motivo && <div className="item-row-notes">{item.data.motivo}</div>}
-              {!cfg.readOnly && (
-                <div className="item-row-actions">
-                  <CButton size="sm" color="secondary" variant="outline" onClick={() => { setEditing(item); setShowForm(true); }}><CIcon icon={cilPencil} size="sm" /></CButton>
-                  <CButton size="sm" color="danger" variant="outline" onClick={() => handleDelete(item)}><CIcon icon={cilTrash} size="sm" /></CButton>
-                </div>
-              )}
-            </CListGroupItem>
-          ))}
+                {item.data?.notas && <div className="item-row-notes">{item.data.notas}</div>}
+                {item.data?.respuesta && <div className="item-row-notes">↳ {item.data.respuesta}</div>}
+                {item.data?.motivo && <div className="item-row-notes">{item.data.motivo}</div>}
+                {!cfg.readOnly && (
+                  <div className="item-row-actions">
+                    <CButton size="sm" color="secondary" variant="outline" onClick={() => { setEditing(item); setShowForm(true); }}><CIcon icon={cilPencil} size="sm" /></CButton>
+                    <CButton size="sm" color="danger" variant="outline" onClick={() => handleDelete(item)}><CIcon icon={cilTrash} size="sm" /></CButton>
+                  </div>
+                )}
+              </CListGroupItem>
+            );
+          })}
         </CListGroup>
       </CCardBody>
 

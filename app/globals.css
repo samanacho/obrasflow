@@ -373,6 +373,17 @@ a{color:inherit;}
 .status-en_proceso{background:var(--civil-soft);color:var(--civil);}
 .status-completado,.status-seleccionada{background:var(--ok-soft);color:var(--ok);}
 
+/* Cotización: planilla de presupuesto — liga el monto de cada cotización
+   al presupuesto oficial de la ficha de la obra, y la cotización elegida
+   como "Seleccionada" queda marcada con un sombreado verde muy tenue +
+   un check, no solo con el badge de estado. */
+.quote-budget-panel{display:flex;gap:26px;flex-wrap:wrap;padding:14px 16px;border:1px solid var(--line);border-radius:8px;background:var(--surface);box-shadow:var(--shadow);margin-bottom:16px;}
+.quote-budget-item{display:flex;flex-direction:column;gap:3px;}
+.quote-budget-item .qb-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-soft);}
+.quote-budget-item .qb-value{font-family:'Barlow Condensed';font-size:1.3rem;font-weight:700;}
+.item-row-winner{background:var(--ok-soft);border-color:var(--ok);}
+.item-row-winner-badge{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--ok);color:var(--surface);font-size:.68rem;font-weight:700;flex-shrink:0;}
+
 .form-hint{font-size:.8rem;color:var(--ink-soft);margin:-4px 0 12px;}
 .form-hint a{text-decoration:underline;}
 
