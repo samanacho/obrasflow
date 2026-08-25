@@ -160,6 +160,11 @@ function ModuleView({ projectId, kind }: { projectId: string; kind: string }) {
                 <span className="item-title">{item.title}</span>
                 {item.status && <span className={"status-chip status-generic status-" + item.status.toLowerCase().replace(/\s+/g, "_")}>{item.status}</span>}
               </div>
+              {item.data?.contratistaId && (
+                <div className="item-row-sub">
+                  <Link href={`/contratistas/${item.data.contratistaId}`}>{item.data.contratistaNombre || "Ver ficha del contratista"} ↗</Link>
+                </div>
+              )}
               <div className="item-row-sub">
                 {cfg.summary(item.data)}{cfg.summary(item.data) ? " · " : ""}{fmtDateTime(item.createdAt)}
               </div>
@@ -287,6 +292,11 @@ function ItemFormModal({
                   {contractors.map((c) => (
                     <option key={c.id} value={c.id}>{c.name}{c.city ? ` — ${c.city}` : ""}</option>
                   ))}
+                </CFormSelect>
+              ) : f.type === "select" ? (
+                <CFormSelect value={data[f.key] ?? ""} onChange={(e) => setField(f.key, e.target.value)} required={f.required}>
+                  <option value="">Seleccioná…</option>
+                  {f.options?.map((o) => <option key={o} value={o}>{o}</option>)}
                 </CFormSelect>
               ) : (
                 <CFormInput type={f.type} value={data[f.key] ?? ""} onChange={(e) => setField(f.key, e.target.value)} required={f.required} placeholder={f.placeholder} />

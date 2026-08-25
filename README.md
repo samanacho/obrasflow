@@ -120,7 +120,7 @@ Cada proyecto tiene una página propia con 10 módulos adicionales, todos con al
 |---|---|
 | 📐 Relevamiento | Información de campo previa a la obra: ubicación, coordenadas, mediciones y condiciones del terreno |
 | 💰 Cotización | Varias cotizaciones por proyecto, cada una vinculada a un contratista del directorio, para comparar y marcar la elegida |
-| 🧾 Punch List | Pendientes de cierre antes de terminar el proyecto |
+| 🧰 Contratistas | Contratistas con los que se trabaja en esta obra, por rubro — cada uno linkea a su ficha completa en el directorio |
 | 📋 Bitácora diaria | Registro diario de avance, clima y personal en obra |
 | 🔁 Órdenes de cambio | Cambios de alcance con impacto en presupuesto |
 | 👷 Equipo | Responsables y contactos asignados |

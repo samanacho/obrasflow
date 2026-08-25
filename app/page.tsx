@@ -315,13 +315,31 @@ function DashboardView({
   return (
     <>
       {/* Accesos directos */}
+      <div className="row g-3 mb-4">
+        <div className="col-md-6">
+          <Link href="/?tab=tabla" className="home-module">
+            <CIcon icon={cilListRich} size="xl" />
+            <span>
+              <span className="home-module-title">Todas las obras</span>
+              <span className="home-module-sub">{projects.length} proyecto{projects.length === 1 ? "" : "s"} — ver el listado completo</span>
+            </span>
+          </Link>
+        </div>
+        <div className="col-md-6">
+          <Link href="/contratistas" className="home-module">
+            <CIcon icon={cilPeople} size="xl" />
+            <span>
+              <span className="home-module-title">Contratistas</span>
+              <span className="home-module-sub">Directorio global de contratistas</span>
+            </span>
+          </Link>
+        </div>
+      </div>
+
       <div className="quick-actions mb-4">
         <button className="quick-action" onClick={onNewProject}>
           <CIcon icon={cilPlus} /> Nuevo proyecto
         </button>
-        <Link href="/contratistas" className="quick-action">
-          <CIcon icon={cilPeople} /> Contratistas
-        </Link>
       </div>
 
       {(overBudget.length > 0 || dueSoon.length > 0) && (

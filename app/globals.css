@@ -331,3 +331,9 @@ a{color:inherit;}
 .sector-pick.active{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 8%, var(--surface));color:var(--accent-ink);}
 .sector-pick-title{font-family:'Barlow Condensed';font-weight:700;font-size:1.2rem;}
 .sector-pick-sub{font-size:.78rem;color:var(--ink-soft);text-align:center;}
+
+/* Módulos de acceso rápido en el Dashboard (ej. "Todas las obras") */
+.home-module{display:flex;align-items:center;gap:16px;width:100%;padding:20px 22px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);text-decoration:none;box-shadow:var(--shadow);transition:border-color .15s ease, transform .15s ease;}
+.home-module:hover{border-color:var(--accent);transform:translateY(-1px);color:var(--ink);}
+.home-module-title{font-family:'Barlow Condensed';font-weight:700;font-size:1.3rem;display:block;}
+.home-module-sub{font-size:.8rem;color:var(--ink-soft);display:block;}

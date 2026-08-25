@@ -2,7 +2,7 @@
 // Cada "kind" comparte el mismo modelo (ProjectItem) y el mismo patrón de
 // lista + formulario en el frontend; lo único que cambia es esta config.
 
-export type FieldType = "text" | "textarea" | "number" | "date" | "contractor";
+export type FieldType = "text" | "textarea" | "number" | "date" | "contractor" | "select";
 
 export interface ItemField {
   key: string;
@@ -10,6 +10,8 @@ export interface ItemField {
   type: FieldType;
   required?: boolean;
   placeholder?: string;
+  /** Solo para type "select". */
+  options?: string[];
 }
 
 export interface ItemKindConfig {
@@ -65,21 +67,21 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
     ],
     summary: (d) => [d.contratistaNombre, d.monto ? `Gs. ${Number(d.monto).toLocaleString("es-PY")}` : ""].filter(Boolean).join(" · "),
   },
-  punch: {
-    key: "punch",
-    label: "Punch List",
-    singular: "ítem",
-    icon: "🧾",
-    description: "Pendientes de cierre antes de dar por terminado el proyecto.",
-    titleLabel: "Descripción",
-    statusOptions: ["Pendiente", "En revisión", "Resuelto"],
-    defaultStatus: "Pendiente",
+  contratista: {
+    key: "contratista",
+    label: "Contratistas",
+    singular: "contratista",
+    icon: "🧰",
+    description: "Contratistas con los que se está trabajando en esta obra, por rubro — cada uno linkea a su ficha completa en el directorio.",
+    titleLabel: "Tarea o alcance en esta obra",
+    statusOptions: ["Activo", "Finalizado"],
+    defaultStatus: "Activo",
     fields: [
-      { key: "ubicacion", label: "Ubicación", type: "text" },
-      { key: "responsable", label: "Responsable", type: "text" },
-      { key: "foto", label: "URL de foto (opcional)", type: "text" },
+      { key: "contratistaId", label: "Contratista", type: "contractor", required: true },
+      { key: "rubro", label: "Rubro en esta obra", type: "select", options: ["Civil", "Eléctrico", "Vial", "Otro"], required: true },
+      { key: "notas", label: "Notas", type: "textarea" },
     ],
-    summary: (d) => [d.ubicacion, d.responsable].filter(Boolean).join(" · "),
+    summary: (d) => d.rubro ?? "",
   },
   daily_log: {
     key: "daily_log",
@@ -209,7 +211,7 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
 export const ITEM_KIND_ORDER = [
   "rfi",
   "cotizacion",
-  "punch",
+  "contratista",
   "daily_log",
   "change_order",
   "team",
