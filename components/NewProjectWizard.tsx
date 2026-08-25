@@ -230,16 +230,16 @@ function StepGeneral({ form, setForm }: { form: ProjectInput; setForm: (f: Proje
       <CRow className="mb-3 g-2">
         <CCol>
           <CFormLabel>Presupuesto (Gs.)</CFormLabel>
-          <CFormInput type="number" min={0} step={1} required value={form.budget} onChange={(e) => setForm({ ...form, budget: Number(e.target.value) })} />
+          <CFormInput type="number" min={0} step={1} required placeholder="0" value={form.budget === 0 ? "" : form.budget} onChange={(e) => setForm({ ...form, budget: Number(e.target.value) })} />
         </CCol>
         <CCol>
           <CFormLabel>Ejecutado (Gs.)</CFormLabel>
-          <CFormInput type="number" min={0} step={1} required value={form.spent} onChange={(e) => setForm({ ...form, spent: Number(e.target.value) })} />
+          <CFormInput type="number" min={0} step={1} required placeholder="0" value={form.spent === 0 ? "" : form.spent} onChange={(e) => setForm({ ...form, spent: Number(e.target.value) })} />
         </CCol>
       </CRow>
       <div className="mb-1">
         <CFormLabel>Avance (%)</CFormLabel>
-        <CFormInput type="number" min={0} max={100} step={1} required value={form.progress} onChange={(e) => setForm({ ...form, progress: Number(e.target.value) })} />
+        <CFormInput type="number" min={0} max={100} step={1} required placeholder="0" value={form.progress === 0 ? "" : form.progress} onChange={(e) => setForm({ ...form, progress: Number(e.target.value) })} />
       </div>
     </>
   );
