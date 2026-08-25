@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   CCard, CCardBody, CCardHeader, CNav, CNavItem, CNavLink,
   CButton, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
@@ -11,6 +12,7 @@ import {
 import CIcon from "@coreui/icons-react";
 import { cilPlus, cilPencil, cilTrash } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
+import NewProjectWizard from "@/components/NewProjectWizard";
 import type { ProjectDTO, ProjectItemDTO, ContractorDTO } from "@/lib/types";
 import { ITEM_KINDS, ITEM_KIND_ORDER, ItemField } from "@/lib/itemKinds";
 import { PUBLIC_FIELDS, PRIVATE_FIELDS } from "@/lib/sectorFields";
@@ -30,10 +32,13 @@ function fmtDateTime(iso: string) {
 
 export default function ProjectDetail({ params }: { params: { id: string } }) {
   const { id } = params;
+  const router = useRouter();
   const [project, setProject] = useState<ProjectDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<string>("rfi");
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -51,14 +56,49 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
     })();
   }, [id]);
 
-  if (loading) return <AppShell crumbs={[{ label: "Proyectos", href: "/" }]}><p className="state-message">Cargando proyecto…</p></AppShell>;
-  if (error || !project) return <AppShell crumbs={[{ label: "Proyectos", href: "/" }]}><p className="state-message form-error">{error || "Proyecto no encontrado."}</p></AppShell>;
+  function handleSaved(saved: ProjectDTO) {
+    setProject(saved);
+    setEditOpen(false);
+  }
+
+  async function handleDelete() {
+    if (!project) return;
+    if (!confirm(`¿Eliminar "${project.name}"? Esta acción no se puede deshacer.`)) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/projects/${project.id}`, { method: "DELETE" });
+      if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
+      router.push(`/rubros/${project.type}`);
+    } catch {
+      setDeleting(false);
+      alert("No se pudo eliminar el proyecto.");
+    }
+  }
+
+  if (loading) return <AppShell crumbs={[{ label: "Obras por rubro", href: "/rubros" }]}><p className="state-message">Cargando proyecto…</p></AppShell>;
+  if (error || !project) return <AppShell crumbs={[{ label: "Obras por rubro", href: "/rubros" }]}><p className="state-message form-error">{error || "Proyecto no encontrado."}</p></AppShell>;
 
   const overBudget = project.spent > project.budget;
   const daysLeft = Math.ceil((new Date(project.end).getTime() - Date.now()) / 86400000);
 
   return (
-    <AppShell crumbs={[{ label: "Proyectos", href: "/" }, { label: project.name }]}>
+    <AppShell
+      crumbs={[
+        { label: "Obras por rubro", href: "/rubros" },
+        { label: TYPE_LABEL[project.type], href: `/rubros/${project.type}` },
+        { label: project.name },
+      ]}
+      headerActions={
+        <>
+          <CButton color="secondary" variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+            <CIcon icon={cilPencil} className="me-1" /> Editar
+          </CButton>
+          <CButton color="danger" variant="outline" size="sm" onClick={handleDelete} disabled={deleting}>
+            <CIcon icon={cilTrash} className="me-1" /> {deleting ? "Eliminando…" : "Eliminar"}
+          </CButton>
+        </>
+      }
+    >
       <div className="project-hero">
         <div>
           <h1 className="of-page-title mb-2">{project.name}</h1>
@@ -122,6 +162,13 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
       </CNav>
 
       <ModuleView key={tab} projectId={id} kind={tab} />
+
+      <NewProjectWizard
+        visible={editOpen}
+        editingProject={project}
+        onClose={() => setEditOpen(false)}
+        onSaved={handleSaved}
+      />
     </AppShell>
   );
 }

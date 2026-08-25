@@ -53,10 +53,12 @@ function toForm(project: ProjectDTO): ProjectInput {
 }
 
 export default function NewProjectWizard({
-  visible, editingProject, onClose, onSaved,
+  visible, editingProject, initialType, onClose, onSaved,
 }: {
   visible: boolean;
   editingProject: ProjectDTO | null;
+  /** Rubro con el que arranca el formulario al crear (no aplica si se está editando) — útil cuando se crea desde una pantalla ya filtrada por rubro, como /rubros/[type]. */
+  initialType?: ProjectType;
   onClose: () => void;
   onSaved: (p: ProjectDTO) => void;
 }) {
@@ -69,8 +71,8 @@ export default function NewProjectWizard({
     if (!visible) return;
     setStep(1);
     setError(null);
-    setForm(editingProject ? toForm(editingProject) : EMPTY_FORM);
-  }, [visible, editingProject]);
+    setForm(editingProject ? toForm(editingProject) : initialType ? { ...EMPTY_FORM, type: initialType } : EMPTY_FORM);
+  }, [visible, editingProject, initialType]);
 
   function setSectorField(key: string, value: string | string[]) {
     setForm((f) => ({ ...f, sectorData: { ...(f.sectorData ?? {}), [key]: value } }));

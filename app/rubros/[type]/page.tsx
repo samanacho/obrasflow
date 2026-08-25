@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CCard, CCardBody, CCardHeader, CBadge } from "@coreui/react";
+import { CCard, CCardBody, CCardHeader, CBadge, CButton } from "@coreui/react";
+import CIcon from "@coreui/icons-react";
+import { cilPlus, cilPencil, cilTrash } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
+import NewProjectWizard from "@/components/NewProjectWizard";
 import type { ProjectDTO, ProjectStatus, ProjectType } from "@/lib/types";
 
 const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
@@ -27,23 +30,63 @@ function typeLabel(p: { type: ProjectType; customType?: string | null }): string
  * Obras de un rubro puntual, clasificadas en 3 columnas por estado —
  * "pausado" se muestra dentro de "En curso" con una etiqueta propia, para no
  * perder esa distinción sin agregar una cuarta columna que el usuario no pidió.
+ * CRUD completo acá mismo: crear (pre-cargando este rubro), editar y
+ * eliminar cada obra sin tener que volver a la tabla plana.
  */
 export default function RubroDetailPage({ params }: { params: { type: string } }) {
   const type = params.type;
   const isValidType = VALID_TYPES.includes(type);
   const [projects, setProjects] = useState<ProjectDTO[]>([]);
   const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<ProjectDTO | null>(null);
 
-  useEffect(() => {
+  function load() {
     if (!isValidType) {
       setLoading(false);
       return;
     }
+    setLoading(true);
     fetch("/api/projects")
       .then((res) => (res.ok ? res.json() : []))
       .then((data: ProjectDTO[]) => setProjects(data.filter((p) => p.type === type)))
       .finally(() => setLoading(false));
-  }, [type, isValidType]);
+  }
+  useEffect(load, [type, isValidType]);
+
+  function openCreate() {
+    setEditingProject(null);
+    setModalOpen(true);
+  }
+  function openEdit(p: ProjectDTO) {
+    setEditingProject(p);
+    setModalOpen(true);
+  }
+
+  function handleSaved(saved: ProjectDTO) {
+    setProjects((prev) => {
+      // Si se editó y cambió de rubro, ya no pertenece a esta lista.
+      if (saved.type !== type) return prev.filter((p) => p.id !== saved.id);
+      const idx = prev.findIndex((p) => p.id === saved.id);
+      if (idx > -1) { const next = [...prev]; next[idx] = saved; return next; }
+      return [...prev, saved];
+    });
+    setModalOpen(false);
+    setEditingProject(null);
+  }
+
+  async function handleDelete(p: ProjectDTO) {
+    if (!confirm(`¿Eliminar "${p.name}"? Esta acción no se puede deshacer.`)) return;
+    const prev = projects;
+    setProjects((cur) => cur.filter((x) => x.id !== p.id));
+    try {
+      const res = await fetch(`/api/projects/${p.id}`, { method: "DELETE" });
+      if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
+    } catch {
+      setProjects(prev);
+      alert("No se pudo eliminar el proyecto.");
+    }
+  }
 
   if (!isValidType) {
     return (
@@ -58,7 +101,14 @@ export default function RubroDetailPage({ params }: { params: { type: string } }
   const t = type as ProjectType;
 
   return (
-    <AppShell crumbs={[{ label: "Obras por rubro", href: "/rubros" }, { label: TYPE_LABEL[t] }]}>
+    <AppShell
+      crumbs={[{ label: "Obras por rubro", href: "/rubros" }, { label: TYPE_LABEL[t] }]}
+      headerActions={
+        <CButton color="primary" size="sm" onClick={openCreate}>
+          <CIcon icon={cilPlus} className="me-1" /> Nueva obra
+        </CButton>
+      }
+    >
       <h1 className="of-page-title">{TYPE_ICON[t]} Obras — {TYPE_LABEL[t]}</h1>
       <p className="module-desc mb-4">
         {projects.length} obra{projects.length === 1 ? "" : "s"} de este rubro, clasificadas por estado.
@@ -83,9 +133,9 @@ export default function RubroDetailPage({ params }: { params: { type: string } }
                   <CCardBody className="d-flex flex-column gap-2">
                     {items.length === 0 && <p className="empty-col">Sin obras en este estado.</p>}
                     {items.map((p) => (
-                      <Link key={p.id} href={`/project/${p.id}`} className="rubro-project-card">
+                      <div key={p.id} className="rubro-project-card">
                         <div className="d-flex justify-content-between align-items-start gap-2">
-                          <span className="rubro-project-name">{p.name}</span>
+                          <Link href={`/project/${p.id}`} className="rubro-project-name">{p.name}</Link>
                           {p.status === "pausado" && <CBadge color="secondary">Pausado</CBadge>}
                         </div>
                         <div className="rubro-project-meta">
@@ -97,7 +147,15 @@ export default function RubroDetailPage({ params }: { params: { type: string } }
                             style={{ width: `${Math.max(0, Math.min(100, p.progress))}%`, background: `var(--${p.type})` }}
                           />
                         </div>
-                      </Link>
+                        <div className="row-actions mt-2">
+                          <CButton size="sm" color="secondary" variant="outline" onClick={() => openEdit(p)}>
+                            <CIcon icon={cilPencil} size="sm" />
+                          </CButton>
+                          <CButton size="sm" color="danger" variant="outline" onClick={() => handleDelete(p)}>
+                            <CIcon icon={cilTrash} size="sm" />
+                          </CButton>
+                        </div>
+                      </div>
                     ))}
                   </CCardBody>
                 </CCard>
@@ -106,6 +164,14 @@ export default function RubroDetailPage({ params }: { params: { type: string } }
           })}
         </div>
       )}
+
+      <NewProjectWizard
+        visible={modalOpen}
+        editingProject={editingProject}
+        initialType={t}
+        onClose={() => { setModalOpen(false); setEditingProject(null); }}
+        onSaved={handleSaved}
+      />
     </AppShell>
   );
 }

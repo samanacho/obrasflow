@@ -38,6 +38,11 @@ Se guardan en `Project.sector` + `Project.sectorData` (JSON flexible, mismo patr
 
 Desde el Dashboard, el KPI "Proyectos totales" y el módulo "Todas las obras" llevan a `/rubros`: una vista con una tarjeta por rubro (Civil/Eléctrico/Vial/Otro) con la cantidad de obras, presupuesto total y un desglose rápido por estado. Cada tarjeta lleva a `/rubros/[type]`, donde las obras de ese rubro se ven en 3 columnas por estado — **Proyectada** (planificado), **En curso** (en_curso + pausado, este último con una etiqueta propia para no perder la distinción) y **Terminada** (finalizado) — cada una linkeando a la ficha completa del proyecto.
 
+**CRUD completo en todo el flujo**, sin depender de volver a la tabla plana:
+- `/rubros` y `/rubros/[type]` tienen un botón "+ Nueva obra" que abre el wizard de 3 pasos ([components/NewProjectWizard.tsx](components/NewProjectWizard.tsx)); desde un rubro puntual, el wizard arranca con ese rubro ya preseleccionado (prop `initialType`).
+- Cada tarjeta de obra en `/rubros/[type]` tiene botones de editar/eliminar (mismo patrón que la Tabla); si al editar se le cambia el rubro, la obra desaparece de esa lista.
+- `/project/[id]` ahora tiene botones "Editar"/"Eliminar" en el header — antes solo se podía editar/eliminar el proyecto en sí desde la Tabla del Dashboard. Al eliminar, vuelve a `/rubros/[type]`. El breadcrumb de la ficha también pasa a routear por Obras por rubro en vez de por la tabla plana.
+
 ## Estructura
 
 ```

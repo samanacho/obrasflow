@@ -2,8 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CCard, CCardBody, CBadge } from "@coreui/react";
+import { CCard, CCardBody, CBadge, CButton } from "@coreui/react";
+import CIcon from "@coreui/icons-react";
+import { cilPlus } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
+import NewProjectWizard from "@/components/NewProjectWizard";
 import type { ProjectDTO, ProjectType } from "@/lib/types";
 
 const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
@@ -32,13 +35,25 @@ interface Bucket {
 export default function RubrosPage() {
   const [projects, setProjects] = useState<ProjectDTO[]>([]);
   const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
 
-  useEffect(() => {
+  function load() {
+    setLoading(true);
     fetch("/api/projects")
       .then((res) => (res.ok ? res.json() : []))
       .then((data: ProjectDTO[]) => setProjects(data))
       .finally(() => setLoading(false));
-  }, []);
+  }
+  useEffect(load, []);
+
+  function handleSaved(saved: ProjectDTO) {
+    setProjects((prev) => {
+      const idx = prev.findIndex((p) => p.id === saved.id);
+      if (idx > -1) { const next = [...prev]; next[idx] = saved; return next; }
+      return [...prev, saved];
+    });
+    setModalOpen(false);
+  }
 
   const byType = useMemo(() => {
     const acc: Record<ProjectType, Bucket> = {
@@ -59,7 +74,14 @@ export default function RubrosPage() {
   }, [projects]);
 
   return (
-    <AppShell crumbs={[{ label: "Obras por rubro" }]}>
+    <AppShell
+      crumbs={[{ label: "Obras por rubro" }]}
+      headerActions={
+        <CButton color="primary" size="sm" onClick={() => setModalOpen(true)}>
+          <CIcon icon={cilPlus} className="me-1" /> Nueva obra
+        </CButton>
+      }
+    >
       <h1 className="of-page-title">📂 Obras por rubro</h1>
       <p className="module-desc mb-4">
         Toda la cartera de proyectos, agrupada por rubro. Entrá a un rubro para ver sus obras
@@ -101,6 +123,13 @@ export default function RubrosPage() {
           })}
         </div>
       )}
+
+      <NewProjectWizard
+        visible={modalOpen}
+        editingProject={null}
+        onClose={() => setModalOpen(false)}
+        onSaved={handleSaved}
+      />
     </AppShell>
   );
 }
