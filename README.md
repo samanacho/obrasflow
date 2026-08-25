@@ -11,6 +11,18 @@ Panel de gestión de proyectos de obras civiles, eléctricas y viales — Next.j
 
 El prototipo estático original (un solo `index.html` con datos embebidos) quedó en [`legacy/index.html`](legacy/index.html) como referencia.
 
+## Diseño visual — paleta TDAH/autismo-friendly ([app/globals.css](app/globals.css))
+
+La paleta por defecto de CoreUI (azules/grises saturados de admin genérico) se reemplazó por una paleta propia, apagada y cálida, pensada para reducir fatiga visual y sobrecarga sensorial:
+
+- **Fondos** no blancos puros (`--paper #f5f3ee` / `--surface #fbfaf6` en claro; `#221f1b` / `#2b2823` en oscuro) y **texto** no negro puro (`--ink #33312c`), para bajar el contraste extremo sin perder legibilidad.
+- Colores semánticos (`--civil`, `--electrico`, `--vial`, `--otro`, `--ok`, `--warn`, `--crit`, más un `--accent` para acciones) todos desaturados — nada de tonos neón o "alarma" que salten a la vista sin necesidad.
+- Cada color tiene un par `-soft` (fondo tenue) para chips/badges, evitando bloques de color sólido y saturado en superficies grandes.
+- Estas variables se mapean 1:1 a las variables internas de CoreUI/Bootstrap (`--cui-primary`, `--cui-success-bg-subtle`, etc.) en un único bloque puente, así todos los componentes de CoreUI (badges, alerts, botones) heredan la paleta sin duplicar overrides por componente.
+- `prefers-reduced-motion: reduce` se respeta tanto en CSS (recorta animaciones/transiciones globales) como en el skyline 3D (desactiva la auto-rotación de [components/ThreeSkyline.tsx](components/ThreeSkyline.tsx)).
+- Tipografía con `line-height` más generoso (1.55 en body, 1.6 en texto largo) para facilitar el seguimiento de línea, y foco de teclado visible (`:focus-visible`) en todos los elementos interactivos.
+- Los gráficos (Chart.js, Plotly, dhtmlx-gantt, Three.js) leen la misma paleta en vez de colores propios, así el look es consistente en toda la app.
+
 ## Wizard "Nuevo proyecto" ([components/NewProjectWizard.tsx](components/NewProjectWizard.tsx))
 
 Modal de 3 pasos (`size="lg"`, centrado):

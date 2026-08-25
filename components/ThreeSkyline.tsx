@@ -4,7 +4,12 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { ProjectDTO, ProjectType } from "@/lib/types";
 
-const TYPE_HEX: Record<ProjectType, number> = { civil: 0x2c4a6e, electrico: 0xa4780f, vial: 0x6b7785, otro: 0x6b3fa0 };
+// Misma paleta apagada/cálida que el resto del sitio (app/globals.css) —
+// nada de colores saturados ni de neón, para que el skyline no desentone.
+const TYPE_HEX_LIGHT: Record<ProjectType, number> = { civil: 0x4a6b85, electrico: 0xa9803d, vial: 0x726c61, otro: 0x8172a3 };
+const TYPE_HEX_DARK: Record<ProjectType, number> = { civil: 0x8ca9c2, electrico: 0xd3af6e, vial: 0xb3ac9e, otro: 0xb3a4cc };
+const CRIT_LIGHT = 0xa0564d;
+const CRIT_DARK = 0xc98980;
 
 /**
  * "Skyline" 3D de la cartera de obras — cada proyecto es un edificio: la
@@ -31,9 +36,12 @@ export default function ThreeSkyline({ projects }: { projects: ProjectDTO[] }) {
       if (disposed || !mount) return;
 
       const isDark = document.documentElement.getAttribute("data-coreui-theme") === "dark";
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const TYPE_HEX = isDark ? TYPE_HEX_DARK : TYPE_HEX_LIGHT;
+      const critHex = isDark ? CRIT_DARK : CRIT_LIGHT;
 
       const scene = new THREE.Scene();
-      scene.background = new THREE.Color(isDark ? 0x1a1d21 : 0xf4f6f9);
+      scene.background = new THREE.Color(isDark ? 0x221f1b : 0xf5f3ee);
       scene.fog = new THREE.Fog(scene.background.getHex(), 18, 40);
 
       const width = mount.clientWidth || 400;
@@ -50,8 +58,10 @@ export default function ThreeSkyline({ projects }: { projects: ProjectDTO[] }) {
       const controls = new OrbitControls(camera, renderer.domElement);
       controls.target.set(0, 1, 0);
       controls.enableDamping = true;
-      controls.autoRotate = true;
-      controls.autoRotateSpeed = 0.9;
+      // Sin autorrotación si el usuario pidió menos movimiento (prefers-reduced-motion) —
+      // un edificio orbitando solo puede ser distractivo/incómodo para ese perfil.
+      controls.autoRotate = !reducedMotion;
+      controls.autoRotateSpeed = 0.6;
       controls.minDistance = 6;
       controls.maxDistance = 26;
       controls.maxPolarAngle = Math.PI / 2.1;
@@ -62,11 +72,11 @@ export default function ThreeSkyline({ projects }: { projects: ProjectDTO[] }) {
       scene.add(sun);
 
       const groundGeo = new THREE.PlaneGeometry(40, 40);
-      const groundMat = new THREE.MeshStandardMaterial({ color: isDark ? 0x25292e : 0xe4e7ec, roughness: 1 });
+      const groundMat = new THREE.MeshStandardMaterial({ color: isDark ? 0x2b2823 : 0xebe7df, roughness: 1 });
       const ground = new THREE.Mesh(groundGeo, groundMat);
       ground.rotation.x = -Math.PI / 2;
       scene.add(ground);
-      const grid = new THREE.GridHelper(40, 40, isDark ? 0x3c4148 : 0xc7cbd1, isDark ? 0x2c3036 : 0xd8dbe0);
+      const grid = new THREE.GridHelper(40, 40, isDark ? 0x3d3930 : 0xcfc9bc, isDark ? 0x322f28 : 0xe1ddd3);
       scene.add(grid);
 
       const cols = Math.ceil(Math.sqrt(projects.length));
@@ -83,8 +93,8 @@ export default function ThreeSkyline({ projects }: { projects: ProjectDTO[] }) {
         const overBudget = p.spent > p.budget;
         const mat = new THREE.MeshStandardMaterial({
           color: TYPE_HEX[p.type],
-          emissive: overBudget ? new THREE.Color(0xb3392f) : new THREE.Color(0x000000),
-          emissiveIntensity: overBudget ? 0.35 : 0,
+          emissive: overBudget ? new THREE.Color(critHex) : new THREE.Color(0x000000),
+          emissiveIntensity: overBudget ? 0.3 : 0,
           roughness: 0.55,
           metalness: 0.1,
         });

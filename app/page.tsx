@@ -32,7 +32,7 @@ import type { ProjectDTO, ProjectStatus, ProjectType, DashboardSummaryDTO } from
 
 const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
 const TYPE_COLOR: Record<ProjectType, string> = { civil: "info", electrico: "warning", vial: "secondary", otro: "dark" };
-const TYPE_HEX: Record<ProjectType, string> = { civil: "#2c4a6e", electrico: "#a4780f", vial: "#6b7785", otro: "#6b3fa0" };
+const TYPE_HEX: Record<ProjectType, string> = { civil: "#4a6b85", electrico: "#a9803d", vial: "#726c61", otro: "#8172a3" };
 /** Para "otro" muestra el rubro que escribió el usuario en vez de la palabra genérica. */
 function typeLabel(p: { type: ProjectType; customType?: string | null }): string {
   return p.type === "otro" && p.customType ? p.customType : TYPE_LABEL[p.type];
@@ -310,7 +310,7 @@ function DashboardView({
 
   const isDark = typeof document !== "undefined" && document.documentElement.getAttribute("data-coreui-theme") === "dark";
   const gridColor = isDark ? "rgba(255,255,255,.08)" : "rgba(0,0,0,.06)";
-  const tickColor = isDark ? "#9099a6" : "#6b7785";
+  const tickColor = isDark ? "#a39e93" : "#75726a"; // --ink-soft de app/globals.css en cada tema
 
   return (
     <>
@@ -412,7 +412,7 @@ function DashboardView({
             <CCardHeader className="fw-semibold">Ejecución presupuestaria</CCardHeader>
             <CCardBody className="d-flex align-items-center justify-content-center">
               {totalBudget > 0 ? (
-                <PlotlyGauge value={execPct} color={execPct > 100 ? "#b3392f" : "#321fdb"} />
+                <PlotlyGauge value={execPct} color={execPct > 100 ? "#a0564d" : "#5c7a99"} />
               ) : <EmptyMsg />}
             </CCardBody>
           </CCard>
@@ -421,7 +421,7 @@ function DashboardView({
           <CCard className="h-100">
             <CCardHeader className="fw-semibold">Avance promedio</CCardHeader>
             <CCardBody className="d-flex align-items-center justify-content-center">
-              <PlotlyGauge value={avgProgress} max={100} color="#2f7a4f" />
+              <PlotlyGauge value={avgProgress} max={100} color="#5f8362" />
             </CCardBody>
           </CCard>
         </div>

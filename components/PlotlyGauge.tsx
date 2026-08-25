@@ -30,8 +30,8 @@ export default function PlotlyGauge({
       plotted = Plotly;
 
       const isDark = document.documentElement.getAttribute("data-coreui-theme") === "dark";
-      const inkColor = isDark ? "#e7e9ec" : "#1b2a4a";
-      const gridColor = isDark ? "#3c4148" : "#d8dbe0";
+      const inkColor = isDark ? "#e6e2d9" : "#33312c";
+      const gridColor = isDark ? "#3d3930" : "#e1ddd3";
 
       Plotly.default.newPlot(
         ref.current,
@@ -49,9 +49,9 @@ export default function PlotlyGauge({
               bordercolor: gridColor,
               steps: [
                 { range: [0, 100], color: isDark ? "rgba(255,255,255,.05)" : "rgba(0,0,0,.03)" },
-                { range: [100, max], color: isDark ? "rgba(230,76,60,.15)" : "rgba(230,76,60,.08)" },
+                { range: [100, max], color: isDark ? "rgba(201,137,128,.18)" : "rgba(160,86,77,.10)" },
               ],
-              threshold: { line: { color: "#b3392f", width: 3 }, thickness: 0.8, value: 100 },
+              threshold: { line: { color: isDark ? "#c98980" : "#a0564d", width: 3 }, thickness: 0.8, value: 100 },
             },
           },
         ],

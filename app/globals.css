@@ -1,74 +1,135 @@
+/* ==========================================================================
+   Paleta "eye-friendly" — tonos cálidos, apagados y de contraste moderado
+   (nunca blanco/negro puro, nunca colores saturados o de neón), pensada para
+   ser cómoda para usuarios con TDAH/autismo: sin brillo agresivo, sin saltos
+   bruscos de contraste, misma familia tonal cálida en todo el sitio.
+   ========================================================================== */
 :root{
-  --ink:#1b2a4a;
-  --ink-soft:#6b7785;
-  --paper:#f4f6f9;
-  --surface:#ffffff;
-  --line:#d8dbe0;
-  --accent:#321fdb;
-  --accent-ink:#22169c;
-  --civil:#2c4a6e;
-  --civil-soft:#e2e9f1;
-  --electrico:#a4780f;
-  --electrico-soft:#f4ecd6;
-  --vial:#3a3d42;
-  --vial-soft:#e7e6e2;
-  --otro:#6b3fa0;
-  --otro-soft:#ece2f5;
-  --ok:#2f7a4f;
-  --ok-soft:#e2f0e6;
-  --warn:#b5750d;
-  --warn-soft:#f6ead0;
-  --crit:#b3392f;
-  --crit-soft:#f6dfdc;
-  --shadow: 0 1px 2px rgba(28,36,48,0.06), 0 6px 16px -8px rgba(28,36,48,0.18);
+  --ink:#33312c;
+  --ink-soft:#75726a;
+  --paper:#f5f3ee;
+  --surface:#fbfaf6;
+  --line:#e1ddd3;
+  --accent:#5c7a99;
+  --accent-ink:#3f5870;
+  --accent-soft:#e4eaf0;
+  --civil:#4a6b85;
+  --civil-soft:#e3eaef;
+  --electrico:#a9803d;
+  --electrico-soft:#f2e9d6;
+  --vial:#726c61;
+  --vial-soft:#ebe7df;
+  --otro:#8172a3;
+  --otro-soft:#ece7f2;
+  --ok:#5f8362;
+  --ok-soft:#e6ede4;
+  --warn:#a67d3f;
+  --warn-soft:#f3e9d8;
+  --crit:#a0564d;
+  --crit-soft:#f4e3e0;
+  --shadow: 0 1px 2px rgba(51,49,44,0.05), 0 4px 14px -6px rgba(51,49,44,0.12);
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-coreui-theme="light"]){
-    --ink:#e7e9ec;
-    --ink-soft:#9099a6;
-    --paper:#1a1d21;
-    --surface:#25292e;
-    --line:#3c4148;
-    --accent:#6a5fff;
-    --accent-ink:#c3bfff;
-    --civil:#7fa6d6;
-    --civil-soft:#28374a;
-    --electrico:#e0b757;
-    --electrico-soft:#3d3320;
-    --vial:#b9bcc4;
-    --vial-soft:#302f2e;
-    --otro:#b596e0;
-    --otro-soft:#332946;
-    --ok:#6cbf8c;
-    --ok-soft:#1f3327;
-    --warn:#e0ab4f;
-    --warn-soft:#3a2f18;
-    --crit:#e0776c;
-    --crit-soft:#3a2320;
-    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 6px 20px -8px rgba(0,0,0,0.5);
+    --ink:#e6e2d9;
+    --ink-soft:#a39e93;
+    --paper:#221f1b;
+    --surface:#2b2823;
+    --line:#3d3930;
+    --accent:#8ca6c2;
+    --accent-ink:#b9cbdd;
+    --accent-soft:#33404c;
+    --civil:#8ca9c2;
+    --civil-soft:#33404c;
+    --electrico:#d3af6e;
+    --electrico-soft:#3f3323;
+    --vial:#b3ac9e;
+    --vial-soft:#383429;
+    --otro:#b3a4cc;
+    --otro-soft:#362e44;
+    --ok:#8fb491;
+    --ok-soft:#2a3629;
+    --warn:#d9b679;
+    --warn-soft:#3c3020;
+    --crit:#c98980;
+    --crit-soft:#3c2a26;
+    --shadow: 0 1px 2px rgba(0,0,0,0.25), 0 4px 16px -6px rgba(0,0,0,0.4);
   }
 }
 :root[data-coreui-theme="dark"]{
-  --ink:#e7e9ec;
-  --ink-soft:#9099a6;
-  --paper:#1a1d21;
-  --surface:#25292e;
-  --line:#3c4148;
-  --accent:#6a5fff;
-  --accent-ink:#c3bfff;
-  --civil:#7fa6d6;
-  --civil-soft:#28374a;
-  --electrico:#e0b757;
-  --electrico-soft:#3d3320;
-  --vial:#b9bcc4;
-  --vial-soft:#302f2e;
-  --ok:#6cbf8c;
-  --ok-soft:#1f3327;
-  --warn:#e0ab4f;
-  --warn-soft:#3a2f18;
-  --crit:#e0776c;
-  --crit-soft:#3a2320;
-  --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 6px 20px -8px rgba(0,0,0,0.5);
+  --ink:#e6e2d9;
+  --ink-soft:#a39e93;
+  --paper:#221f1b;
+  --surface:#2b2823;
+  --line:#3d3930;
+  --accent:#8ca6c2;
+  --accent-ink:#b9cbdd;
+  --accent-soft:#33404c;
+  --civil:#8ca9c2;
+  --civil-soft:#33404c;
+  --electrico:#d3af6e;
+  --electrico-soft:#3f3323;
+  --vial:#b3ac9e;
+  --vial-soft:#383429;
+  --otro:#b3a4cc;
+  --otro-soft:#362e44;
+  --ok:#8fb491;
+  --ok-soft:#2a3629;
+  --warn:#d9b679;
+  --warn-soft:#3c3020;
+  --crit:#c98980;
+  --crit-soft:#3c2a26;
+  --shadow: 0 1px 2px rgba(0,0,0,0.25), 0 4px 16px -6px rgba(0,0,0,0.4);
+}
+
+/* Puente hacia las variables de Bootstrap/CoreUI: así CBadge, CAlert,
+   CButton, CTable, etc. heredan la misma paleta apagada sin tener que tocar
+   cada componente. Los tonos "base" (para texto blanco sobre fondo sólido)
+   quedan fijos entre temas para garantizar contraste legible siempre; los
+   derivados "-bg-subtle/-border-subtle/-text-emphasis" sí siguen el tema
+   porque referencian los tokens de arriba con var().*/
+:root{
+  --cui-body-bg: var(--paper);
+  --cui-body-color: var(--ink);
+  --cui-border-color: var(--line);
+  --cui-border-color-translucent: var(--line);
+  --cui-tertiary-bg: var(--paper);
+  --cui-emphasis-color: var(--ink);
+  --cui-secondary-color: var(--ink-soft);
+
+  --cui-primary:#4f6b85; --cui-primary-rgb:79,107,133;
+  --cui-secondary:#726c61; --cui-secondary-rgb:114,108,97;
+  --cui-success:#5f8362; --cui-success-rgb:95,131,98;
+  --cui-danger:#a0564d; --cui-danger-rgb:160,86,77;
+  --cui-warning:#9c7238; --cui-warning-rgb:156,114,56;
+  --cui-info:#4c7a82; --cui-info-rgb:76,122,130;
+  --cui-dark:#5c5270; --cui-dark-rgb:92,82,112;
+  --cui-light:#8b8478; --cui-light-rgb:139,132,120;
+
+  --cui-primary-bg-subtle: var(--accent-soft);
+  --cui-primary-border-subtle: color-mix(in srgb, var(--accent) 40%, var(--surface));
+  --cui-primary-text-emphasis: var(--accent-ink);
+  --cui-secondary-bg-subtle: var(--vial-soft);
+  --cui-secondary-border-subtle: color-mix(in srgb, var(--vial) 40%, var(--surface));
+  --cui-secondary-text-emphasis: var(--vial);
+  --cui-success-bg-subtle: var(--ok-soft);
+  --cui-success-border-subtle: color-mix(in srgb, var(--ok) 40%, var(--surface));
+  --cui-success-text-emphasis: var(--ok);
+  --cui-danger-bg-subtle: var(--crit-soft);
+  --cui-danger-border-subtle: color-mix(in srgb, var(--crit) 40%, var(--surface));
+  --cui-danger-text-emphasis: var(--crit);
+  --cui-warning-bg-subtle: var(--warn-soft);
+  --cui-warning-border-subtle: color-mix(in srgb, var(--warn) 40%, var(--surface));
+  --cui-warning-text-emphasis: var(--warn);
+  --cui-info-bg-subtle: var(--civil-soft);
+  --cui-info-border-subtle: color-mix(in srgb, var(--civil) 40%, var(--surface));
+  --cui-info-text-emphasis: var(--civil);
+  --cui-dark-bg-subtle: var(--otro-soft);
+  --cui-dark-border-subtle: color-mix(in srgb, var(--otro) 40%, var(--surface));
+  --cui-dark-text-emphasis: var(--otro);
+  --cui-light-bg-subtle: var(--surface);
+  --cui-light-border-subtle: var(--line);
+  --cui-light-text-emphasis: var(--ink-soft);
 }
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
@@ -77,8 +138,17 @@ body{
   color:var(--ink);
   font-family:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
   -webkit-font-smoothing:antialiased;
+  line-height:1.55; /* más aire entre líneas: más fácil de seguir para lectura TDAH/dislexia */
 }
+p,.item-row-notes,.module-desc{line-height:1.6;}
 h1,h2,h3,.display{font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:700;letter-spacing:.01em;text-wrap:balance;}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px;}
+
+/* Menos movimiento para quien lo pida — nada de animaciones/transiciones
+   decorativas más allá de lo funcional. */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;scroll-behavior:auto !important;}
+}
 .mono{font-family:'IBM Plex Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums;}
 #app{max-width:1200px;margin:0 auto;padding:20px 20px 64px;}
 

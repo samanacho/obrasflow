@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import "dhtmlx-gantt/codebase/dhtmlxgantt.css";
 import type { ProjectDTO, ProjectType } from "@/lib/types";
 
-const TYPE_HEX: Record<ProjectType, string> = { civil: "#2c4a6e", electrico: "#a4780f", vial: "#6b7785", otro: "#6b3fa0" };
+const TYPE_HEX: Record<ProjectType, string> = { civil: "#4a6b85", electrico: "#a9803d", vial: "#726c61", otro: "#8172a3" };
 const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
 
 /**
