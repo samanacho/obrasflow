@@ -10,6 +10,7 @@ import CIcon from "@coreui/icons-react";
 import { cilArrowLeft, cilBriefcase, cilHome } from "@coreui/icons";
 import type { ProjectDTO, ProjectInput, ProjectStatus, ProjectType, ProjectSector } from "@/lib/types";
 import { PUBLIC_FIELDS, PRIVATE_FIELDS, SectorField } from "@/lib/sectorFields";
+import CityMultiSelect from "@/components/CityMultiSelect";
 
 const STATUS_LABEL: Record<ProjectStatus, string> = {
   planificado: "Planificado",
@@ -71,7 +72,7 @@ export default function NewProjectWizard({
     setForm(editingProject ? toForm(editingProject) : EMPTY_FORM);
   }, [visible, editingProject]);
 
-  function setSectorField(key: string, value: string) {
+  function setSectorField(key: string, value: string | string[]) {
     setForm((f) => ({ ...f, sectorData: { ...(f.sectorData ?? {}), [key]: value } }));
   }
 
@@ -274,7 +275,7 @@ function StepSectorDetails({
 }: {
   fields: SectorField[];
   form: ProjectInput;
-  setSectorField: (key: string, value: string) => void;
+  setSectorField: (key: string, value: string | string[]) => void;
 }) {
   if (fields.length === 0) {
     return <p className="empty-col">No hay campos adicionales configurados para este sector todavía.</p>;
@@ -284,7 +285,13 @@ function StepSectorDetails({
       {fields.map((f) => (
         <div className="mb-3" key={f.key}>
           <CFormLabel>{f.label}{!f.required && <span className="text-body-secondary"> (opcional)</span>}</CFormLabel>
-          {f.type === "select" ? (
+          {f.type === "multiselect" ? (
+            <CityMultiSelect
+              value={Array.isArray(form.sectorData?.[f.key]) ? form.sectorData[f.key] : []}
+              onChange={(next) => setSectorField(f.key, next)}
+              placeholder={f.placeholder}
+            />
+          ) : f.type === "select" ? (
             <CFormSelect required={f.required} value={String(form.sectorData?.[f.key] ?? "")} onChange={(e) => setSectorField(f.key, e.target.value)}>
               <option value="">Seleccioná…</option>
               {f.options?.map((o) => <option key={o} value={o}>{o}</option>)}

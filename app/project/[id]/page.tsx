@@ -76,19 +76,33 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
         </div>
       </div>
 
-      {project.sector && project.sectorData && Object.values(project.sectorData).some(Boolean) && (
+      {project.sector &&
+        project.sectorData &&
+        Object.values(project.sectorData).some((v) => (Array.isArray(v) ? v.length > 0 : Boolean(v))) && (
         <CCard className="mb-4">
           <CCardHeader className="fw-semibold">{SECTOR_LABEL[project.sector]} — datos adicionales</CCardHeader>
           <CCardBody>
             <CRow className="g-3">
               {(project.sector === "publico" ? PUBLIC_FIELDS : PRIVATE_FIELDS)
-                .filter((f) => project.sectorData?.[f.key])
-                .map((f) => (
-                  <CCol md={4} key={f.key}>
-                    <span className="module-desc">{f.label}</span>
-                    <div>{f.type === "number" ? fmtMoney(Number(project.sectorData?.[f.key])) : String(project.sectorData?.[f.key])}</div>
-                  </CCol>
-                ))}
+                .filter((f) => {
+                  const v = project.sectorData?.[f.key];
+                  return Array.isArray(v) ? v.length > 0 : Boolean(v);
+                })
+                .map((f) => {
+                  const v = project.sectorData?.[f.key];
+                  return (
+                    <CCol md={4} key={f.key}>
+                      <span className="module-desc">{f.label}</span>
+                      <div>
+                        {f.type === "number"
+                          ? fmtMoney(Number(v))
+                          : Array.isArray(v)
+                          ? v.join(", ")
+                          : String(v)}
+                      </div>
+                    </CCol>
+                  );
+                })}
             </CRow>
           </CCardBody>
         </CCard>

@@ -3,13 +3,13 @@
 // describe el propio Project (sectorData), no un módulo secundario.
 //
 // El listado surge de investigar el procedimiento de contratación pública
-// paraguayo (DNCP — Ley 2051/03: LPN vs. LPI, sistema de contratación,
-// garantías) y las prácticas estándar de client-intake de una constructora
-// para obra privada. Deliberadamente compacto — el usuario pidió no
-// sobrecargar el formulario, así que solo quedaron los campos más usados
-// en la práctica, casi todos opcionales salvo los realmente imprescindibles.
+// paraguayo (DNCP — Ley 2051/03: LPN vs. LPI, garantías) y las prácticas
+// estándar de client-intake de una constructora para obra privada.
+// Deliberadamente compacto — el usuario pidió no sobrecargar el formulario,
+// así que solo quedaron los campos más usados en la práctica, casi todos
+// opcionales salvo los realmente imprescindibles.
 
-export type SectorFieldType = "text" | "number" | "date" | "select";
+export type SectorFieldType = "text" | "number" | "date" | "select" | "multiselect";
 
 export interface SectorField {
   key: string;
@@ -34,13 +34,13 @@ export const PUBLIC_FIXED_FIELDS: SectorField[] = [
 ];
 
 export const PUBLIC_EXTRA_FIELDS: SectorField[] = [
-  { key: "numero_proceso", label: "N° de proceso / código de contratación", type: "text", required: false, placeholder: "Ej. LPN-12345-2026" },
+  { key: "numero_proceso", label: "N° de ID / código de contratación", type: "text", required: false, placeholder: "Ej. LPN-12345-2026" },
   {
-    key: "sistema_contratacion",
-    label: "Sistema de contratación",
-    type: "select",
-    options: ["Precio unitario", "Suma alzada (ajuste alzado)", "Coste y costas"],
+    key: "localidad",
+    label: "Localidad",
+    type: "multiselect",
     required: false,
+    placeholder: "Ciudad o ciudades donde se ejecuta la obra",
   },
   { key: "monto_adjudicado", label: "Monto adjudicado del contrato (Gs.)", type: "number", required: false, placeholder: "Ej. 850000000" },
 ];

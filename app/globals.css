@@ -408,6 +408,19 @@ a{color:inherit;}
 .home-module-title{font-family:'Barlow Condensed';font-weight:700;font-size:1.3rem;display:block;}
 .home-module-sub{font-size:.8rem;color:var(--ink-soft);display:block;}
 
+/* Selector de localidades (components/CityMultiSelect.tsx) */
+.city-multiselect{position:relative;}
+.city-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;}
+.city-chip{display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);color:var(--accent-ink);border-radius:999px;padding:3px 6px 3px 12px;font-size:.8rem;}
+.city-chip button{appearance:none;border:none;background:none;color:inherit;font-size:1rem;line-height:1;cursor:pointer;padding:0 4px;border-radius:999px;}
+.city-chip button:hover{background:rgba(0,0,0,.08);}
+.city-dropdown{position:absolute;z-index:20;top:calc(100% + 4px);left:0;right:0;max-height:280px;overflow-y:auto;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);padding:6px 0;}
+.city-dropdown-empty{padding:10px 14px;color:var(--ink-soft);font-size:.85rem;}
+.city-dropdown-group-label{padding:6px 14px 2px;font-size:.7rem;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-soft);}
+.city-dropdown-item{display:flex;align-items:center;gap:8px;padding:5px 14px;font-size:.85rem;cursor:pointer;}
+.city-dropdown-item:hover{background:var(--paper);}
+.city-dropdown-item input{margin:0;}
+
 /* Obras por rubro (/rubros, /rubros/[type]) */
 .rubro-card-icon{font-size:1.6rem;line-height:1;}
 .rubro-card-breakdown{display:flex;flex-direction:column;gap:2px;font-size:.78rem;color:var(--ink-soft);border-top:1px solid var(--line);padding-top:8px;margin-top:2px;}
