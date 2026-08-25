@@ -28,6 +28,7 @@
   --crit:#a0564d;
   --crit-soft:#f4e3e0;
   --shadow: 0 1px 2px rgba(51,49,44,0.05), 0 4px 14px -6px rgba(51,49,44,0.12);
+  --shadow-hover: 0 4px 16px -4px rgba(51,49,44,0.18);
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-coreui-theme="light"]){
@@ -53,7 +54,12 @@
     --warn-soft:#3c3020;
     --crit:#c98980;
     --crit-soft:#3c2a26;
-    --shadow: 0 1px 2px rgba(0,0,0,0.25), 0 4px 16px -6px rgba(0,0,0,0.4);
+    /* Sombra con matiz naranja cálido en vez de negro puro — un "glow" tenue,
+       no un naranja saturado/llamativo: la capa cercana es un marrón oscuro
+       apenas cálido (ancla el volumen de la tarjeta), y el halo más grande
+       lleva el tono naranja/terracota, discreto por la baja opacidad. */
+    --shadow: 0 1px 2px rgba(38,22,12,0.35), 0 4px 18px -6px rgba(194,121,58,0.3);
+    --shadow-hover: 0 6px 22px -4px rgba(194,121,58,0.4);
   }
 }
 :root[data-coreui-theme="dark"]{
@@ -79,7 +85,8 @@
   --warn-soft:#3c3020;
   --crit:#c98980;
   --crit-soft:#3c2a26;
-  --shadow: 0 1px 2px rgba(0,0,0,0.25), 0 4px 16px -6px rgba(0,0,0,0.4);
+  --shadow: 0 1px 2px rgba(38,22,12,0.35), 0 4px 18px -6px rgba(194,121,58,0.3);
+  --shadow-hover: 0 6px 22px -4px rgba(194,121,58,0.4);
 }
 
 /* Puente hacia las variables de Bootstrap/CoreUI: así CBadge, CAlert,
@@ -279,7 +286,7 @@ table.projects tr:hover td{background:var(--paper);}
 .quick-action{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:.85rem;font-weight:500;text-decoration:none;cursor:pointer;box-shadow:var(--shadow);}
 .quick-action:hover{border-color:var(--accent);color:var(--accent-ink);}
 .kpi-card{transition:box-shadow .15s ease, transform .15s ease;}
-a:has(> .kpi-card):hover .kpi-card{box-shadow:0 4px 16px -4px rgba(0,0,0,.18);transform:translateY(-1px);}
+a:has(> .kpi-card):hover .kpi-card{box-shadow:var(--shadow-hover);transform:translateY(-1px);}
 .due-badge{white-space:nowrap;flex-shrink:0;}
 
 .modal-backdrop{position:fixed;inset:0;background:rgba(20,16,10,.45);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50;}
