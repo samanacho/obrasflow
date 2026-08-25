@@ -7,6 +7,7 @@ export function serializeProject(p: Project): ProjectDTO {
     id: p.id,
     name: p.name,
     type: p.type as ProjectDTO["type"],
+    customType: p.customType,
     status: p.status as ProjectDTO["status"],
     manager: p.manager,
     start: p.start.toISOString().slice(0, 10),

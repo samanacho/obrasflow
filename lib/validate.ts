@@ -18,6 +18,9 @@ export function parseProjectInput(body: unknown): ProjectInput {
   const type = String(b.type ?? "");
   if (!TYPES.includes(type)) throw new ValidationError(`Tipo inválido: "${type}".`);
 
+  const customType = type === "otro" ? String(b.customType ?? "").trim() : "";
+  if (type === "otro" && !customType) throw new ValidationError("Especificá el rubro cuando el tipo es \"Otro\".");
+
   const status = String(b.status ?? "planificado");
   if (!STATUSES.includes(status)) throw new ValidationError(`Estado inválido: "${status}".`);
 
@@ -41,6 +44,7 @@ export function parseProjectInput(body: unknown): ProjectInput {
   return {
     name,
     type: type as ProjectInput["type"],
+    customType: type === "otro" ? customType : null,
     status: status as ProjectInput["status"],
     manager,
     start,

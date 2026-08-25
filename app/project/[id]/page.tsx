@@ -61,7 +61,7 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
         <div>
           <h1 className="of-page-title mb-2">{project.name}</h1>
           <div className="project-hero-meta">
-            <CBadge color={TYPE_COLOR[project.type]}>{TYPE_LABEL[project.type]}</CBadge>
+            <CBadge color={TYPE_COLOR[project.type]}>{project.type === "otro" && project.customType ? project.customType : TYPE_LABEL[project.type]}</CBadge>
             <CBadge color={STATUS_COLOR[project.status]}>{project.status.replace("_", " ")}</CBadge>
             <span>{project.manager}</span>
           </div>

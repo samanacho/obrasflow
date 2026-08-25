@@ -33,6 +33,10 @@ import type { ProjectDTO, ProjectInput, ProjectStatus, ProjectType, DashboardSum
 const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
 const TYPE_COLOR: Record<ProjectType, string> = { civil: "info", electrico: "warning", vial: "secondary", otro: "dark" };
 const TYPE_HEX: Record<ProjectType, string> = { civil: "#2c4a6e", electrico: "#a4780f", vial: "#6b7785", otro: "#6b3fa0" };
+/** Para "otro" muestra el rubro que escribió el usuario en vez de la palabra genérica. */
+function typeLabel(p: { type: ProjectType; customType?: string | null }): string {
+  return p.type === "otro" && p.customType ? p.customType : TYPE_LABEL[p.type];
+}
 const STATUS_LABEL: Record<ProjectStatus, string> = {
   planificado: "Planificado",
   en_curso: "En curso",
@@ -69,6 +73,7 @@ function clampPct(n: number) {
 const EMPTY_FORM: ProjectInput = {
   name: "",
   type: "civil",
+  customType: "",
   status: "planificado",
   manager: "",
   start: "",
@@ -149,6 +154,7 @@ function HomeInner() {
         ? {
             name: project.name,
             type: project.type,
+            customType: project.customType ?? "",
             status: project.status,
             manager: project.manager,
             start: project.start,
@@ -171,6 +177,10 @@ function HomeInner() {
     e.preventDefault();
     if (!form.name.trim() || !form.manager.trim() || !form.start || !form.end) {
       setFormError("Completá nombre, responsable y ambas fechas.");
+      return;
+    }
+    if (form.type === "otro" && !form.customType?.trim()) {
+      setFormError("Especificá el rubro cuando el tipo es \"Otro\".");
       return;
     }
     setSaving(true);
@@ -317,7 +327,7 @@ function HomeInner() {
             <div className="row mb-3">
               <div className="col">
                 <CFormLabel>Tipo</CFormLabel>
-                <CFormSelect value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as ProjectType })}>
+                <CFormSelect value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as ProjectType, customType: e.target.value === "otro" ? form.customType : "" })}>
                   <option value="civil">Civil</option>
                   <option value="electrico">Eléctrico</option>
                   <option value="vial">Vial</option>
@@ -331,6 +341,17 @@ function HomeInner() {
                 </CFormSelect>
               </div>
             </div>
+            {form.type === "otro" && (
+              <div className="mb-3">
+                <CFormLabel>Especificá el rubro</CFormLabel>
+                <CFormInput
+                  required
+                  placeholder="Ej. Saneamiento, forestación, demolición…"
+                  value={form.customType ?? ""}
+                  onChange={(e) => setForm({ ...form, customType: e.target.value })}
+                />
+              </div>
+            )}
             <div className="mb-3">
               <CFormLabel>Responsable</CFormLabel>
               <CFormInput required placeholder="Ej. Ana Torres" value={form.manager} onChange={(e) => setForm({ ...form, manager: e.target.value })} />
@@ -651,7 +672,7 @@ function KanbanView({
                         <DueBadge end={p.end} status={p.status} />
                       </div>
                       <div className="meta">
-                        <CBadge color={TYPE_COLOR[p.type]}>{TYPE_LABEL[p.type]}</CBadge> · {p.manager}
+                        <CBadge color={TYPE_COLOR[p.type]}>{typeLabel(p)}</CBadge> · {p.manager}
                       </div>
                       <div className="progress-line">
                         <div className="bar-track">
@@ -679,7 +700,7 @@ function KanbanView({
 function exportCSV(projects: ProjectDTO[]) {
   const headers = ["Nombre", "Tipo", "Responsable", "Inicio", "Fin", "Estado", "Presupuesto", "Ejecutado", "Avance"];
   const rows = projects.map((p) => [
-    p.name, TYPE_LABEL[p.type], p.manager, p.start, p.end, STATUS_LABEL[p.status], p.budget, p.spent, `${p.progress}%`,
+    p.name, typeLabel(p), p.manager, p.start, p.end, STATUS_LABEL[p.status], p.budget, p.spent, `${p.progress}%`,
   ]);
   const csv = [headers, ...rows]
     .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
@@ -769,7 +790,7 @@ function TablaView({
               {filtered.map((p) => (
                 <CTableRow key={p.id}>
                   <CTableDataCell><Link href={`/project/${p.id}`}><strong>{p.name}</strong></Link></CTableDataCell>
-                  <CTableDataCell><CBadge color={TYPE_COLOR[p.type]}>{TYPE_LABEL[p.type]}</CBadge></CTableDataCell>
+                  <CTableDataCell><CBadge color={TYPE_COLOR[p.type]}>{typeLabel(p)}</CBadge></CTableDataCell>
                   <CTableDataCell>{p.manager}</CTableDataCell>
                   <CTableDataCell className="mono">{fmtDate(p.start)}</CTableDataCell>
                   <CTableDataCell className="mono">{fmtDate(p.end)}</CTableDataCell>

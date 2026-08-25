@@ -6,6 +6,7 @@ export interface ProjectDTO {
   id: string;
   name: string;
   type: ProjectType;
+  customType: string | null;
   status: ProjectStatus;
   manager: string;
   start: string;
@@ -18,6 +19,7 @@ export interface ProjectDTO {
 export interface ProjectInput {
   name: string;
   type: ProjectType;
+  customType?: string | null;
   status: ProjectStatus;
   manager: string;
   start: string;

@@ -56,7 +56,7 @@ export default function DhtmlxGanttChart({ projects }: { projects: ProjectDTO[] 
         start_date: p.start,
         end_date: p.end,
         progress: Math.max(0, Math.min(1, p.progress / 100)),
-        type: TYPE_LABEL[p.type],
+        type: p.type === "otro" && p.customType ? p.customType : TYPE_LABEL[p.type],
         rubro: p.type,
         color: TYPE_HEX[p.type],
         textColor: "#fff",

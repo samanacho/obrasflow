@@ -27,10 +27,12 @@ enum ProjectStatus {
 }
 
 model Project {
-  id        String        @id @default(cuid())
-  name      String
-  type      ProjectType
-  status    ProjectStatus @default(planificado)
+  id         String        @id @default(cuid())
+  name       String
+  type       ProjectType
+  /// Rubro escrito a mano cuando `type` es "otro" — null para el resto.
+  customType String?
+  status     ProjectStatus @default(planificado)
   manager   String
   start     DateTime      @db.Date
   end       DateTime      @db.Date
