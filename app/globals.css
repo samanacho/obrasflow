@@ -371,7 +371,8 @@ a{color:inherit;}
 .status-rechazada,.status-descartada{background:var(--crit-soft);color:var(--crit);}
 .status-no_aplica{background:var(--vial-soft);color:var(--vial);}
 .status-en_proceso{background:var(--civil-soft);color:var(--civil);}
-.status-completado,.status-seleccionada{background:var(--ok-soft);color:var(--ok);}
+.status-completado,.status-seleccionada,.status-pagado{background:var(--ok-soft);color:var(--ok);}
+.status-conciliado{background:var(--civil-soft);color:var(--civil);}
 
 /* Cotización: planilla de presupuesto — liga el monto de cada cotización
    al presupuesto oficial de la ficha de la obra, y la cotización elegida

@@ -61,6 +61,19 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
     setEditOpen(false);
   }
 
+  // Movimientos recalcula el Ejecutado en el servidor al crear/editar/
+  // eliminar un item — esto vuelve a traer la ficha para que ese número
+  // (y todo lo demás que dependa de `project`) se vea actualizado sin
+  // tener que recargar la página.
+  async function refreshProject() {
+    try {
+      const res = await fetch(`/api/projects/${id}`);
+      if (res.ok) setProject(await res.json());
+    } catch {
+      /* si falla, el usuario igual puede recargar manualmente */
+    }
+  }
+
   async function handleDelete() {
     if (!project) return;
     if (!confirm(`¿Eliminar "${project.name}"? Esta acción no se puede deshacer.`)) return;
@@ -161,7 +174,7 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
         })}
       </CNav>
 
-      <ModuleView key={tab} projectId={id} kind={tab} project={project} />
+      <ModuleView key={tab} projectId={id} kind={tab} project={project} onProjectChanged={refreshProject} />
 
       <NewProjectWizard
         visible={editOpen}
@@ -173,7 +186,14 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
   );
 }
 
-function ModuleView({ projectId, kind, project }: { projectId: string; kind: string; project: ProjectDTO }) {
+function ModuleView({
+  projectId, kind, project, onProjectChanged,
+}: {
+  projectId: string;
+  kind: string;
+  project: ProjectDTO;
+  onProjectChanged: () => void;
+}) {
   const cfg = ITEM_KINDS[kind];
   const [items, setItems] = useState<ProjectItemDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -198,10 +218,22 @@ function ModuleView({ projectId, kind, project }: { projectId: string; kind: str
   const winnerMonto = winner ? Number(winner.data?.monto ?? 0) : null;
   const diff = winnerMonto !== null ? winnerMonto - project.budget : null;
 
+  // Movimientos: mismo tipo de planilla resumen, pero contra el Ejecutado
+  // real (que el servidor recalcula solo a partir de estos items).
+  const isMovimientos = kind === "change_order";
+  const sumByTipo = (tipo: string) =>
+    items.filter((i) => i.data?.tipo === tipo).reduce((acc, i) => acc + Number(i.data?.monto ?? 0), 0);
+  const adelantado = isMovimientos ? sumByTipo("Adelanto") : 0;
+  const impactoOC = isMovimientos ? sumByTipo("Orden de cambio") : 0;
+  const saldoDisponible = project.budget - project.spent;
+
   async function handleDelete(item: ProjectItemDTO) {
     if (!confirm(`¿Eliminar "${item.title}"?`)) return;
     const res = await fetch(`/api/items/${item.id}`, { method: "DELETE" });
-    if (res.ok || res.status === 204) setItems((cur) => cur.filter((i) => i.id !== item.id));
+    if (res.ok || res.status === 204) {
+      setItems((cur) => cur.filter((i) => i.id !== item.id));
+      if (kind === "change_order") onProjectChanged();
+    }
   }
 
   return (
@@ -241,6 +273,31 @@ function ModuleView({ projectId, kind, project }: { projectId: string; kind: str
           </div>
         )}
 
+        {isMovimientos && !loading && (
+          <div className="quote-budget-panel">
+            <div className="quote-budget-item">
+              <span className="qb-label">Presupuesto de la obra</span>
+              <span className="qb-value mono">{fmtMoney(project.budget)}</span>
+            </div>
+            <div className="quote-budget-item">
+              <span className="qb-label">Ejecutado</span>
+              <span className={"qb-value mono" + (project.spent > project.budget ? " alert-text" : "")}>{fmtMoney(project.spent)}</span>
+            </div>
+            <div className="quote-budget-item">
+              <span className="qb-label">Adelantado</span>
+              <span className="qb-value mono">{fmtMoney(adelantado)}</span>
+            </div>
+            <div className="quote-budget-item">
+              <span className="qb-label">Impacto de órdenes de cambio (no afecta el Ejecutado)</span>
+              <span className="qb-value mono">{fmtMoney(impactoOC)}</span>
+            </div>
+            <div className="quote-budget-item">
+              <span className="qb-label">Saldo disponible</span>
+              <span className={"qb-value mono" + (saldoDisponible < 0 ? " alert-text" : "")}>{fmtMoney(saldoDisponible)}</span>
+            </div>
+          </div>
+        )}
+
         {loading && <p className="empty-col">Cargando…</p>}
         {!loading && items.length === 0 && <p className="empty-col">Sin registros todavía.</p>}
 
@@ -258,6 +315,9 @@ function ModuleView({ projectId, kind, project }: { projectId: string; kind: str
                   <div className="item-row-sub">
                     <Link href={`/contratistas/${item.data.contratistaId}`}>{item.data.contratistaNombre || "Ver ficha del contratista"} ↗</Link>
                   </div>
+                )}
+                {item.data?.cotizacionId && (
+                  <div className="item-row-sub">Cotización vinculada: {item.data.cotizacionNombre || "—"}</div>
                 )}
                 <div className="item-row-sub">
                   {cfg.summary(item.data)}{cfg.summary(item.data) ? " · " : ""}{fmtDateTime(item.createdAt)}
@@ -290,6 +350,7 @@ function ModuleView({ projectId, kind, project }: { projectId: string; kind: str
               if (idx > -1) { const next = [...cur]; next[idx] = saved; return next; }
               return [saved, ...cur];
             });
+            if (kind === "change_order") onProjectChanged();
           }}
         />
       )}
@@ -313,6 +374,7 @@ function ItemFormModal({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [contractors, setContractors] = useState<ContractorDTO[]>([]);
+  const [quotes, setQuotes] = useState<ProjectItemDTO[]>([]);
 
   useEffect(() => {
     if (!cfg.fields.some((f) => f.type === "contractor")) return;
@@ -322,13 +384,34 @@ function ItemFormModal({
       .catch(() => setContractors([]));
   }, []);
 
+  useEffect(() => {
+    if (!cfg.fields.some((f) => f.type === "quote")) return;
+    fetch(`/api/projects/${projectId}/items?kind=cotizacion`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setQuotes)
+      .catch(() => setQuotes([]));
+  }, [projectId]);
+
   function setField(key: string, value: string) {
     setData((d) => ({ ...d, [key]: value }));
   }
 
+  // "contratistaId" -> "contratistaNombre", "cotizacionId" -> "cotizacionNombre":
+  // se guarda el nombre/label junto al id para no tener que resolverlo de
+  // nuevo cada vez que se lista el item (evita otro fetch por fila).
   function setContractorField(key: string, contractorId: string) {
     const chosen = contractors.find((c) => c.id === contractorId);
-    setData((d) => ({ ...d, [key]: contractorId, [key + "Nombre"]: chosen?.name ?? "" }));
+    const nameKey = key.replace(/Id$/, "") + "Nombre";
+    setData((d) => ({ ...d, [key]: contractorId, [nameKey]: chosen?.name ?? "" }));
+  }
+
+  function setQuoteField(key: string, quoteId: string) {
+    const chosen = quotes.find((q) => q.id === quoteId);
+    const label = chosen
+      ? `${chosen.title}${chosen.data?.contratistaNombre ? ` · ${chosen.data.contratistaNombre}` : ""} — Gs. ${Number(chosen.data?.monto ?? 0).toLocaleString("es-PY")}`
+      : "";
+    const nameKey = key.replace(/Id$/, "") + "Nombre";
+    setData((d) => ({ ...d, [key]: quoteId, [nameKey]: label }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -388,6 +471,15 @@ function ItemFormModal({
                     <option key={c.id} value={c.id}>{c.name}{c.city ? ` — ${c.city}` : ""}</option>
                   ))}
                 </CFormSelect>
+              ) : f.type === "quote" ? (
+                <CFormSelect value={data[f.key] ?? ""} onChange={(e) => setQuoteField(f.key, e.target.value)} required={f.required}>
+                  <option value="">Seleccioná una cotización…</option>
+                  {quotes.map((q) => (
+                    <option key={q.id} value={q.id}>
+                      {q.title}{q.data?.contratistaNombre ? ` · ${q.data.contratistaNombre}` : ""} — Gs. {Number(q.data?.monto ?? 0).toLocaleString("es-PY")}
+                    </option>
+                  ))}
+                </CFormSelect>
               ) : f.type === "select" ? (
                 <CFormSelect value={data[f.key] ?? ""} onChange={(e) => setField(f.key, e.target.value)} required={f.required}>
                   <option value="">Seleccioná…</option>
@@ -400,6 +492,9 @@ function ItemFormModal({
           ))}
           {cfg.fields.some((f) => f.type === "contractor") && contractors.length === 0 && (
             <p className="form-hint">No hay contratistas activos todavía. <Link href="/contratistas">Cargá uno en el directorio</Link> primero.</p>
+          )}
+          {cfg.fields.some((f) => f.type === "quote") && quotes.length === 0 && (
+            <p className="form-hint">No hay cotizaciones cargadas todavía en esta obra.</p>
           )}
         </CModalBody>
         <CModalFooter>

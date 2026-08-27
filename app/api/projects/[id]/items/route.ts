@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { serializeItem } from "@/lib/serialize";
 import { ITEM_KINDS } from "@/lib/itemKinds";
+import { recomputeProjectSpent } from "@/lib/spent";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +51,10 @@ export async function POST(req: NextRequest, { params }: Params) {
         },
       });
     }
+
+    // Movimientos: el Ejecutado de la ficha se recalcula solo a partir de
+    // estos items, así que hay que actualizarlo cada vez que se carga uno.
+    if (kind === "change_order") await recomputeProjectSpent(params.id);
 
     return NextResponse.json(serializeItem(created), { status: 201 });
   } catch (err) {

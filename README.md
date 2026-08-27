@@ -143,7 +143,7 @@ Cada proyecto tiene una página propia con 10 módulos adicionales, todos con al
 | 💰 Cotización | Varias cotizaciones por proyecto, cada una vinculada a un contratista del directorio, con una **planilla de presupuesto** arriba de la lista que liga el monto directamente al presupuesto de la ficha de la obra (presupuesto oficial, cantidad de cotizaciones, monto de la ganadora y diferencia); la cotización con estado "Seleccionada" queda marcada en toda la fila con sombreado verde tenue + check ✓, no solo con el badge de estado |
 | 🧰 Contratistas | Contratistas con los que se trabaja en esta obra, por rubro — cada uno linkea a su ficha completa en el directorio |
 | 📋 Bitácora diaria | Registro diario de avance, clima y personal en obra |
-| 🔁 Órdenes de cambio | Cambios de alcance con impacto en presupuesto |
+| 💸 Movimientos | Ledger financiero de la obra: gasto, adelanto, pago/certificación de avance, devolución, ingreso de capital u orden de cambio (el concepto anterior de este módulo, ahora un tipo más) — cada uno con monto, contratista y cotización vinculados (opcional), categoría, medio de pago, comprobante y estado (Pendiente/Pagado/Conciliado). El **Ejecutado** de la ficha del proyecto se calcula solo sumando estos movimientos ([lib/spent.ts](lib/spent.ts)) — ya no se carga a mano en el wizard. Trae su propia planilla resumen (presupuesto, ejecutado, adelantado, impacto de órdenes de cambio, saldo disponible) |
 | 👷 Equipo | Responsables y contactos asignados |
 | ✅ Checklist de seguridad | Inspecciones y controles del sitio |
 | 🚩 Hitos | Fechas clave del proyecto |

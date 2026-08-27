@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { serializeItem } from "@/lib/serialize";
 import { ITEM_KINDS } from "@/lib/itemKinds";
+import { recomputeProjectSpent } from "@/lib/spent";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,9 @@ export async function PUT(req: NextRequest, { params }: Params) {
         data: (body.data as any) ?? existing.data,
       },
     });
+
+    if (existing.kind === "change_order") await recomputeProjectSpent(existing.projectId);
+
     return NextResponse.json(serializeItem(updated));
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
@@ -42,7 +46,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
   try {
-    await prisma.projectItem.delete({ where: { id: params.itemId } });
+    const deleted = await prisma.projectItem.delete({ where: { id: params.itemId } });
+    if (deleted.kind === "change_order") await recomputeProjectSpent(deleted.projectId);
     return new NextResponse(null, { status: 204 });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {

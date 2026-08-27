@@ -2,7 +2,9 @@
 // Cada "kind" comparte el mismo modelo (ProjectItem) y el mismo patrón de
 // lista + formulario en el frontend; lo único que cambia es esta config.
 
-export type FieldType = "text" | "textarea" | "number" | "date" | "contractor" | "select";
+import { MOVIMIENTO_TIPOS } from "./movimientos";
+
+export type FieldType = "text" | "textarea" | "number" | "date" | "contractor" | "quote" | "select";
 
 export interface ItemField {
   key: string;
@@ -99,20 +101,32 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
     ],
     summary: (d) => [d.fecha, d.clima].filter(Boolean).join(" · "),
   },
+  // La clave interna sigue siendo "change_order" (así no se pierde lo ya
+  // cargado en producción bajo ese kind) aunque ahora representa el
+  // ledger financiero de la obra: gastos, adelantos, pagos a contratistas
+  // y demás movimientos de plata — el propio concepto de "orden de
+  // cambio" (impacto en presupuesto) queda como un tipo más dentro de
+  // este mismo listado, en vez de un módulo aparte.
   change_order: {
     key: "change_order",
-    label: "Órdenes de cambio",
-    singular: "orden",
-    icon: "🔁",
-    description: "Cambios de alcance con impacto en presupuesto o plazo.",
-    titleLabel: "Descripción del cambio",
-    statusOptions: ["Pendiente", "Aprobada", "Rechazada"],
+    label: "Movimientos",
+    singular: "movimiento",
+    icon: "💸",
+    description: "Gastos, adelantos, pagos a contratistas y demás movimientos de plata de la obra — el Ejecutado de la ficha se calcula solo a partir de esto.",
+    titleLabel: "Descripción del movimiento",
+    statusOptions: ["Pendiente", "Pagado", "Conciliado"],
     defaultStatus: "Pendiente",
     fields: [
-      { key: "impacto", label: "Impacto en presupuesto (Gs.)", type: "number" },
-      { key: "motivo", label: "Motivo", type: "textarea" },
+      { key: "tipo", label: "Tipo de movimiento", type: "select", required: true, options: MOVIMIENTO_TIPOS.map((t) => t.value) },
+      { key: "monto", label: "Monto (Gs.)", type: "number", required: true },
+      { key: "contratistaId", label: "Contratista (opcional)", type: "contractor" },
+      { key: "cotizacionId", label: "Cotización vinculada (opcional)", type: "quote" },
+      { key: "categoria", label: "Categoría", type: "select", options: ["Materiales y equipos", "Otro"] },
+      { key: "medioPago", label: "Medio de pago", type: "select", options: ["Efectivo", "Transferencia", "Cheque", "Tarjeta"] },
+      { key: "comprobante", label: "N° de factura/recibo o link al comprobante", type: "text" },
+      { key: "notas", label: "Notas", type: "textarea" },
     ],
-    summary: (d) => (d.impacto ? `Impacto: Gs. ${Number(d.impacto).toLocaleString("es-PY")}` : ""),
+    summary: (d) => [d.tipo, d.monto ? `Gs. ${Number(d.monto).toLocaleString("es-PY")}` : "", d.contratistaNombre].filter(Boolean).join(" · "),
   },
   team: {
     key: "team",

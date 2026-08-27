@@ -237,7 +237,8 @@ function StepGeneral({ form, setForm }: { form: ProjectInput; setForm: (f: Proje
         </CCol>
         <CCol>
           <CFormLabel>Ejecutado (Gs.)</CFormLabel>
-          <CFormInput type="number" min={0} step={1} required placeholder="0" value={form.spent === 0 ? "" : form.spent} onChange={(e) => setForm({ ...form, spent: Number(e.target.value) })} />
+          <CFormInput type="number" disabled value={form.spent} />
+          <div className="form-hint mb-0">Se calcula automáticamente desde Movimientos.</div>
         </CCol>
       </CRow>
       <div className="mb-1">

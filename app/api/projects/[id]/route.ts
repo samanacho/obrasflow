@@ -25,6 +25,10 @@ export async function PUT(req: NextRequest, { params }: Params) {
       where: { id: params.id },
       data: {
         ...data,
+        // El Ejecutado se recalcula solo a partir de Movimientos (ver
+        // lib/spent.ts) — nunca se pisa desde el formulario general de
+        // edición, aunque el payload lo siga incluyendo sin cambios.
+        spent: undefined,
         start: new Date(data.start),
         end: new Date(data.end),
         sectorData: data.sectorData === null ? Prisma.JsonNull : data.sectorData,

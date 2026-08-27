@@ -18,6 +18,7 @@ export async function POST(req: NextRequest) {
     const created = await prisma.project.create({
       data: {
         ...data,
+        spent: 0, // un proyecto nuevo arranca sin movimientos cargados.
         start: new Date(data.start),
         end: new Date(data.end),
         sectorData: data.sectorData === null ? Prisma.JsonNull : data.sectorData,
