@@ -7,6 +7,9 @@ import CIcon from "@coreui/icons-react";
 import { cilPlus, cilPencil, cilTrash } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
 import NewProjectWizard from "@/components/NewProjectWizard";
+import ConfirmDialog from "@/components/ConfirmDialog";
+import Toast from "@/components/Toast";
+import { useToast } from "@/lib/useToast";
 import type { ProjectDTO, ProjectStatus, ProjectType } from "@/lib/types";
 
 const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
@@ -40,6 +43,9 @@ export default function RubroDetailPage({ params }: { params: { type: string } }
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<ProjectDTO | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<ProjectDTO | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const { toast, showToast } = useToast();
 
   function load() {
     if (!isValidType) {
@@ -76,15 +82,18 @@ export default function RubroDetailPage({ params }: { params: { type: string } }
   }
 
   async function handleDelete(p: ProjectDTO) {
-    if (!confirm(`¿Eliminar "${p.name}"? Esta acción no se puede deshacer.`)) return;
+    setDeleting(true);
     const prev = projects;
     setProjects((cur) => cur.filter((x) => x.id !== p.id));
     try {
       const res = await fetch(`/api/projects/${p.id}`, { method: "DELETE" });
       if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
+      setConfirmTarget(null);
     } catch {
       setProjects(prev);
-      alert("No se pudo eliminar el proyecto.");
+      showToast("No se pudo eliminar el proyecto.");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -151,7 +160,7 @@ export default function RubroDetailPage({ params }: { params: { type: string } }
                           <CButton size="sm" color="secondary" variant="outline" onClick={() => openEdit(p)}>
                             <CIcon icon={cilPencil} size="sm" />
                           </CButton>
-                          <CButton size="sm" color="danger" variant="outline" onClick={() => handleDelete(p)}>
+                          <CButton size="sm" color="danger" variant="outline" onClick={() => setConfirmTarget(p)}>
                             <CIcon icon={cilTrash} size="sm" />
                           </CButton>
                         </div>
@@ -172,6 +181,16 @@ export default function RubroDetailPage({ params }: { params: { type: string } }
         onClose={() => { setModalOpen(false); setEditingProject(null); }}
         onSaved={handleSaved}
       />
+
+      <ConfirmDialog
+        open={confirmTarget !== null}
+        title="Eliminar obra"
+        message={`¿Eliminar "${confirmTarget?.name}"? Esta acción no se puede deshacer.`}
+        busy={deleting}
+        onConfirm={() => confirmTarget && handleDelete(confirmTarget)}
+        onCancel={() => setConfirmTarget(null)}
+      />
+      <Toast message={toast} />
     </AppShell>
   );
 }

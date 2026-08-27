@@ -19,6 +19,9 @@ import {
 import AppShell from "@/components/AppShell";
 import PlotlyGauge from "@/components/PlotlyGauge";
 import NewProjectWizard from "@/components/NewProjectWizard";
+import ConfirmDialog from "@/components/ConfirmDialog";
+import Toast from "@/components/Toast";
+import { useToast } from "@/lib/useToast";
 
 const ThreeSkyline = dynamic(() => import("@/components/ThreeSkyline"), {
   ssr: false,
@@ -88,7 +91,7 @@ function HomeInner() {
   const initialTab = (searchParams.get("tab") as TabKey) || "dashboard";
   const [tab, setTabState] = useState<TabKey>(TABS.some((t) => t.key === initialTab) ? initialTab : "dashboard");
   const [saveState, setSaveState] = useState<string>("");
-  const [toast, setToast] = useState<string | null>(null);
+  const { toast, showToast } = useToast();
 
   function setTab(next: TabKey) {
     setTabState(next);
@@ -97,14 +100,10 @@ function HomeInner() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<ProjectDTO | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<ProjectDTO | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => { loadProjects(); loadSummary(); }, []);
-
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 2400);
-    return () => clearTimeout(t);
-  }, [toast]);
 
   async function loadProjects() {
     setLoading(true);
@@ -149,16 +148,19 @@ function HomeInner() {
   }
 
   async function deleteProject(p: ProjectDTO) {
-    if (!confirm(`¿Eliminar "${p.name}"? Esta acción no se puede deshacer.`)) return;
+    setDeleting(true);
     const prev = projects;
     setProjects((cur) => cur.filter((x) => x.id !== p.id));
     try {
       const res = await fetch(`/api/projects/${p.id}`, { method: "DELETE" });
       if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
       setSaveState("Guardado");
+      setConfirmTarget(null);
     } catch (err) {
       setProjects(prev);
-      setToast("No se pudo eliminar el proyecto.");
+      showToast("No se pudo eliminar el proyecto.");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -183,7 +185,7 @@ function HomeInner() {
       setSaveState("Guardado");
     } catch (err) {
       setProjects(prev);
-      setToast("No se pudo actualizar el estado.");
+      showToast("No se pudo actualizar el estado.");
     }
   }
 
@@ -248,7 +250,7 @@ function HomeInner() {
         <div className="panel tab-panel">
           {tab === "dashboard" && <DashboardView projects={projects} metrics={metrics} summary={summary} onNewProject={() => openModal(null)} />}
           {tab === "kanban" && <BoardView projects={projects} onEdit={openModal} onMove={moveStatus} />}
-          {tab === "tabla" && <TablaView projects={projects} onEdit={openModal} onDelete={deleteProject} />}
+          {tab === "tabla" && <TablaView projects={projects} onEdit={openModal} onDelete={setConfirmTarget} />}
         </div>
       )}
 
@@ -259,7 +261,15 @@ function HomeInner() {
         onSaved={handleWizardSaved}
       />
 
-      <div className={"toast" + (toast ? " show" : "")}>{toast}</div>
+      <ConfirmDialog
+        open={confirmTarget !== null}
+        title="Eliminar proyecto"
+        message={`¿Eliminar "${confirmTarget?.name}"? Esta acción no se puede deshacer.`}
+        busy={deleting}
+        onConfirm={() => confirmTarget && deleteProject(confirmTarget)}
+        onCancel={() => setConfirmTarget(null)}
+      />
+      <Toast message={toast} />
     </AppShell>
   );
 }

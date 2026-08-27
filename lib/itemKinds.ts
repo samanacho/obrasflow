@@ -106,10 +106,13 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
   // ledger financiero de la obra: gastos, adelantos, pagos a contratistas
   // y demás movimientos de plata — el propio concepto de "orden de
   // cambio" (impacto en presupuesto) queda como un tipo más dentro de
-  // este mismo listado, en vez de un módulo aparte.
+  // este mismo listado, en vez de un módulo aparte. La pestaña se llama
+  // "Ejecución" (antes "Movimientos"); cada registro individual sigue
+  // siendo un "movimiento" — mismo patrón que "activity" (label
+  // "Actividad", singular "evento").
   change_order: {
     key: "change_order",
-    label: "Movimientos",
+    label: "Ejecución",
     singular: "movimiento",
     icon: "💸",
     description: "Gastos, adelantos, pagos a contratistas y demás movimientos de plata de la obra — el Ejecutado de la ficha se calcula solo a partir de esto.",

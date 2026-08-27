@@ -14,6 +14,7 @@ import CIcon from "@coreui/icons-react";
 import { cilPlus, cilPencil, cilTrash } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
 import NewProjectWizard from "@/components/NewProjectWizard";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import type { ProjectDTO, ProjectItemDTO, ContractorDTO } from "@/lib/types";
 import { ITEM_KINDS, ITEM_KIND_ORDER, ItemField } from "@/lib/itemKinds";
 import { PUBLIC_FIELDS, PRIVATE_FIELDS } from "@/lib/sectorFields";
@@ -65,6 +66,8 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
   const [tab, setTab] = useState<string>("rfi");
   const [editOpen, setEditOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -102,15 +105,15 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
 
   async function handleDelete() {
     if (!project) return;
-    if (!confirm(`¿Eliminar "${project.name}"? Esta acción no se puede deshacer.`)) return;
     setDeleting(true);
+    setDeleteError(null);
     try {
       const res = await fetch(`/api/projects/${project.id}`, { method: "DELETE" });
       if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
       router.push(`/rubros/${project.type}`);
     } catch {
       setDeleting(false);
-      alert("No se pudo eliminar el proyecto.");
+      setDeleteError("No se pudo eliminar el proyecto. Probá de nuevo.");
     }
   }
 
@@ -132,7 +135,7 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
           <CButton color="secondary" variant="outline" size="sm" onClick={() => setEditOpen(true)}>
             <CIcon icon={cilPencil} className="me-1" /> Editar
           </CButton>
-          <CButton color="danger" variant="outline" size="sm" onClick={handleDelete} disabled={deleting}>
+          <CButton color="danger" variant="outline" size="sm" onClick={() => { setDeleteError(null); setConfirmDeleteOpen(true); }} disabled={deleting}>
             <CIcon icon={cilTrash} className="me-1" /> {deleting ? "Eliminando…" : "Eliminar"}
           </CButton>
         </>
@@ -207,6 +210,16 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
         editingProject={project}
         onClose={() => setEditOpen(false)}
         onSaved={handleSaved}
+      />
+
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        title="Eliminar proyecto"
+        message={`¿Eliminar "${project.name}"? Esta acción no se puede deshacer.`}
+        busy={deleting}
+        error={deleteError}
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDeleteOpen(false)}
       />
     </AppShell>
   );
@@ -321,12 +334,28 @@ function ModuleView({
     setSearch(""); setFilterTipo(""); setFilterEstado(""); setDateFrom(""); setDateTo("");
   }
 
-  async function handleDelete(item: ProjectItemDTO) {
-    if (!confirm(`¿Eliminar "${item.title}"?`)) return;
-    const res = await fetch(`/api/items/${item.id}`, { method: "DELETE" });
-    if (res.ok || res.status === 204) {
+  // Modal de confirmación propio en vez de window.confirm(): el diálogo
+  // nativo del navegador puede quedar silenciado (extensiones, o Chrome
+  // lo bloquea solo después de varios usos seguidos) y ahí el botón
+  // "no hace nada" sin ningún error visible — esto es inmune a eso, y
+  // además muestra un error real si la eliminación falla en el servidor.
+  const [confirmTarget, setConfirmTarget] = useState<ProjectItemDTO | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  async function performDelete(item: ProjectItemDTO) {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(`/api/items/${item.id}`, { method: "DELETE" });
+      if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
       setItems((cur) => cur.filter((i) => i.id !== item.id));
       if (kind === "change_order") onProjectChanged();
+      setConfirmTarget(null);
+    } catch {
+      setDeleteError("No se pudo eliminar. Probá de nuevo.");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -526,7 +555,7 @@ function ModuleView({
                 {!cfg.readOnly && (
                   <div className="item-row-actions">
                     <CButton size="sm" color="secondary" variant="outline" onClick={() => { setEditing(item); setShowForm(true); }}><CIcon icon={cilPencil} size="sm" /></CButton>
-                    <CButton size="sm" color="danger" variant="outline" onClick={() => handleDelete(item)}><CIcon icon={cilTrash} size="sm" /></CButton>
+                    <CButton size="sm" color="danger" variant="outline" onClick={() => { setDeleteError(null); setConfirmTarget(item); }}><CIcon icon={cilTrash} size="sm" /></CButton>
                   </div>
                 )}
               </CListGroupItem>
@@ -552,6 +581,16 @@ function ModuleView({
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={confirmTarget !== null}
+        title={`Eliminar ${cfg.singular}`}
+        message={`¿Eliminar "${confirmTarget?.title}"? Esta acción no se puede deshacer.`}
+        busy={deleting}
+        error={deleteError}
+        onConfirm={() => confirmTarget && performDelete(confirmTarget)}
+        onCancel={() => setConfirmTarget(null)}
+      />
     </CCard>
   );
 }

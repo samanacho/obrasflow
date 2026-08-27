@@ -11,6 +11,13 @@ Panel de gestión de proyectos de obras civiles, eléctricas y viales — Next.j
 
 El prototipo estático original (un solo `index.html` con datos embebidos) quedó en [`legacy/index.html`](legacy/index.html) como referencia.
 
+## Sin diálogos nativos del navegador ([components/ConfirmDialog.tsx](components/ConfirmDialog.tsx), [components/Toast.tsx](components/Toast.tsx))
+
+Ningún `window.confirm()` ni `window.alert()` en toda la app. El motivo: esos diálogos nativos pueden quedar silenciados sin ningún aviso (el navegador los bloquea solo después de varios usos seguidos en la misma pestaña, o una extensión los suprime) — ahí el botón que los dispara "no hace nada" y no queda ningún rastro de error. Se reemplazaron por:
+
+- **`ConfirmDialog`** — modal de confirmación propio, reutilizado en cada pantalla que borra algo (proyectos, contratistas, items de cualquier módulo).
+- **`useToast()`** ([lib/useToast.ts](lib/useToast.ts)) + **`Toast`** — mensaje de error que se autodescarta solo, mismo patrón que ya existía en el Dashboard, ahora extraído y reutilizado en todas las pantallas con acciones que pueden fallar.
+
 ## Diseño visual — paleta TDAH/autismo-friendly ([app/globals.css](app/globals.css))
 
 La paleta por defecto de CoreUI (azules/grises saturados de admin genérico) se reemplazó por una paleta propia, apagada y cálida, pensada para reducir fatiga visual y sobrecarga sensorial:
@@ -143,7 +150,7 @@ Cada proyecto tiene una página propia con 10 módulos adicionales, todos con al
 | 💰 Cotización | Varias cotizaciones por proyecto, cada una vinculada a un contratista del directorio, con una **planilla de presupuesto** arriba de la lista que liga el monto directamente al presupuesto de la ficha de la obra (presupuesto oficial, cantidad de cotizaciones, monto de la ganadora y diferencia); la cotización con estado "Seleccionada" queda marcada en toda la fila con sombreado verde tenue + check ✓, no solo con el badge de estado |
 | 🧰 Contratistas | Contratistas con los que se trabaja en esta obra, por rubro — cada uno linkea a su ficha completa en el directorio |
 | 📋 Bitácora diaria | Registro diario de avance, clima y personal en obra |
-| 💸 Movimientos | Ledger financiero de la obra: gasto, adelanto, pago/certificación de avance, devolución, ingreso de capital u orden de cambio (el concepto anterior de este módulo, ahora un tipo más) — cada uno con **fecha real** (no la de carga), monto, contratista y cotización vinculados (opcional), categoría, medio de pago, comprobante (número o **link a una imagen**, con miniatura embebida) y estado (Pendiente/Pagado/Conciliado). El **Ejecutado** de la ficha del proyecto se calcula solo sumando estos movimientos ([lib/spent.ts](lib/spent.ts)) — ya no se carga a mano en el wizard. Trae planilla resumen (presupuesto, ejecutado, adelantado, impacto de órdenes de cambio, saldo disponible) + barra visual de % ejecutado, un donut de gasto por categoría, una curva de ejecución acumulada mes a mes contra el presupuesto, y filtros (tipo, estado, texto, rango de fechas) con orden por fecha o monto |
+| 💸 Ejecución | Ledger financiero de la obra (antes "Movimientos"; cada registro individual sigue llamándose "movimiento"): gasto, adelanto, pago/certificación de avance, devolución, ingreso de capital u orden de cambio (el concepto original de este módulo, ahora un tipo más) — cada uno con **fecha real** (no la de carga), monto, contratista y cotización vinculados (opcional), categoría, medio de pago, comprobante (número o **link a una imagen**, con miniatura embebida) y estado (Pendiente/Pagado/Conciliado). El **Ejecutado** de la ficha del proyecto se calcula solo sumando estos movimientos ([lib/spent.ts](lib/spent.ts)) — ya no se carga a mano en el wizard. Trae planilla resumen (presupuesto, ejecutado, adelantado, impacto de órdenes de cambio, saldo disponible) + barra visual de % ejecutado, un donut de gasto por categoría, una curva de ejecución acumulada mes a mes contra el presupuesto, y filtros (tipo, estado, texto, rango de fechas) con orden por fecha o monto |
 | 👷 Equipo | Responsables y contactos asignados |
 | ✅ Checklist de seguridad | Inspecciones y controles del sitio |
 | 🚩 Hitos | Fechas clave del proyecto |
