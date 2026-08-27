@@ -727,7 +727,7 @@ function ItemFormModal({
   }
 
   return (
-    <CModal visible onClose={onClose} alignment="center">
+    <CModal visible onClose={onClose} alignment="center" size="lg">
       <CModalHeader>
         <CModalTitle>{existing ? "Editar" : "Nuevo"} {cfg.singular}</CModalTitle>
       </CModalHeader>

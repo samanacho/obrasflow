@@ -183,7 +183,7 @@ export default function ContratistasPage() {
         ))}
       </CRow>
 
-      <CModal visible={modalOpen} onClose={() => setModalOpen(false)} alignment="center">
+      <CModal visible={modalOpen} onClose={() => setModalOpen(false)} alignment="center" size="lg">
         <CModalHeader><CModalTitle>{editing ? "Editar" : "Nuevo"} contratista</CModalTitle></CModalHeader>
         <CForm onSubmit={handleSubmit}>
           <CModalBody>
