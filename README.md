@@ -142,22 +142,20 @@ Otros comandos útiles: `npm run db:studio` (explorador visual de la base) y `np
 
 ## Detalle de proyecto (`/project/[id]`)
 
-Cada proyecto tiene una página propia con 10 módulos adicionales, todos con alta/edición/eliminación:
+Cada proyecto tiene una página propia con 7 módulos adicionales, todos con alta/edición/eliminación:
 
 | Módulo | Para qué sirve |
 |---|---|
 | 📐 Relevamiento | Información de campo previa a la obra: ubicación, **mapa interactivo para marcar coordenadas** ([components/LocationPicker.tsx](components/LocationPicker.tsx), Leaflet BSD-2-Clause + tiles de OpenStreetMap — sin el wrapper `react-leaflet` porque su licencia Hippocratic no es open source en sentido estricto, mismo criterio imperativo que ThreeSkyline/DhtmlxGanttChart), superficie del terreno, tipo de suelo, accesos y servicios disponibles, mediciones y condiciones del terreno. Cada relevamiento con coordenadas cargadas muestra un link directo a OpenStreetMap en el listado |
 | 💰 Cotización | Varias cotizaciones por proyecto, cada una vinculada a un contratista del directorio, con una **planilla de presupuesto** arriba de la lista que liga el monto directamente al presupuesto de la ficha de la obra (presupuesto oficial, cantidad de cotizaciones, monto de la ganadora y diferencia); la cotización con estado "Seleccionada" queda marcada en toda la fila con sombreado verde tenue + check ✓, no solo con el badge de estado |
 | 🧰 Contratistas | Contratistas con los que se trabaja en esta obra, por rubro — cada uno linkea a su ficha completa en el directorio |
-| 📋 Bitácora diaria | Registro diario de avance, clima y personal en obra |
+| 📋 Parte Diario | Antes "Bitácora diaria" — se amplió para cualquier dato, aviso, alerta o pendiente del día, no solo avance/clima: tipo de registro (Dato/Aviso/Alerta/Pendiente/Relevante), clima y personal opcionales, detalle, y estado Abierto/Resuelto para hacerle seguimiento a un pendiente. Al entrar a la pestaña se abre directo el formulario de carga, con la fecha de hoy ya puesta y mostrada arriba del módulo — pensado para anotar algo del día sin fricción |
 | 💸 Ejecución | Ledger financiero de la obra (antes "Movimientos"; cada registro individual sigue llamándose "movimiento"): gasto, adelanto, pago/certificación de avance, devolución, ingreso de capital u orden de cambio (el concepto original de este módulo, ahora un tipo más) — cada uno con **fecha real** (no la de carga), monto, contratista y cotización vinculados (opcional), categoría, medio de pago, comprobante (número o **link a una imagen**, con miniatura embebida) y estado (Pendiente/Pagado/Conciliado). El **Ejecutado** de la ficha del proyecto se calcula solo sumando estos movimientos ([lib/spent.ts](lib/spent.ts)) — ya no se carga a mano en el wizard. Trae planilla resumen (presupuesto, ejecutado, adelantado, impacto de órdenes de cambio, saldo disponible) + barra visual de % ejecutado, un donut de gasto por categoría, una curva de ejecución acumulada mes a mes contra el presupuesto, y filtros (tipo, estado, texto, rango de fechas) con orden por fecha o monto |
 | 🚜 Maquinarias | Ficha por maquinaria/equipo usado en la obra (antes "Equipo", de personas): modalidad (**Propia** / **Alquilada** / **Servicio tercerizado**), tipo de maquinaria, marca/modelo, patente, proveedor/contratista vinculado (opcional, con link a su ficha), costo, fechas de inicio y devolución, operador asignado, estado (Operativa/En mantenimiento/Fuera de servicio/Devuelta) y notas |
-| ✅ Checklist de seguridad | Inspecciones y controles del sitio |
-| 🚩 Hitos | Fechas clave del proyecto |
 | 📎 Documentos | Enlaces a planos, contratos y permisos |
-| 📷 Fotos de avance | Registro fotográfico del progreso |
-| 💵 Presupuesto detallado | Desglose por partidas de costo |
-| 🕒 Actividad | Historial automático (solo lectura) de todo lo anterior |
+| 📷 Fotos de avance | Registro fotográfico del progreso, con **miniatura embebida** de cada imagen, etapa de la obra (Inicio/Medio/Final) y un comentario/contexto por foto |
+
+"Checklist de seguridad", "Hitos", "Presupuesto detallado" y "Actividad" se sacaron del listado de pestañas a pedido del usuario — sus configs siguen en [lib/itemKinds.ts](lib/itemKinds.ts) sin borrar, así que ningún registro viejo bajo esos kinds se pierde, solo dejan de mostrarse como opción.
 
 Estos módulos comparten un solo modelo de datos (`ProjectItem`, ver `prisma/schema.prisma`) con un campo `data` en JSON — la config de campos/estados por módulo vive en [lib/itemKinds.ts](lib/itemKinds.ts).
 

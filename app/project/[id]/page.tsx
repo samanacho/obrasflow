@@ -271,6 +271,16 @@ function ModuleView({
   }
   useEffect(() => { load(); }, [projectId, kind]);
 
+  // Parte Diario: al entrar a la pestaña se abre directo el formulario
+  // para cargar algo del día — un solo `useEffect` sin dependencias
+  // (ModuleView se remonta entero por key={tab} en el padre, así que esto
+  // corre una vez por cada vez que se entra a la pestaña, no en cada
+  // re-render mientras ya está abierta).
+  useEffect(() => {
+    if (kind === "daily_log") { setEditing(null); setShowForm(true); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Cotización: la planilla de presupuesto liga el monto directamente al
   // presupuesto de la ficha de la obra, y marca cuál cotización ganó.
   const isCotizacion = kind === "cotizacion";
@@ -378,6 +388,11 @@ function ModuleView({
         <div>
           <span className="fw-semibold fs-5">{cfg.icon} {cfg.label}</span>
           <p className="module-desc mb-0">{cfg.description}</p>
+          {kind === "daily_log" && (
+            <p className="module-desc mb-0 fw-semibold">
+              📅 Hoy: {new Date().toLocaleDateString("es-PY", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+            </p>
+          )}
         </div>
         {!cfg.readOnly && (
           <CButton color="primary" size="sm" onClick={() => { setEditing(null); setShowForm(true); }}>
@@ -577,6 +592,11 @@ function ModuleView({
                     <div className="item-row-notes">Comprobante: {comprobante}</div>
                   )
                 )}
+                {kind === "photo" && item.data?.url && (
+                  <a href={item.data.url} target="_blank" rel="noopener noreferrer" className="item-row-notes d-inline-block">
+                    <img src={item.data.url} alt={item.title} className="item-receipt-thumb" />
+                  </a>
+                )}
                 {!cfg.readOnly && (
                   <div className="item-row-actions">
                     <CButton size="sm" color="secondary" variant="outline" onClick={() => { setEditing(item); setShowForm(true); }}><CIcon icon={cilPencil} size="sm" /></CButton>
@@ -632,7 +652,12 @@ function ItemFormModal({
   const cfg = ITEM_KINDS[kind];
   const [title, setTitle] = useState(existing?.title ?? "");
   const [status, setStatus] = useState(existing?.status ?? cfg.defaultStatus ?? "");
-  const [data, setData] = useState<Record<string, any>>(existing?.data ?? {});
+  // Parte Diario: un registro nuevo arranca con la fecha de hoy ya
+  // cargada — es lo primero que se pide y no tiene sentido hacer que el
+  // usuario la escriba a mano cada vez que solo quiere dejar algo del día.
+  const [data, setData] = useState<Record<string, any>>(
+    existing?.data ?? (kind === "daily_log" ? { fecha: new Date().toISOString().slice(0, 10) } : {})
+  );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [contractors, setContractors] = useState<ContractorDTO[]>([]);

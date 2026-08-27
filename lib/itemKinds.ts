@@ -93,21 +93,35 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
     ],
     summary: (d) => d.rubro ?? "",
   },
+  // La clave interna sigue siendo "daily_log" (sin migración) aunque ahora
+  // representa el Parte Diario — más amplio que la bitácora original:
+  // cualquier dato, aviso, alerta o pendiente que deba quedar registrado
+  // ese día, no solo avance/clima. Ver ModuleView en app/project/[id]/
+  // page.tsx: acá se abre el formulario solo al entrar a la pestaña y se
+  // precarga con la fecha de hoy.
   daily_log: {
     key: "daily_log",
-    label: "Bitácora diaria",
-    singular: "entrada",
+    label: "Parte Diario",
+    singular: "registro",
     icon: "📋",
-    description: "Registro diario de avance, clima y personal en obra.",
-    titleLabel: "Título de la entrada",
-    statusOptions: null,
+    description: "Cualquier dato, aviso, alerta o pendiente que deba quedar registrado ese día — no solo avance y clima.",
+    titleLabel: "Título del registro",
+    statusOptions: ["Abierto", "Resuelto"],
+    defaultStatus: "Abierto",
     fields: [
       { key: "fecha", label: "Fecha", type: "date", required: true },
-      { key: "clima", label: "Clima", type: "text" },
-      { key: "personal", label: "Personal en sitio", type: "text" },
-      { key: "notas", label: "Notas / incidentes", type: "textarea" },
+      {
+        key: "tipo",
+        label: "Tipo de registro",
+        type: "select",
+        required: true,
+        options: ["Dato", "Aviso", "Alerta", "Pendiente", "Relevante"],
+      },
+      { key: "clima", label: "Clima (opcional)", type: "text" },
+      { key: "personal", label: "Personal en sitio (opcional)", type: "text" },
+      { key: "notas", label: "Detalle", type: "textarea" },
     ],
-    summary: (d) => [d.fecha, d.clima].filter(Boolean).join(" · "),
+    summary: (d) => [d.tipo, d.fecha, d.clima].filter(Boolean).join(" · "),
   },
   // La clave interna sigue siendo "change_order" (así no se pierde lo ya
   // cargado en producción bajo ese kind) aunque ahora representa el
@@ -222,14 +236,16 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
     label: "Fotos de avance",
     singular: "foto",
     icon: "📷",
-    description: "Registro fotográfico del progreso de obra.",
-    titleLabel: "Descripción",
+    description: "Registro fotográfico del progreso de obra, con contexto de en qué momento se sacó cada imagen.",
+    titleLabel: "Descripción breve",
     statusOptions: null,
     fields: [
       { key: "url", label: "URL de la imagen", type: "text", required: true },
+      { key: "etapa", label: "Etapa de la obra", type: "select", options: ["Inicio", "Medio", "Final"] },
       { key: "fecha", label: "Fecha", type: "date" },
+      { key: "notas", label: "Comentario / contexto de la foto", type: "textarea" },
     ],
-    summary: (d) => d.fecha || "",
+    summary: (d) => [d.etapa, d.fecha].filter(Boolean).join(" · "),
   },
   budget_line: {
     key: "budget_line",
@@ -259,6 +275,11 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
   },
 };
 
+// "checklist" (Checklist de seguridad), "milestone" (Hitos), "budget_line"
+// (Presupuesto detallado) y "activity" (Actividad) se sacaron de este
+// listado a pedido del usuario — sus configs quedan arriba (no se borran)
+// para no romper ni perder los registros que ya existan bajo esos kinds,
+// solo dejan de aparecer como pestaña.
 export const ITEM_KIND_ORDER = [
   "rfi",
   "cotizacion",
@@ -266,10 +287,6 @@ export const ITEM_KIND_ORDER = [
   "daily_log",
   "change_order",
   "team",
-  "checklist",
-  "milestone",
   "document",
   "photo",
-  "budget_line",
-  "activity",
 ];
