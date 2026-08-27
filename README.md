@@ -146,7 +146,7 @@ Cada proyecto tiene una página propia con 10 módulos adicionales, todos con al
 
 | Módulo | Para qué sirve |
 |---|---|
-| 📐 Relevamiento | Información de campo previa a la obra: ubicación, coordenadas, mediciones y condiciones del terreno |
+| 📐 Relevamiento | Información de campo previa a la obra: ubicación, **mapa interactivo para marcar coordenadas** ([components/LocationPicker.tsx](components/LocationPicker.tsx), Leaflet BSD-2-Clause + tiles de OpenStreetMap — sin el wrapper `react-leaflet` porque su licencia Hippocratic no es open source en sentido estricto, mismo criterio imperativo que ThreeSkyline/DhtmlxGanttChart), superficie del terreno, tipo de suelo, accesos y servicios disponibles, mediciones y condiciones del terreno. Cada relevamiento con coordenadas cargadas muestra un link directo a OpenStreetMap en el listado |
 | 💰 Cotización | Varias cotizaciones por proyecto, cada una vinculada a un contratista del directorio, con una **planilla de presupuesto** arriba de la lista que liga el monto directamente al presupuesto de la ficha de la obra (presupuesto oficial, cantidad de cotizaciones, monto de la ganadora y diferencia); la cotización con estado "Seleccionada" queda marcada en toda la fila con sombreado verde tenue + check ✓, no solo con el badge de estado |
 | 🧰 Contratistas | Contratistas con los que se trabaja en esta obra, por rubro — cada uno linkea a su ficha completa en el directorio |
 | 📋 Bitácora diaria | Registro diario de avance, clima y personal en obra |

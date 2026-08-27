@@ -4,7 +4,7 @@
 
 import { MOVIMIENTO_TIPOS } from "./movimientos";
 
-export type FieldType = "text" | "textarea" | "number" | "date" | "contractor" | "quote" | "select";
+export type FieldType = "text" | "textarea" | "number" | "date" | "contractor" | "quote" | "select" | "location";
 
 export interface ItemField {
   key: string;
@@ -46,12 +46,20 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
     defaultStatus: "Pendiente",
     fields: [
       { key: "ubicacion", label: "Ubicación / dirección del sitio", type: "text" },
-      { key: "coordenadas", label: "Coordenadas (opcional)", type: "text", placeholder: "lat, long" },
+      { key: "coordenadas", label: "Ubicación en el mapa (opcional)", type: "location" },
+      { key: "area", label: "Superficie del terreno (m²)", type: "number" },
+      {
+        key: "tipoSuelo",
+        label: "Tipo de suelo",
+        type: "select",
+        options: ["Arcilloso", "Arenoso", "Rocoso", "Limoso", "Mixto", "No determinado"],
+      },
+      { key: "accesos", label: "Accesos y servicios disponibles (agua, luz, caminos...)", type: "textarea" },
       { key: "mediciones", label: "Mediciones / cantidades estimadas", type: "textarea" },
       { key: "observaciones", label: "Observaciones técnicas y condiciones del terreno", type: "textarea" },
       { key: "responsable", label: "Responsable del relevamiento", type: "text" },
     ],
-    summary: (d) => [d.ubicacion, d.responsable].filter(Boolean).join(" · "),
+    summary: (d) => [d.ubicacion, d.tipoSuelo, d.responsable].filter(Boolean).join(" · "),
   },
   cotizacion: {
     key: "cotizacion",

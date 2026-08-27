@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
   CCard, CCardBody, CCardHeader, CNav, CNavItem, CNavLink,
@@ -19,6 +20,11 @@ import type { ProjectDTO, ProjectItemDTO, ContractorDTO } from "@/lib/types";
 import { ITEM_KINDS, ITEM_KIND_ORDER, ItemField } from "@/lib/itemKinds";
 import { PUBLIC_FIELDS, PRIVATE_FIELDS } from "@/lib/sectorFields";
 import { MOVIMIENTO_TIPOS } from "@/lib/movimientos";
+
+const LocationPicker = dynamic(() => import("@/components/LocationPicker"), {
+  ssr: false,
+  loading: () => <p className="empty-col">Cargando mapa…</p>,
+});
 
 const TYPE_LABEL: Record<string, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
 const TYPE_COLOR: Record<string, string> = { civil: "info", electrico: "warning", vial: "secondary", otro: "dark" };
@@ -55,6 +61,13 @@ function monthLabel(ym: string): string {
   const [y, m] = ym.split("-");
   const idx = Number(m) - 1;
   return MESES_CORTOS[idx] ? `${MESES_CORTOS[idx]} ${y}` : ym;
+}
+/** "lat,lng" (como se guarda en data.coordenadas) -> {lat,lng}, o null si todavía no hay nada cargado. */
+function parseCoords(raw: any): { lat: number; lng: number } | null {
+  const [latStr, lngStr] = String(raw ?? "").split(",");
+  const lat = Number(latStr);
+  const lng = Number(lngStr);
+  return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
 }
 
 export default function ProjectDetail({ params }: { params: { id: string } }) {
@@ -522,6 +535,7 @@ function ModuleView({
             const isWinner = isCotizacion && item.status === "Seleccionada";
             const comprobante = item.data?.comprobante as string | undefined;
             const comprobanteEsImagen = comprobante && /^https?:\/\//i.test(comprobante);
+            const coords = parseCoords(item.data?.coordenadas);
             return (
               <CListGroupItem key={item.id} className={"item-row border-0 border-bottom rounded-0 px-0" + (isWinner ? " item-row-winner" : "")}>
                 <div className="item-row-main">
@@ -536,6 +550,17 @@ function ModuleView({
                 )}
                 {item.data?.cotizacionId && (
                   <div className="item-row-sub">Cotización vinculada: {item.data.cotizacionNombre || "—"}</div>
+                )}
+                {coords && (
+                  <div className="item-row-sub">
+                    <a
+                      href={`https://www.openstreetmap.org/?mlat=${coords.lat}&mlon=${coords.lng}#map=17/${coords.lat}/${coords.lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      📍 Ver ubicación en el mapa ↗
+                    </a>
+                  </div>
                 )}
                 <div className="item-row-sub">
                   {cfg.summary(item.data)}{cfg.summary(item.data) ? " · " : ""}{isMovimientos ? itemDate(item) : fmtDateTime(item.createdAt)}
@@ -722,6 +747,11 @@ function ItemFormModal({
                   <option value="">Seleccioná…</option>
                   {f.options?.map((o) => <option key={o} value={o}>{o}</option>)}
                 </CFormSelect>
+              ) : f.type === "location" ? (
+                <LocationPicker
+                  value={parseCoords(data[f.key])}
+                  onChange={(coords) => setField(f.key, `${coords.lat},${coords.lng}`)}
+                />
               ) : (
                 <CFormInput type={f.type} value={data[f.key] ?? ""} onChange={(e) => setField(f.key, e.target.value)} required={f.required} placeholder={f.placeholder} />
               )}

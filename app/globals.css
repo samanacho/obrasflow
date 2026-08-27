@@ -413,6 +413,9 @@ a{color:inherit;}
 
 /* dhtmlx Gantt (Dashboard) */
 .of-dhtmlx-gantt{height:360px;border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+
+/* Selector de ubicación (components/LocationPicker.tsx, Relevamiento) */
+.of-location-picker{height:280px;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:6px;}
 .gantt_task_line.of-gantt-task{border:none;border-radius:4px;}
 .gantt_task_line.of-gantt-task .gantt_task_progress{background:rgba(0,0,0,.28);border-radius:4px 0 0 4px;}
 .gantt_grid_scale,.gantt_task_scale{background:var(--surface);color:var(--ink-soft);}
