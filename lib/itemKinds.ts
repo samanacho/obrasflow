@@ -119,11 +119,12 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
     fields: [
       { key: "tipo", label: "Tipo de movimiento", type: "select", required: true, options: MOVIMIENTO_TIPOS.map((t) => t.value) },
       { key: "monto", label: "Monto (Gs.)", type: "number", required: true },
+      { key: "fecha", label: "Fecha del movimiento", type: "date", required: true },
       { key: "contratistaId", label: "Contratista (opcional)", type: "contractor" },
       { key: "cotizacionId", label: "Cotización vinculada (opcional)", type: "quote" },
       { key: "categoria", label: "Categoría", type: "select", options: ["Materiales y equipos", "Otro"] },
       { key: "medioPago", label: "Medio de pago", type: "select", options: ["Efectivo", "Transferencia", "Cheque", "Tarjeta"] },
-      { key: "comprobante", label: "N° de factura/recibo o link al comprobante", type: "text" },
+      { key: "comprobante", label: "N° de factura/recibo, o link a una foto del comprobante", type: "text" },
       { key: "notas", label: "Notas", type: "textarea" },
     ],
     summary: (d) => [d.tipo, d.monto ? `Gs. ${Number(d.monto).toLocaleString("es-PY")}` : "", d.contratistaNombre].filter(Boolean).join(" · "),

@@ -9,6 +9,7 @@ import {
   CForm, CFormLabel, CFormInput, CFormSelect, CFormTextarea,
   CBadge, CAlert, CListGroup, CListGroupItem, CRow, CCol,
 } from "@coreui/react";
+import { CChartDoughnut, CChartLine } from "@coreui/react-chartjs";
 import CIcon from "@coreui/icons-react";
 import { cilPlus, cilPencil, cilTrash } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
@@ -16,11 +17,24 @@ import NewProjectWizard from "@/components/NewProjectWizard";
 import type { ProjectDTO, ProjectItemDTO, ContractorDTO } from "@/lib/types";
 import { ITEM_KINDS, ITEM_KIND_ORDER, ItemField } from "@/lib/itemKinds";
 import { PUBLIC_FIELDS, PRIVATE_FIELDS } from "@/lib/sectorFields";
+import { MOVIMIENTO_TIPOS } from "@/lib/movimientos";
 
 const TYPE_LABEL: Record<string, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
 const TYPE_COLOR: Record<string, string> = { civil: "info", electrico: "warning", vial: "secondary", otro: "dark" };
 const STATUS_COLOR: Record<string, string> = { planificado: "info", en_curso: "warning", pausado: "secondary", finalizado: "success" };
 const SECTOR_LABEL: Record<string, string> = { privado: "Obra privada", publico: "Obra pública" };
+
+// Mismo mapeo que lib/spent.ts (servidor) — acá se usa para armar el
+// gráfico de ejecución en el tiempo del lado del cliente, sin pegarle de
+// nuevo a la API (los items ya están cargados en `items`).
+const EFFECT_BY_TIPO: Record<string, string> = Object.fromEntries(MOVIMIENTO_TIPOS.map((t) => [t.value, t.effect]));
+
+// Paleta cálida/apagada ya usada en el resto del sitio — misma familia de
+// colores que TYPE_HEX en app/page.tsx, para el donut de gastos por categoría.
+const CHART_COLORS_LIGHT = ["#4a6b85", "#a9803d", "#726c61", "#8172a3", "#5f8362", "#a0564d"];
+const CHART_COLORS_DARK = ["#8ca9c2", "#d3af6e", "#b3ac9e", "#b3a4cc", "#8fb491", "#c98980"];
+
+const MESES_CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
 function fmtMoney(n: number) {
   return "Gs. " + Number(n || 0).toLocaleString("es-PY");
@@ -28,6 +42,18 @@ function fmtMoney(n: number) {
 function fmtDateTime(iso: string) {
   const d = new Date(iso);
   return d.toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+/** "YYYY-MM-DD" (o el createdAt como respaldo) -> "DD/MM/YYYY". */
+function itemDate(item: ProjectItemDTO): string {
+  const raw = (item.data?.fecha || item.createdAt).slice(0, 10);
+  const [y, m, d] = raw.split("-");
+  return y && m && d ? `${d}/${m}/${y}` : raw;
+}
+/** "YYYY-MM" -> "ago 2026". */
+function monthLabel(ym: string): string {
+  const [y, m] = ym.split("-");
+  const idx = Number(m) - 1;
+  return MESES_CORTOS[idx] ? `${MESES_CORTOS[idx]} ${y}` : ym;
 }
 
 export default function ProjectDetail({ params }: { params: { id: string } }) {
@@ -200,6 +226,14 @@ function ModuleView({
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<ProjectItemDTO | null>(null);
 
+  // Filtro/orden — solo para Movimientos (ver isMovimientos más abajo).
+  const [search, setSearch] = useState("");
+  const [filterTipo, setFilterTipo] = useState("");
+  const [filterEstado, setFilterEstado] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [sortBy, setSortBy] = useState<"fecha_desc" | "fecha_asc" | "monto_desc" | "monto_asc">("fecha_desc");
+
   async function load() {
     setLoading(true);
     try {
@@ -226,6 +260,66 @@ function ModuleView({
   const adelantado = isMovimientos ? sumByTipo("Adelanto") : 0;
   const impactoOC = isMovimientos ? sumByTipo("Orden de cambio") : 0;
   const saldoDisponible = project.budget - project.spent;
+  const ejecucionPct = project.budget > 0 ? Math.min(100, (project.spent / project.budget) * 100) : 0;
+
+  // Gasto por categoría (todos los movimientos con "categoria" cargada,
+  // sin importar el tipo — es una clasificación transversal).
+  const categoriaSums: Record<string, number> = {};
+  if (isMovimientos) {
+    items.forEach((i) => {
+      const cat = i.data?.categoria || "Sin categoría";
+      categoriaSums[cat] = (categoriaSums[cat] ?? 0) + Number(i.data?.monto ?? 0);
+    });
+  }
+  const categoriaLabels = Object.keys(categoriaSums);
+  const isDark = typeof document !== "undefined" && document.documentElement.getAttribute("data-coreui-theme") === "dark";
+  const chartColors = isDark ? CHART_COLORS_DARK : CHART_COLORS_LIGHT;
+  const tickColor = isDark ? "#a39e93" : "#75726a";
+  const gridColor = isDark ? "rgba(255,255,255,.08)" : "rgba(0,0,0,.06)";
+
+  // Ejecución acumulada mes a mes — solo movimientos que realmente suman o
+  // restan al Ejecutado (igual criterio que lib/spent.ts en el servidor).
+  const monthlyTotals = new Map<string, number>();
+  if (isMovimientos) {
+    items.forEach((i) => {
+      const effect = EFFECT_BY_TIPO[i.data?.tipo ?? ""];
+      if (effect !== "add" && effect !== "subtract") return;
+      const month = (i.data?.fecha || i.createdAt).slice(0, 7);
+      const monto = Number(i.data?.monto ?? 0) * (effect === "subtract" ? -1 : 1);
+      monthlyTotals.set(month, (monthlyTotals.get(month) ?? 0) + monto);
+    });
+  }
+  const monthKeys = Array.from(monthlyTotals.keys()).sort();
+  let runningTotal = 0;
+  const monthlyCumulative = monthKeys.map((m) => (runningTotal += monthlyTotals.get(m) ?? 0));
+
+  // Lista filtrada/ordenada — no toca la planilla resumen de arriba, que
+  // siempre refleja el total real sin importar el filtro activo.
+  const filtersActive = Boolean(search || filterTipo || filterEstado || dateFrom || dateTo);
+  const visibleItems = isMovimientos
+    ? items
+        .filter((i) => !filterTipo || i.data?.tipo === filterTipo)
+        .filter((i) => !filterEstado || i.status === filterEstado)
+        .filter((i) => {
+          if (!search) return true;
+          const q = search.toLowerCase();
+          return i.title.toLowerCase().includes(q) || String(i.data?.notas ?? "").toLowerCase().includes(q);
+        })
+        .filter((i) => !dateFrom || (i.data?.fecha || i.createdAt).slice(0, 10) >= dateFrom)
+        .filter((i) => !dateTo || (i.data?.fecha || i.createdAt).slice(0, 10) <= dateTo)
+        .slice()
+        .sort((a, b) => {
+          if (sortBy === "monto_desc") return Number(b.data?.monto ?? 0) - Number(a.data?.monto ?? 0);
+          if (sortBy === "monto_asc") return Number(a.data?.monto ?? 0) - Number(b.data?.monto ?? 0);
+          const da = (a.data?.fecha || a.createdAt).slice(0, 10);
+          const db = (b.data?.fecha || b.createdAt).slice(0, 10);
+          return sortBy === "fecha_asc" ? da.localeCompare(db) : db.localeCompare(da);
+        })
+    : items;
+
+  function clearFilters() {
+    setSearch(""); setFilterTipo(""); setFilterEstado(""); setDateFrom(""); setDateTo("");
+  }
 
   async function handleDelete(item: ProjectItemDTO) {
     if (!confirm(`¿Eliminar "${item.title}"?`)) return;
@@ -298,12 +392,107 @@ function ModuleView({
           </div>
         )}
 
+        {isMovimientos && !loading && (
+          <div className="mb-3">
+            <div className="bar-track">
+              <div className="bar-fill" style={{ width: `${ejecucionPct}%`, background: project.spent > project.budget ? "var(--crit)" : "var(--ok)" }} />
+            </div>
+            <span className="item-row-sub">{Math.round(ejecucionPct)}% del presupuesto ejecutado</span>
+          </div>
+        )}
+
+        {isMovimientos && !loading && items.length > 0 && (
+          <CRow className="g-3 mb-4">
+            {categoriaLabels.length > 0 && (
+              <CCol md={6}>
+                <CCard className="h-100">
+                  <CCardHeader className="fw-semibold">Gasto por categoría</CCardHeader>
+                  <CCardBody className="d-flex align-items-center justify-content-center">
+                    <CChartDoughnut
+                      style={{ maxHeight: 200 }}
+                      data={{
+                        labels: categoriaLabels,
+                        datasets: [{ data: categoriaLabels.map((c) => categoriaSums[c]), backgroundColor: categoriaLabels.map((_, i) => chartColors[i % chartColors.length]) }],
+                      }}
+                      options={{ plugins: { legend: { position: "bottom", labels: { color: tickColor } } } }}
+                    />
+                  </CCardBody>
+                </CCard>
+              </CCol>
+            )}
+            {monthKeys.length > 0 && (
+              <CCol md={categoriaLabels.length > 0 ? 6 : 12}>
+                <CCard className="h-100">
+                  <CCardHeader className="fw-semibold">Ejecución acumulada en el tiempo</CCardHeader>
+                  <CCardBody>
+                    <CChartLine
+                      style={{ maxHeight: 200 }}
+                      data={{
+                        labels: monthKeys.map(monthLabel),
+                        datasets: [
+                          { label: "Ejecutado acumulado", data: monthlyCumulative, borderColor: chartColors[0], backgroundColor: "transparent", tension: 0.2 },
+                          { label: "Presupuesto", data: monthKeys.map(() => project.budget), borderColor: chartColors[5], borderDash: [6, 4], pointRadius: 0, backgroundColor: "transparent" },
+                        ],
+                      }}
+                      options={{
+                        plugins: { legend: { position: "bottom", labels: { color: tickColor } } },
+                        scales: {
+                          y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: tickColor } },
+                          x: { grid: { display: false }, ticks: { color: tickColor } },
+                        },
+                      }}
+                    />
+                  </CCardBody>
+                </CCard>
+              </CCol>
+            )}
+          </CRow>
+        )}
+
+        {isMovimientos && !loading && items.length > 0 && (
+          <CRow className="g-2 mb-3">
+            <CCol md={3}><CFormInput placeholder="Buscar…" value={search} onChange={(e) => setSearch(e.target.value)} /></CCol>
+            <CCol md={2}>
+              <CFormSelect value={filterTipo} onChange={(e) => setFilterTipo(e.target.value)}>
+                <option value="">Todos los tipos</option>
+                {MOVIMIENTO_TIPOS.map((t) => <option key={t.value} value={t.value}>{t.value}</option>)}
+              </CFormSelect>
+            </CCol>
+            <CCol md={2}>
+              <CFormSelect value={filterEstado} onChange={(e) => setFilterEstado(e.target.value)}>
+                <option value="">Todos los estados</option>
+                {cfg.statusOptions?.map((s) => <option key={s} value={s}>{s}</option>)}
+              </CFormSelect>
+            </CCol>
+            <CCol md={2}><CFormInput type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} title="Desde" /></CCol>
+            <CCol md={2}><CFormInput type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} title="Hasta" /></CCol>
+            <CCol md={1}>
+              <CFormSelect value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}>
+                <option value="fecha_desc">Recientes</option>
+                <option value="fecha_asc">Antiguos</option>
+                <option value="monto_desc">Mayor monto</option>
+                <option value="monto_asc">Menor monto</option>
+              </CFormSelect>
+            </CCol>
+            {filtersActive && (
+              <CCol xs={12}>
+                <button type="button" className="btn btn-sm btn-link px-0" onClick={clearFilters}>Limpiar filtros</button>
+              </CCol>
+            )}
+          </CRow>
+        )}
+
         {loading && <p className="empty-col">Cargando…</p>}
         {!loading && items.length === 0 && <p className="empty-col">Sin registros todavía.</p>}
+        {!loading && items.length > 0 && visibleItems.length === 0 && (
+          <p className="empty-col">Ningún registro coincide con estos filtros.</p>
+        )}
 
         <CListGroup>
-          {items.map((item) => {
+          {visibleItems.map((item) => {
             const isWinner = isCotizacion && item.status === "Seleccionada";
+            const comprobante = item.data?.comprobante as string | undefined;
+            const comprobanteEsImagen = comprobante && /^https?:\/\//i.test(comprobante);
             return (
               <CListGroupItem key={item.id} className={"item-row border-0 border-bottom rounded-0 px-0" + (isWinner ? " item-row-winner" : "")}>
                 <div className="item-row-main">
@@ -320,11 +509,20 @@ function ModuleView({
                   <div className="item-row-sub">Cotización vinculada: {item.data.cotizacionNombre || "—"}</div>
                 )}
                 <div className="item-row-sub">
-                  {cfg.summary(item.data)}{cfg.summary(item.data) ? " · " : ""}{fmtDateTime(item.createdAt)}
+                  {cfg.summary(item.data)}{cfg.summary(item.data) ? " · " : ""}{isMovimientos ? itemDate(item) : fmtDateTime(item.createdAt)}
                 </div>
                 {item.data?.notas && <div className="item-row-notes">{item.data.notas}</div>}
                 {item.data?.respuesta && <div className="item-row-notes">↳ {item.data.respuesta}</div>}
                 {item.data?.motivo && <div className="item-row-notes">{item.data.motivo}</div>}
+                {comprobante && (
+                  comprobanteEsImagen ? (
+                    <a href={comprobante} target="_blank" rel="noopener noreferrer" className="item-row-notes d-inline-block">
+                      <img src={comprobante} alt="Comprobante" className="item-receipt-thumb" />
+                    </a>
+                  ) : (
+                    <div className="item-row-notes">Comprobante: {comprobante}</div>
+                  )
+                )}
                 {!cfg.readOnly && (
                   <div className="item-row-actions">
                     <CButton size="sm" color="secondary" variant="outline" onClick={() => { setEditing(item); setShowForm(true); }}><CIcon icon={cilPencil} size="sm" /></CButton>
