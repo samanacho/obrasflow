@@ -101,6 +101,11 @@
   --cui-border-color: var(--line);
   --cui-border-color-translucent: var(--line);
   --cui-tertiary-bg: var(--paper);
+  /* Sin esto, los inputs/selects deshabilitados, paginación, popovers,
+     chips y el fondo de progress bars caían al azul-gris frío por
+     defecto de CoreUI (#323a49 en oscuro) — ajeno a toda la paleta cálida
+     del resto del sitio. Un solo token, corrige todos esos casos a la vez. */
+  --cui-secondary-bg: var(--line);
   --cui-emphasis-color: var(--ink);
   --cui-secondary-color: var(--ink-soft);
 
