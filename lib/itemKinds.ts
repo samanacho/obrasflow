@@ -132,19 +132,44 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
     ],
     summary: (d) => [d.tipo, d.monto ? `Gs. ${Number(d.monto).toLocaleString("es-PY")}` : "", d.contratistaNombre].filter(Boolean).join(" · "),
   },
+  // La clave interna sigue siendo "team" (sin migración, ProjectItem.kind
+  // es String libre) aunque ahora representa el registro de maquinarias
+  // de la obra en vez del equipo de personas. El campo "contratistaId"
+  // reutiliza a propósito el mismo nombre de key que usan Ejecución/
+  // Cotización/Contratistas: así el link "Ver ficha del contratista ↗"
+  // que ya renderiza ModuleView para esa key aparece acá también, sin
+  // código nuevo.
   team: {
     key: "team",
-    label: "Equipo",
-    singular: "persona",
-    icon: "👷",
-    description: "Responsables y contactos asignados al proyecto.",
-    titleLabel: "Nombre",
-    statusOptions: null,
+    label: "Maquinarias",
+    singular: "maquinaria",
+    icon: "🚜",
+    description: "Maquinarias y equipos usados en la obra — propios, alquilados o de servicios tercerizados, con proveedor y costo asociado.",
+    titleLabel: "Nombre / identificación de la maquinaria",
+    statusOptions: ["Operativa", "En mantenimiento", "Fuera de servicio", "Devuelta"],
+    defaultStatus: "Operativa",
     fields: [
-      { key: "rol", label: "Rol", type: "text" },
-      { key: "contacto", label: "Contacto (email / teléfono)", type: "text" },
+      { key: "modalidad", label: "Modalidad", type: "select", required: true, options: ["Propia", "Alquilada", "Servicio tercerizado"] },
+      {
+        key: "tipoMaquinaria",
+        label: "Tipo de maquinaria",
+        type: "select",
+        required: true,
+        options: ["Excavadora", "Retroexcavadora", "Grúa", "Compactadora", "Camión volcador", "Motoniveladora", "Hormigonera", "Generador", "Andamio", "Herramienta menor", "Otro"],
+      },
+      { key: "marcaModelo", label: "Marca / modelo", type: "text" },
+      { key: "patente", label: "Patente / N° de serie (opcional)", type: "text" },
+      { key: "contratistaId", label: "Proveedor / contratista (si es alquilada o tercerizada)", type: "contractor" },
+      { key: "costo", label: "Costo (Gs.) — alquiler, contrato o valor de compra", type: "number" },
+      { key: "fechaInicio", label: "Fecha de inicio de uso", type: "date" },
+      { key: "fechaFin", label: "Fecha de fin / devolución (opcional)", type: "date" },
+      { key: "operador", label: "Operador asignado", type: "text" },
+      { key: "notas", label: "Notas", type: "textarea" },
     ],
-    summary: (d) => [d.rol, d.contacto].filter(Boolean).join(" · "),
+    summary: (d) =>
+      [d.tipoMaquinaria, d.modalidad, d.contratistaNombre, d.costo ? `Gs. ${Number(d.costo).toLocaleString("es-PY")}` : ""]
+        .filter(Boolean)
+        .join(" · "),
   },
   checklist: {
     key: "checklist",
