@@ -11,4 +11,5 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { key: "proyectos", label: "Proyectos", href: "/", icon: "cilSpeedometer" },
   { key: "contratistas", label: "Contratistas", href: "/contratistas", icon: "cilPeople" },
+  { key: "postes", label: "Fábrica de Postes", href: "/postes", icon: "cilFactory" },
 ];

@@ -237,6 +237,13 @@ function HomeInner() {
             </CNavLink>
           </CNavItem>
         ))}
+        {/* No es una vista más de esta lista de proyectos (como las 3 de arriba) —
+            es su propia sección, con su propia página, mismo criterio que
+            Contratistas. Va acá al lado igual porque el usuario la pidió en
+            esta misma fila de pestañas. */}
+        <CNavItem>
+          <Link href="/postes" className="nav-link">Fábrica de Postes</Link>
+        </CNavItem>
       </CNav>
 
       {loading && <p className="state-message">Cargando proyectos…</p>}

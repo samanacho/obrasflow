@@ -169,3 +169,7 @@ Sección **global** (no pertenece a ningún proyecto) para comparar contratistas
 CRUD completo: crear/editar/**eliminar** desde `/contratistas` (cada tarjeta) y eliminar también desde la propia ficha (`/contratistas/[id]`, botón en el header) — al eliminar un contratista se borra en cascada su historial de calificaciones (`onDelete: Cascade` en el schema).
 
 El módulo Cotización de cada proyecto se alimenta de este directorio (`GET /api/contractors`) para elegir el contratista al cargar una cotización.
+
+## Fábrica de Postes (`/postes`)
+
+Lugar reservado en el menú (sidebar + al lado de Dashboard/Tablero/Tabla) para lo que eventualmente será el módulo de control de producción de una fábrica de postes de hormigón bajo especificaciones técnicas de la ANDE — todavía no tiene funcionalidad, solo una página de "Próximamente" con lo que probablemente va a incluir. Se diseña con el usuario cuando esté listo para definir el flujo real, mismo criterio que se usó con Movimientos/Ejecución antes de construirlo.
