@@ -73,6 +73,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     }
     console.error(err);
     const debugCode = err instanceof Prisma.PrismaClientKnownRequestError ? err.code : (err as any)?.name ?? String(err);
-    return NextResponse.json({ error: "No se pudo eliminar la especificación.", debugCode }, { status: 500 });
+    const debugMessage = (err as any)?.message ? String((err as any).message).slice(0, 500) : null;
+    return NextResponse.json({ error: "No se pudo eliminar la especificación.", debugCode, debugMessage }, { status: 500 });
   }
 }
