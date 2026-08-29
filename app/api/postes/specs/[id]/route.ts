@@ -56,10 +56,16 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
       return NextResponse.json({ error: "Especificación no encontrada." }, { status: 404 });
     }
-    // Fila con lotes ya cargados: la FK de PoleLot.specId no tiene onDelete
-    // Cascade a propósito (borrar una especificación no debería borrar la
-    // producción real ya registrada) — se avisa en vez de fallar en silencio.
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003") {
+    // Fila con lotes ya cargados: specId es una relación requerida en PoleLot
+    // sin onDelete Cascade a propósito (borrar una especificación no debería
+    // borrar la producción real ya registrada) — se avisa en vez de fallar
+    // en silencio. Prisma valida esta relación requerida ANTES de tocar la
+    // base (P2014); P2003 se deja como red de contención por si el motor
+    // llega a devolver la violación de FK cruda en su lugar.
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      (err.code === "P2014" || err.code === "P2003")
+    ) {
       return NextResponse.json(
         { error: "No se puede eliminar: hay lotes de producción cargados con esta especificación. Marcala como inactiva en su lugar." },
         { status: 409 }
