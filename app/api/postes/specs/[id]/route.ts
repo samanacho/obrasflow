@@ -48,6 +48,23 @@ export async function PUT(req: NextRequest, { params }: Params) {
   }
 }
 
+/**
+ * specId es una relación requerida en PoleLot, sin onDelete Cascade a
+ * propósito (borrar una especificación no debería borrar la producción
+ * real ya registrada). En Postgres esto sale como un RESTRICT de FK a
+ * nivel de motor (SQLSTATE 23001) — Prisma no lo mapea a un P-code
+ * "conocido" (P2003/P2014 son para otros casos), así que llega acá como
+ * PrismaClientUnknownRequestError envolviendo el ConnectorError crudo.
+ * Se detecta por el texto del mensaje en vez de por código.
+ */
+function isSpecInUseError(err: unknown): boolean {
+  if (err instanceof Prisma.PrismaClientKnownRequestError && (err.code === "P2014" || err.code === "P2003")) {
+    return true;
+  }
+  const message = err instanceof Error ? err.message : "";
+  return /foreign key constraint/i.test(message) && /PoleLot/.test(message);
+}
+
 export async function DELETE(_req: NextRequest, { params }: Params) {
   try {
     await prisma.poleSpec.delete({ where: { id: params.id } });
@@ -56,24 +73,13 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
       return NextResponse.json({ error: "Especificación no encontrada." }, { status: 404 });
     }
-    // Fila con lotes ya cargados: specId es una relación requerida en PoleLot
-    // sin onDelete Cascade a propósito (borrar una especificación no debería
-    // borrar la producción real ya registrada) — se avisa en vez de fallar
-    // en silencio. Prisma valida esta relación requerida ANTES de tocar la
-    // base (P2014); P2003 se deja como red de contención por si el motor
-    // llega a devolver la violación de FK cruda en su lugar.
-    if (
-      err instanceof Prisma.PrismaClientKnownRequestError &&
-      (err.code === "P2014" || err.code === "P2003")
-    ) {
+    if (isSpecInUseError(err)) {
       return NextResponse.json(
         { error: "No se puede eliminar: hay lotes de producción cargados con esta especificación. Marcala como inactiva en su lugar." },
         { status: 409 }
       );
     }
     console.error(err);
-    const debugCode = err instanceof Prisma.PrismaClientKnownRequestError ? err.code : (err as any)?.name ?? String(err);
-    const debugMessage = (err as any)?.message ? String((err as any).message).slice(0, 500) : null;
-    return NextResponse.json({ error: "No se pudo eliminar la especificación.", debugCode, debugMessage }, { status: 500 });
+    return NextResponse.json({ error: "No se pudo eliminar la especificación." }, { status: 500 });
   }
 }
