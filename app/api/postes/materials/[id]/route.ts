@@ -35,6 +35,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
       include: {
         recipeItems: { select: { id: true } },
         consumptions: { select: { cantidadTotal: true, costoTotalGs: true } },
+        purchases: { select: { cantidad: true } },
       },
     });
     return NextResponse.json(serializeRawMaterial(updated));

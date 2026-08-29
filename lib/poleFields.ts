@@ -1,4 +1,4 @@
-import type { PoleLotStatus } from "./types";
+import type { PoleLotStatus, PurchaseDocType } from "./types";
 
 // No hay una tabla "oficial" de clases ANDE hardcodeada acá a propósito:
 // la nomenclatura exacta (longitud/esfuerzo nominal/diámetro por clase)
@@ -48,3 +48,11 @@ export const TEST_RESULTADO_COLOR: Record<string, string> = {
 
 /** Sugerencias de unidad para el datalist del formulario de materia prima — campo libre, no una lista cerrada. */
 export const COMMON_UNITS = ["kg", "bolsa", "m", "m³", "litro", "unidad", "tonelada"];
+
+export const PURCHASE_DOC_TYPE_ORDER: PurchaseDocType[] = ["factura", "orden_compra", "remision", "otro"];
+export const PURCHASE_DOC_TYPE_LABEL: Record<PurchaseDocType, string> = {
+  factura: "Factura",
+  orden_compra: "Orden de compra",
+  remision: "Remisión",
+  otro: "Otro",
+};

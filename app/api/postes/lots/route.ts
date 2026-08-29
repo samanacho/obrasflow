@@ -39,6 +39,15 @@ export async function POST(req: NextRequest) {
     if (!Number.isInteger(cantidad) || cantidad <= 0) {
       return NextResponse.json({ error: "La cantidad tiene que ser un entero mayor a 0." }, { status: 400 });
     }
+    // Default 1: de 101 postes producidos, 100 se entregan y 1 se rompe en
+    // la fiscalización por las pruebas de la ANDE — ver comment en schema.prisma.
+    const cantidadParaEnsayo = body.cantidadParaEnsayo !== undefined ? Number(body.cantidadParaEnsayo) : 1;
+    if (!Number.isInteger(cantidadParaEnsayo) || cantidadParaEnsayo < 0) {
+      return NextResponse.json({ error: "La cantidad para ensayo tiene que ser un entero mayor o igual a 0." }, { status: 400 });
+    }
+    if (cantidadParaEnsayo > cantidad) {
+      return NextResponse.json({ error: "No puede haber más postes para ensayo que la cantidad total del lote." }, { status: 400 });
+    }
     const fechaColado = body.fechaColado ? String(body.fechaColado) : "";
     if (!fechaColado) return NextResponse.json({ error: "La fecha de colado es obligatoria." }, { status: 400 });
     const estado = LOT_STATUS_ORDER.includes(body.estado as any) ? String(body.estado) : "en_curado";
@@ -55,14 +64,17 @@ export async function POST(req: NextRequest) {
           specId,
           codigo,
           cantidad,
+          cantidadParaEnsayo,
           fechaColado: new Date(fechaColado),
           fechaDesmolde: body.fechaDesmolde ? new Date(String(body.fechaDesmolde)) : null,
           estado: estado as any,
           responsable: body.responsable ? String(body.responsable) : null,
+          ciudadDestino: body.ciudadDestino ? String(body.ciudadDestino) : null,
           andeAprobado: Boolean(body.andeAprobado),
           andeFecha: body.andeFecha ? new Date(String(body.andeFecha)) : null,
           andeActa: body.andeActa ? String(body.andeActa) : null,
           andeInspector: body.andeInspector ? String(body.andeInspector) : null,
+          numeracionAnde: body.numeracionAnde ? String(body.numeracionAnde) : null,
           notas: body.notas ? String(body.notas) : null,
         },
       });

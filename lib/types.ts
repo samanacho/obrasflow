@@ -178,15 +178,21 @@ export interface PoleLotDTO {
   specNombre: string;
   codigo: string;
   cantidad: number;
+  /** Postes del lote reservados para ensayo destructivo (no se entregan) — default 1: de 101 postes, 100 se entregan y 1 se rompe en la fiscalización. */
+  cantidadParaEnsayo: number;
   cantidadDespachada: number;
   fechaColado: string;
   fechaDesmolde: string | null;
   estado: PoleLotStatus;
   responsable: string | null;
+  /** Ciudad a la que se debe enviar este lote. */
+  ciudadDestino: string | null;
   andeAprobado: boolean;
   andeFecha: string | null;
   andeActa: string | null;
   andeInspector: string | null;
+  /** Numeración asignada por la ANDE a los postes entregados (texto libre, ej. un rango). */
+  numeracionAnde: string | null;
   notas: string | null;
   tests: PoleQualityTestDTO[];
   materialConsumptions: PoleLotMaterialConsumptionDTO[];
@@ -199,15 +205,18 @@ export interface PoleLotInput {
   specId: string;
   codigo: string;
   cantidad: number;
+  cantidadParaEnsayo?: number;
   cantidadDespachada?: number;
   fechaColado: string;
   fechaDesmolde?: string | null;
   estado?: PoleLotStatus;
   responsable?: string | null;
+  ciudadDestino?: string | null;
   andeAprobado?: boolean;
   andeFecha?: string | null;
   andeActa?: string | null;
   andeInspector?: string | null;
+  numeracionAnde?: string | null;
   notas?: string | null;
 }
 
@@ -228,6 +237,10 @@ export interface RawMaterialDTO {
   consumidoTotal: number;
   /** Suma histórica de costoTotalGs consumido en todos los lotes producidos. */
   costoTotalConsumidoGs: number;
+  /** Suma histórica de cantidad comprada (todas las compras registradas). */
+  compradoTotal: number;
+  /** Stock estimado = compradoTotal - consumidoTotal (en la unidad del material). */
+  stockDisponible: number;
   createdAt: string;
 }
 
@@ -273,4 +286,35 @@ export interface PoleLotMaterialConsumptionDTO {
   costoUnitarioGs: number;
   cantidadTotal: number;
   costoTotalGs: number;
+}
+
+// ── Compras de materia prima (trazabilidad) ────────────────────────────
+
+export type PurchaseDocType = "factura" | "orden_compra" | "remision" | "otro";
+
+export interface MaterialPurchaseDTO {
+  id: string;
+  materialId: string;
+  materialNombre: string;
+  unidad: string;
+  fecha: string;
+  cantidad: number;
+  costoUnitarioGs: number;
+  costoTotalGs: number;
+  proveedor: string | null;
+  tipoDocumento: PurchaseDocType;
+  numeroDocumento: string | null;
+  notas: string | null;
+  createdAt: string;
+}
+
+export interface MaterialPurchaseInput {
+  materialId: string;
+  fecha: string;
+  cantidad: number;
+  costoUnitarioGs: number;
+  proveedor?: string | null;
+  tipoDocumento?: PurchaseDocType;
+  numeroDocumento?: string | null;
+  notas?: string | null;
 }

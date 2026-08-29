@@ -16,14 +16,15 @@ import AppShell from "@/components/AppShell";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import Toast from "@/components/Toast";
 import { useToast } from "@/lib/useToast";
-import { LOT_STATUS_ORDER, LOT_STATUS_LABEL, LOT_STATUS_COLOR, COMMON_UNITS } from "@/lib/poleFields";
+import { LOT_STATUS_ORDER, LOT_STATUS_LABEL, LOT_STATUS_COLOR, COMMON_UNITS, PURCHASE_DOC_TYPE_ORDER, PURCHASE_DOC_TYPE_LABEL } from "@/lib/poleFields";
 import { fmtGs } from "@/lib/currency";
-import type { PoleSpecDTO, PoleSpecInput, PoleLotDTO, PoleLotInput, PoleLotStatus, RawMaterialDTO, RawMaterialInput } from "@/lib/types";
+import type { PoleSpecDTO, PoleSpecInput, PoleLotDTO, PoleLotInput, PoleLotStatus, RawMaterialDTO, RawMaterialInput, MaterialPurchaseDTO, MaterialPurchaseInput } from "@/lib/types";
 
 const POSTES_TABS = [
   { key: "resumen", label: "Resumen" },
   { key: "specs", label: "Especificaciones" },
   { key: "materiales", label: "Materias primas" },
+  { key: "compras", label: "Compras" },
   { key: "lotes", label: "Lotes de producción" },
 ] as const;
 type PostesTab = (typeof POSTES_TABS)[number]["key"];
@@ -39,11 +40,16 @@ const EMPTY_MATERIAL: RawMaterialInput = {
 
 function emptyLot(specId = ""): PoleLotInput {
   return {
-    specId, codigo: "", cantidad: 0, cantidadDespachada: 0,
+    specId, codigo: "", cantidad: 0, cantidadParaEnsayo: 1, cantidadDespachada: 0,
     fechaColado: "", fechaDesmolde: "", estado: "en_curado",
-    responsable: "", andeAprobado: false, andeFecha: "", andeActa: "", andeInspector: "", notas: "",
+    responsable: "", ciudadDestino: "", andeAprobado: false, andeFecha: "", andeActa: "", andeInspector: "", numeracionAnde: "", notas: "",
   };
 }
+
+const EMPTY_PURCHASE: MaterialPurchaseInput = {
+  materialId: "", fecha: new Date().toISOString().slice(0, 10), cantidad: 0, costoUnitarioGs: 0,
+  proveedor: "", tipoDocumento: "factura", numeroDocumento: "", notas: "",
+};
 
 function fmtDate(d: string | null) {
   if (!d) return "—";
@@ -67,20 +73,23 @@ export default function PostesPage() {
   const [specs, setSpecs] = useState<PoleSpecDTO[]>([]);
   const [lots, setLots] = useState<PoleLotDTO[]>([]);
   const [materials, setMaterials] = useState<RawMaterialDTO[]>([]);
+  const [purchases, setPurchases] = useState<MaterialPurchaseDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast, showToast } = useToast();
 
   async function loadAll() {
     setLoading(true);
     try {
-      const [specsRes, lotsRes, materialsRes] = await Promise.all([
+      const [specsRes, lotsRes, materialsRes, purchasesRes] = await Promise.all([
         fetch("/api/postes/specs"),
         fetch("/api/postes/lots"),
         fetch("/api/postes/materials"),
+        fetch("/api/postes/purchases"),
       ]);
       setSpecs(specsRes.ok ? await specsRes.json() : []);
       setLots(lotsRes.ok ? await lotsRes.json() : []);
       setMaterials(materialsRes.ok ? await materialsRes.json() : []);
+      setPurchases(purchasesRes.ok ? await purchasesRes.json() : []);
     } finally {
       setLoading(false);
     }
@@ -107,6 +116,7 @@ export default function PostesPage() {
       {!loading && tab === "resumen" && <ResumenView specs={specs} lots={lots} />}
       {!loading && tab === "specs" && <SpecsView specs={specs} onChanged={loadAll} showToast={showToast} />}
       {!loading && tab === "materiales" && <MaterialesView materials={materials} onChanged={loadAll} showToast={showToast} />}
+      {!loading && tab === "compras" && <PurchasesView purchases={purchases} materials={materials} onChanged={loadAll} showToast={showToast} />}
       {!loading && tab === "lotes" && <LotesView lots={lots} specs={specs} onChanged={loadAll} showToast={showToast} />}
 
       <Toast message={toast} />
@@ -121,7 +131,7 @@ function ResumenView({ specs, lots }: { specs: PoleSpecDTO[]; lots: PoleLotDTO[]
   const rechazados = lots.filter((l) => l.estado === "rechazado").length;
   const stockDisponible = lots
     .filter((l) => l.estado === "aprobado")
-    .reduce((sum, l) => sum + Math.max(0, l.cantidad - l.cantidadDespachada), 0);
+    .reduce((sum, l) => sum + Math.max(0, l.cantidad - l.cantidadParaEnsayo - l.cantidadDespachada), 0);
   const costoMaterialConsumido = lots.reduce((sum, l) => sum + l.costoMaterialTotalGs, 0);
 
   const porEstado = LOT_STATUS_ORDER.map((e) => ({ estado: e, count: lots.filter((l) => l.estado === e).length })).filter((x) => x.count > 0);
@@ -474,6 +484,8 @@ function MaterialesView({
                   <CTableHeaderCell>Proveedor</CTableHeaderCell>
                   <CTableHeaderCell>En X recetas</CTableHeaderCell>
                   <CTableHeaderCell>Consumido histórico</CTableHeaderCell>
+                  <CTableHeaderCell>Comprado</CTableHeaderCell>
+                  <CTableHeaderCell>Stock disponible</CTableHeaderCell>
                   <CTableHeaderCell>Estado</CTableHeaderCell>
                   <CTableHeaderCell className="text-end">Acciones</CTableHeaderCell>
                 </CTableRow>
@@ -487,6 +499,8 @@ function MaterialesView({
                     <CTableDataCell>{m.proveedor || "—"}</CTableDataCell>
                     <CTableDataCell className="mono">{m.recipeCount}</CTableDataCell>
                     <CTableDataCell className="mono">{`${m.consumidoTotal} ${m.unidad}`}</CTableDataCell>
+                    <CTableDataCell className="mono">{`${m.compradoTotal} ${m.unidad}`}</CTableDataCell>
+                    <CTableDataCell className="mono">{`${m.stockDisponible} ${m.unidad}`}</CTableDataCell>
                     <CTableDataCell><CBadge color={m.activo ? "success" : "secondary"}>{m.activo ? "Activa" : "Inactiva"}</CBadge></CTableDataCell>
                     <CTableDataCell className="text-end">
                       <CButton size="sm" color="secondary" variant="outline" className="me-1" onClick={() => openModal(m)}><CIcon icon={cilPencil} size="sm" /></CButton>
@@ -560,6 +574,209 @@ function MaterialesView({
   );
 }
 
+function PurchasesView({
+  purchases, materials, onChanged, showToast,
+}: {
+  purchases: MaterialPurchaseDTO[];
+  materials: RawMaterialDTO[];
+  onChanged: () => void;
+  showToast: (m: string) => void;
+}) {
+  const [materialFilter, setMaterialFilter] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [form, setForm] = useState<MaterialPurchaseInput>(EMPTY_PURCHASE);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<MaterialPurchaseDTO | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const visiblePurchases = materialFilter ? purchases.filter((p) => p.materialId === materialFilter) : purchases;
+
+  function openModal() {
+    setFormError(null);
+    setForm({ ...EMPTY_PURCHASE, materialId: materials.find((m) => m.activo)?.id ?? "", fecha: new Date().toISOString().slice(0, 10) });
+    setModalOpen(true);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.materialId) { setFormError("Elegí una materia prima."); return; }
+    if (!form.fecha) { setFormError("Cargá la fecha de compra."); return; }
+    if (!form.cantidad || form.cantidad <= 0) { setFormError("La cantidad tiene que ser mayor a 0."); return; }
+    if (!form.costoUnitarioGs || form.costoUnitarioGs <= 0) { setFormError("Cargá el costo unitario pagado (Gs.)."); return; }
+    setSaving(true);
+    setFormError(null);
+    try {
+      const res = await fetch("/api/postes/purchases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `HTTP ${res.status}`);
+      }
+      setModalOpen(false);
+      onChanged();
+    } catch (err: any) {
+      setFormError(err.message || "No se pudo guardar.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function performDelete(p: MaterialPurchaseDTO) {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(`/api/postes/purchases/${p.id}`, { method: "DELETE" });
+      if (!res.ok && res.status !== 204) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `HTTP ${res.status}`);
+      }
+      setConfirmTarget(null);
+      onChanged();
+    } catch (err: any) {
+      setDeleteError(err.message || "No se pudo eliminar.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <CCard>
+      <CCardHeader className="module-panel-head">
+        <div>
+          <span className="fw-semibold fs-5">Compras de materia prima</span>
+          <p className="module-desc mb-0">Historial de compras — de acá sale el stock disponible de cada materia prima.</p>
+        </div>
+        <CButton color="primary" size="sm" onClick={openModal} disabled={materials.length === 0}>
+          <CIcon icon={cilPlus} className="me-1" /> Registrar compra
+        </CButton>
+      </CCardHeader>
+      <CCardBody>
+        {materials.length === 0 && <CAlert color="warning">Cargá al menos una materia prima antes de registrar una compra.</CAlert>}
+
+        {purchases.length > 0 && (
+          <CRow className="g-2 mb-3">
+            <CCol md={3}>
+              <CFormSelect value={materialFilter} onChange={(e) => setMaterialFilter(e.target.value)}>
+                <option value="">Todas las materias primas</option>
+                {materials.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+              </CFormSelect>
+            </CCol>
+          </CRow>
+        )}
+
+        {purchases.length === 0 && <p className="empty-col">Sin compras registradas todavía.</p>}
+        {purchases.length > 0 && visiblePurchases.length === 0 && <p className="empty-col">Ninguna compra coincide con este filtro.</p>}
+
+        {visiblePurchases.length > 0 && (
+          <div className="table-wrap">
+            <CTable hover responsive>
+              <CTableHead>
+                <CTableRow>
+                  <CTableHeaderCell>Fecha</CTableHeaderCell>
+                  <CTableHeaderCell>Material</CTableHeaderCell>
+                  <CTableHeaderCell>Documento</CTableHeaderCell>
+                  <CTableHeaderCell>Proveedor</CTableHeaderCell>
+                  <CTableHeaderCell>Cantidad</CTableHeaderCell>
+                  <CTableHeaderCell>Costo unitario (Gs)</CTableHeaderCell>
+                  <CTableHeaderCell>Costo total (Gs)</CTableHeaderCell>
+                  <CTableHeaderCell className="text-end">Acciones</CTableHeaderCell>
+                </CTableRow>
+              </CTableHead>
+              <CTableBody>
+                {visiblePurchases.map((p) => (
+                  <CTableRow key={p.id}>
+                    <CTableDataCell className="mono">{fmtDate(p.fecha)}</CTableDataCell>
+                    <CTableDataCell className="fw-semibold">{p.materialNombre}</CTableDataCell>
+                    <CTableDataCell>{`${PURCHASE_DOC_TYPE_LABEL[p.tipoDocumento]}${p.numeroDocumento ? " · " + p.numeroDocumento : ""}`}</CTableDataCell>
+                    <CTableDataCell>{p.proveedor || "—"}</CTableDataCell>
+                    <CTableDataCell className="mono">{`${p.cantidad} ${p.unidad}`}</CTableDataCell>
+                    <CTableDataCell className="mono">{fmtGs(p.costoUnitarioGs)}</CTableDataCell>
+                    <CTableDataCell className="mono">{fmtGs(p.costoTotalGs)}</CTableDataCell>
+                    <CTableDataCell className="text-end">
+                      <CButton size="sm" color="danger" variant="outline" onClick={() => { setDeleteError(null); setConfirmTarget(p); }}><CIcon icon={cilTrash} size="sm" /></CButton>
+                    </CTableDataCell>
+                  </CTableRow>
+                ))}
+              </CTableBody>
+            </CTable>
+          </div>
+        )}
+      </CCardBody>
+
+      <CModal visible={modalOpen} onClose={() => setModalOpen(false)} alignment="center" size="lg">
+        <CModalHeader><CModalTitle>Registrar compra</CModalTitle></CModalHeader>
+        <CForm onSubmit={handleSubmit}>
+          <CModalBody>
+            {formError && <CAlert color="danger">{formError}</CAlert>}
+            <CRow className="mb-3 g-2">
+              <CCol md={8}>
+                <CFormLabel>Materia prima</CFormLabel>
+                <CFormSelect value={form.materialId} onChange={(e) => setForm({ ...form, materialId: e.target.value })} required>
+                  <option value="">Seleccioná…</option>
+                  {materials.map((m) => <option key={m.id} value={m.id}>{`${m.nombre} (${m.unidad})`}</option>)}
+                </CFormSelect>
+              </CCol>
+              <CCol md={4}>
+                <CFormLabel>Fecha</CFormLabel>
+                <CFormInput type="date" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} required />
+              </CCol>
+            </CRow>
+            <CRow className="mb-3 g-2">
+              <CCol>
+                <CFormLabel>Cantidad</CFormLabel>
+                <CFormInput type="number" min={0} step="any" value={form.cantidad || ""} onChange={(e) => setForm({ ...form, cantidad: Number(e.target.value) })} required />
+              </CCol>
+              <CCol>
+                <CFormLabel>Costo unitario pagado (Gs.)</CFormLabel>
+                <CFormInput type="number" min={0} step="1" value={form.costoUnitarioGs || ""} onChange={(e) => setForm({ ...form, costoUnitarioGs: Number(e.target.value) })} required />
+              </CCol>
+            </CRow>
+            <CRow className="mb-3 g-2">
+              <CCol>
+                <CFormLabel>Tipo de documento</CFormLabel>
+                <CFormSelect value={form.tipoDocumento ?? "factura"} onChange={(e) => setForm({ ...form, tipoDocumento: e.target.value as MaterialPurchaseInput["tipoDocumento"] })}>
+                  {PURCHASE_DOC_TYPE_ORDER.map((t) => <option key={t} value={t}>{PURCHASE_DOC_TYPE_LABEL[t]}</option>)}
+                </CFormSelect>
+              </CCol>
+              <CCol>
+                <CFormLabel>N° de documento</CFormLabel>
+                <CFormInput value={form.numeroDocumento ?? ""} onChange={(e) => setForm({ ...form, numeroDocumento: e.target.value })} />
+              </CCol>
+            </CRow>
+            <div className="mb-3">
+              <CFormLabel>Proveedor</CFormLabel>
+              <CFormInput value={form.proveedor ?? ""} onChange={(e) => setForm({ ...form, proveedor: e.target.value })} />
+            </div>
+            <div className="mb-1">
+              <CFormLabel>Notas</CFormLabel>
+              <CFormTextarea rows={2} value={form.notas ?? ""} onChange={(e) => setForm({ ...form, notas: e.target.value })} />
+            </div>
+          </CModalBody>
+          <CModalFooter>
+            <CButton color="secondary" variant="ghost" onClick={() => setModalOpen(false)}>Cancelar</CButton>
+            <CButton color="primary" type="submit" disabled={saving}>{saving ? "Guardando…" : "Guardar"}</CButton>
+          </CModalFooter>
+        </CForm>
+      </CModal>
+
+      <ConfirmDialog
+        open={confirmTarget !== null}
+        title="Eliminar compra"
+        message={`¿Eliminar esta compra de "${confirmTarget?.materialNombre}"? Esta acción no se puede deshacer.`}
+        busy={deleting}
+        error={deleteError}
+        onConfirm={() => confirmTarget && performDelete(confirmTarget)}
+        onCancel={() => setConfirmTarget(null)}
+      />
+    </CCard>
+  );
+}
+
 function LotesView({
   lots, specs, onChanged, showToast,
 }: {
@@ -584,7 +801,7 @@ function LotesView({
     setEditing(l);
     setForm(
       l
-        ? { specId: l.specId, codigo: l.codigo, cantidad: l.cantidad, cantidadDespachada: l.cantidadDespachada, fechaColado: l.fechaColado, fechaDesmolde: l.fechaDesmolde ?? "", estado: l.estado, responsable: l.responsable ?? "", andeAprobado: l.andeAprobado, andeFecha: l.andeFecha ?? "", andeActa: l.andeActa ?? "", andeInspector: l.andeInspector ?? "", notas: l.notas ?? "" }
+        ? { specId: l.specId, codigo: l.codigo, cantidad: l.cantidad, cantidadParaEnsayo: l.cantidadParaEnsayo, cantidadDespachada: l.cantidadDespachada, fechaColado: l.fechaColado, fechaDesmolde: l.fechaDesmolde ?? "", estado: l.estado, responsable: l.responsable ?? "", ciudadDestino: l.ciudadDestino ?? "", andeAprobado: l.andeAprobado, andeFecha: l.andeFecha ?? "", andeActa: l.andeActa ?? "", andeInspector: l.andeInspector ?? "", numeracionAnde: l.numeracionAnde ?? "", notas: l.notas ?? "" }
         : emptyLot(specs.find((s) => s.activo)?.id ?? "")
     );
     setModalOpen(true);
@@ -682,7 +899,7 @@ function LotesView({
                     <CTableDataCell className="fw-semibold"><Link href={`/postes/lotes/${l.id}`}>{l.codigo} ↗</Link></CTableDataCell>
                     <CTableDataCell>{l.specNombre}</CTableDataCell>
                     <CTableDataCell className="mono">{l.cantidad}</CTableDataCell>
-                    <CTableDataCell className="mono">{Math.max(0, l.cantidad - l.cantidadDespachada)}</CTableDataCell>
+                    <CTableDataCell className="mono">{Math.max(0, l.cantidad - l.cantidadParaEnsayo - l.cantidadDespachada)}</CTableDataCell>
                     <CTableDataCell className="mono">{fmtDate(l.fechaColado)}</CTableDataCell>
                     <CTableDataCell><CBadge color={LOT_STATUS_COLOR[l.estado]}>{LOT_STATUS_LABEL[l.estado]}</CBadge></CTableDataCell>
                     <CTableDataCell className="mono">{fmtGs(l.costoMaterialTotalGs)}</CTableDataCell>
@@ -723,6 +940,11 @@ function LotesView({
                 <CFormInput type="number" min={1} step={1} value={form.cantidad || ""} onChange={(e) => setForm({ ...form, cantidad: Number(e.target.value) })} required />
               </CCol>
               <CCol>
+                <CFormLabel>Para ensayo (destructivo)</CFormLabel>
+                <CFormInput type="number" min={0} step={1} value={form.cantidadParaEnsayo ?? 1} onChange={(e) => setForm({ ...form, cantidadParaEnsayo: Number(e.target.value) })} />
+                <div className="module-desc small mt-1">Se descuenta de la cantidad para calcular el disponible para despacho — por defecto 1 (de 101 postes, 100 se entregan y 1 se rompe en la fiscalización).</div>
+              </CCol>
+              <CCol>
                 <CFormLabel>Despachados</CFormLabel>
                 <CFormInput type="number" min={0} step={1} value={form.cantidadDespachada || 0} onChange={(e) => setForm({ ...form, cantidadDespachada: Number(e.target.value) })} />
               </CCol>
@@ -746,6 +968,10 @@ function LotesView({
                 <CFormLabel>Responsable</CFormLabel>
                 <CFormInput value={form.responsable ?? ""} onChange={(e) => setForm({ ...form, responsable: e.target.value })} />
               </CCol>
+              <CCol>
+                <CFormLabel>Ciudad de destino</CFormLabel>
+                <CFormInput value={form.ciudadDestino ?? ""} onChange={(e) => setForm({ ...form, ciudadDestino: e.target.value })} />
+              </CCol>
             </CRow>
             <hr />
             <p className="module-desc mb-2">Aprobación ANDE</p>
@@ -764,6 +990,10 @@ function LotesView({
               <CCol>
                 <CFormLabel>Inspector</CFormLabel>
                 <CFormInput value={form.andeInspector ?? ""} onChange={(e) => setForm({ ...form, andeInspector: e.target.value })} />
+              </CCol>
+              <CCol>
+                <CFormLabel>Numeración ANDE asignada</CFormLabel>
+                <CFormInput placeholder="Ej. Del 004521 al 004620" value={form.numeracionAnde ?? ""} onChange={(e) => setForm({ ...form, numeracionAnde: e.target.value })} />
               </CCol>
             </CRow>
             <div className="mb-1">

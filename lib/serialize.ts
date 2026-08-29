@@ -1,11 +1,11 @@
 import type {
   Project, ProjectItem, Contractor, ContractorHistoryEntry,
-  PoleSpec, PoleLot, PoleQualityTest, RawMaterial, PoleRecipeItem, PoleLotMaterialConsumption,
+  PoleSpec, PoleLot, PoleQualityTest, RawMaterial, PoleRecipeItem, PoleLotMaterialConsumption, MaterialPurchase,
 } from "@prisma/client";
 import type {
   ProjectDTO, ProjectItemDTO, ContractorDTO, ContractorHistoryDTO,
   PoleSpecDTO, PoleSpecDetailDTO, PoleLotDTO, PoleQualityTestDTO,
-  RawMaterialDTO, PoleRecipeItemDTO, PoleLotMaterialConsumptionDTO,
+  RawMaterialDTO, PoleRecipeItemDTO, PoleLotMaterialConsumptionDTO, MaterialPurchaseDTO, PurchaseDocType,
 } from "./types";
 
 /** Convierte el registro de Prisma (Decimal, Date) a la forma plana que consume el frontend. */
@@ -107,9 +107,16 @@ export function serializePoleSpecDetail(s: SpecWithRecipe): PoleSpecDetailDTO {
 }
 
 export function serializeRawMaterial(
-  m: RawMaterial & { recipeItems?: { id: string }[]; consumptions?: { cantidadTotal: any; costoTotalGs: any }[] }
+  m: RawMaterial & {
+    recipeItems?: { id: string }[];
+    consumptions?: { cantidadTotal: any; costoTotalGs: any }[];
+    purchases?: { cantidad: any }[];
+  }
 ): RawMaterialDTO {
   const consumptions = m.consumptions ?? [];
+  const purchases = m.purchases ?? [];
+  const consumidoTotal = consumptions.reduce((sum, c) => sum + Number(c.cantidadTotal), 0);
+  const compradoTotal = purchases.reduce((sum, p) => sum + Number(p.cantidad), 0);
   return {
     id: m.id,
     nombre: m.nombre,
@@ -119,9 +126,29 @@ export function serializeRawMaterial(
     notas: m.notas,
     activo: m.activo,
     recipeCount: m.recipeItems?.length ?? 0,
-    consumidoTotal: consumptions.reduce((sum, c) => sum + Number(c.cantidadTotal), 0),
+    consumidoTotal,
     costoTotalConsumidoGs: consumptions.reduce((sum, c) => sum + Number(c.costoTotalGs), 0),
+    compradoTotal,
+    stockDisponible: compradoTotal - consumidoTotal,
     createdAt: m.createdAt.toISOString(),
+  };
+}
+
+export function serializeMaterialPurchase(p: MaterialPurchase & { material: RawMaterial }): MaterialPurchaseDTO {
+  return {
+    id: p.id,
+    materialId: p.materialId,
+    materialNombre: p.material.nombre,
+    unidad: p.material.unidad,
+    fecha: p.fecha.toISOString().slice(0, 10),
+    cantidad: Number(p.cantidad),
+    costoUnitarioGs: Number(p.costoUnitarioGs),
+    costoTotalGs: Number(p.costoTotalGs),
+    proveedor: p.proveedor,
+    tipoDocumento: p.tipoDocumento as PurchaseDocType,
+    numeroDocumento: p.numeroDocumento,
+    notas: p.notas,
+    createdAt: p.createdAt.toISOString(),
   };
 }
 
@@ -180,15 +207,18 @@ export function serializePoleLot(
     specNombre: l.spec?.nombre ?? "",
     codigo: l.codigo,
     cantidad: l.cantidad,
+    cantidadParaEnsayo: l.cantidadParaEnsayo,
     cantidadDespachada: l.cantidadDespachada,
     fechaColado: l.fechaColado.toISOString().slice(0, 10),
     fechaDesmolde: l.fechaDesmolde ? l.fechaDesmolde.toISOString().slice(0, 10) : null,
     estado: l.estado as PoleLotDTO["estado"],
     responsable: l.responsable,
+    ciudadDestino: l.ciudadDestino,
     andeAprobado: l.andeAprobado,
     andeFecha: l.andeFecha ? l.andeFecha.toISOString().slice(0, 10) : null,
     andeActa: l.andeActa,
     andeInspector: l.andeInspector,
+    numeracionAnde: l.numeracionAnde,
     notas: l.notas,
     tests: (l.tests ?? []).map(serializeQualityTest),
     materialConsumptions,

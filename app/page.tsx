@@ -31,7 +31,8 @@ const DhtmlxGanttChart = dynamic(() => import("@/components/DhtmlxGanttChart"), 
   ssr: false,
   loading: () => <p className="empty-col">Cargando cronograma…</p>,
 });
-import type { ProjectDTO, ProjectStatus, ProjectType, DashboardSummaryDTO } from "@/lib/types";
+import type { ProjectDTO, ProjectStatus, ProjectType, DashboardSummaryDTO, PoleLotDTO, PoleSpecDTO } from "@/lib/types";
+import { fechaFiscalizacionEstimada, capacityForDate, FACTORY_SCHEDULE_LABEL } from "@/lib/factoryCapacity";
 
 const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
 const TYPE_COLOR: Record<ProjectType, string> = { civil: "info", electrico: "warning", vial: "secondary", otro: "dark" };
@@ -72,6 +73,9 @@ function fmtDate(d: string) {
 function clampPct(n: number) {
   return Math.max(0, Math.min(100, Math.round(n || 0)));
 }
+function fmtDDMM(d: Date) {
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
 
 export default function Home() {
   return (
@@ -86,6 +90,8 @@ function HomeInner() {
   const searchParams = useSearchParams();
   const [projects, setProjects] = useState<ProjectDTO[]>([]);
   const [summary, setSummary] = useState<DashboardSummaryDTO | null>(null);
+  const [poleLots, setPoleLots] = useState<PoleLotDTO[]>([]);
+  const [poleSpecs, setPoleSpecs] = useState<PoleSpecDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const initialTab = (searchParams.get("tab") as TabKey) || "dashboard";
@@ -103,7 +109,7 @@ function HomeInner() {
   const [confirmTarget, setConfirmTarget] = useState<ProjectDTO | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => { loadProjects(); loadSummary(); }, []);
+  useEffect(() => { loadProjects(); loadSummary(); loadPostesSummary(); }, []);
 
   async function loadProjects() {
     setLoading(true);
@@ -126,6 +132,16 @@ function HomeInner() {
       if (res.ok) setSummary(await res.json());
     } catch {
       /* el dashboard funciona igual sin estos extras */
+    }
+  }
+
+  async function loadPostesSummary() {
+    try {
+      const [lotsRes, specsRes] = await Promise.all([fetch("/api/postes/lots"), fetch("/api/postes/specs")]);
+      setPoleLots(lotsRes.ok ? await lotsRes.json() : []);
+      setPoleSpecs(specsRes.ok ? await specsRes.json() : []);
+    } catch {
+      /* el dashboard funciona igual sin este resumen */
     }
   }
 
@@ -255,7 +271,7 @@ function HomeInner() {
 
       {!loading && !loadError && (
         <div className="panel tab-panel">
-          {tab === "dashboard" && <DashboardView projects={projects} metrics={metrics} summary={summary} onNewProject={() => openModal(null)} />}
+          {tab === "dashboard" && <DashboardView projects={projects} metrics={metrics} summary={summary} poleLots={poleLots} poleSpecs={poleSpecs} onNewProject={() => openModal(null)} />}
           {tab === "kanban" && <BoardView projects={projects} onEdit={openModal} onMove={moveStatus} />}
           {tab === "tabla" && <TablaView projects={projects} onEdit={openModal} onDelete={setConfirmTarget} />}
         </div>
@@ -308,11 +324,13 @@ interface DashboardMetrics {
 }
 
 function DashboardView({
-  projects, metrics, summary, onNewProject,
+  projects, metrics, summary, poleLots, poleSpecs, onNewProject,
 }: {
   projects: ProjectDTO[];
   metrics: DashboardMetrics;
   summary: DashboardSummaryDTO | null;
+  poleLots: PoleLotDTO[];
+  poleSpecs: PoleSpecDTO[];
   onNewProject: () => void;
 }) {
   const { byType, totalBudget, totalSpent, avgProgress, execPct, active, finished } = metrics;
@@ -324,6 +342,19 @@ function DashboardView({
     .filter((p) => p.status !== "finalizado")
     .map((p) => ({ p, daysLeft: Math.ceil((new Date(p.end).getTime() - now) / 86400000) }))
     .filter((x) => x.daysLeft <= 7);
+
+  const lotesEnProceso = poleLots.filter((l) => l.estado === "en_curado" || l.estado === "listo_para_ensayo" || l.estado === "en_ensayo").length;
+  const postesEnStock = poleLots
+    .filter((l) => l.estado === "aprobado")
+    .reduce((sum, l) => sum + Math.max(0, l.cantidad - l.cantidadParaEnsayo - l.cantidadDespachada), 0);
+  const fiscalizacionesProximas = poleLots
+    .filter((l) => !l.andeAprobado)
+    .map((l) => {
+      const fecha = fechaFiscalizacionEstimada(l.fechaColado);
+      return { l, fecha, daysLeft: Math.ceil((fecha.getTime() - now) / 86400000) };
+    })
+    .filter((x) => x.daysLeft <= 7)
+    .sort((a, b) => a.fecha.getTime() - b.fecha.getTime());
 
   const isDark = typeof document !== "undefined" && document.documentElement.getAttribute("data-coreui-theme") === "dark";
   const gridColor = isDark ? "rgba(255,255,255,.08)" : "rgba(0,0,0,.06)";
@@ -483,6 +514,43 @@ function DashboardView({
               </div>
             );
           })}
+        </CCardBody>
+      </CCard>
+
+      <CCard className="mt-4">
+        <CCardHeader className="fw-semibold">
+          <div className="d-flex justify-content-between align-items-center">
+            <span>🏭 Fábrica de Postes</span>
+            <Link href="/postes" className="small">Ver módulo →</Link>
+          </div>
+        </CCardHeader>
+        <CCardBody>
+          {poleLots.length === 0 && poleSpecs.length === 0 ? (
+            <p className="empty-col">Sin actividad todavía en la fábrica de postes.</p>
+          ) : (
+            <>
+              <div className="row row-cols-2 row-cols-md-4 g-3 mb-3">
+                <div className="col"><Kpi label="Lotes en proceso" value={lotesEnProceso} sub="en curado, listos o en ensayo" icon={cilSpeedometer} href="/postes" /></div>
+                <div className="col"><Kpi label="Postes en stock" value={postesEnStock} sub="aprobados, sin despachar" icon={cilSpeedometer} href="/postes" /></div>
+                <div className="col"><Kpi label="Fiscalizaciones próximas" value={fiscalizacionesProximas.length} sub="ANDE, próximos 7 días" icon={cilSpeedometer} href="/postes" /></div>
+                <div className="col"><Kpi label="Capacidad de hoy" value={`${capacityForDate(new Date())} postes`} sub={FACTORY_SCHEDULE_LABEL} icon={cilSpeedometer} /></div>
+              </div>
+
+              {fiscalizacionesProximas.length > 0 && (
+                <CAlert color="info" className="mb-0 mt-3">
+                  <div className="fw-semibold mb-1">🔍 Fiscalizaciones próximas</div>
+                  <ul className="mb-0 ps-3 small">
+                    {fiscalizacionesProximas.map(({ l, fecha, daysLeft }) => (
+                      <li key={l.id}>
+                        <Link href={`/postes/lotes/${l.id}`}>{l.codigo}</Link>
+                        {l.ciudadDestino ? ` · ${l.ciudadDestino}` : ""} — {daysLeft < 0 ? `lista desde ${fmtDDMM(fecha)}` : daysLeft === 0 ? "lista hoy" : `en ${daysLeft} días (${fmtDDMM(fecha)})`}
+                      </li>
+                    ))}
+                  </ul>
+                </CAlert>
+              )}
+            </>
+          )}
         </CCardBody>
       </CCard>
 

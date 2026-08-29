@@ -16,6 +16,7 @@ import Toast from "@/components/Toast";
 import { useToast } from "@/lib/useToast";
 import { LOT_STATUS_ORDER, LOT_STATUS_LABEL, LOT_STATUS_COLOR, TEST_TIPOS, TEST_RESULTADOS, TEST_RESULTADO_COLOR } from "@/lib/poleFields";
 import { fmtGs } from "@/lib/currency";
+import { fechaFiscalizacionEstimada } from "@/lib/factoryCapacity";
 import type { PoleLotDTO, PoleLotInput, PoleLotStatus, PoleSpecDTO, PoleQualityTestInput } from "@/lib/types";
 
 function fmtDate(d: string | null) {
@@ -76,10 +77,13 @@ export default function PoleLotDetail({ params }: { params: { id: string } }) {
     if (!lot) return;
     setEditError(null);
     setEditForm({
-      specId: lot.specId, codigo: lot.codigo, cantidad: lot.cantidad, cantidadDespachada: lot.cantidadDespachada,
+      specId: lot.specId, codigo: lot.codigo, cantidad: lot.cantidad, cantidadParaEnsayo: lot.cantidadParaEnsayo,
+      cantidadDespachada: lot.cantidadDespachada,
       fechaColado: lot.fechaColado, fechaDesmolde: lot.fechaDesmolde ?? "", estado: lot.estado,
-      responsable: lot.responsable ?? "", andeAprobado: lot.andeAprobado, andeFecha: lot.andeFecha ?? "",
-      andeActa: lot.andeActa ?? "", andeInspector: lot.andeInspector ?? "", notas: lot.notas ?? "",
+      responsable: lot.responsable ?? "", ciudadDestino: lot.ciudadDestino ?? "",
+      andeAprobado: lot.andeAprobado, andeFecha: lot.andeFecha ?? "",
+      andeActa: lot.andeActa ?? "", andeInspector: lot.andeInspector ?? "", numeracionAnde: lot.numeracionAnde ?? "",
+      notas: lot.notas ?? "",
     });
     setEditOpen(true);
   }
@@ -168,7 +172,7 @@ export default function PoleLotDetail({ params }: { params: { id: string } }) {
   if (loading) return <AppShell crumbs={[{ label: "Fábrica de Postes", href: "/postes" }]}><p className="state-message">Cargando…</p></AppShell>;
   if (error || !lot) return <AppShell crumbs={[{ label: "Fábrica de Postes", href: "/postes" }]}><p className="state-message form-error">{error || "Lote no encontrado."}</p></AppShell>;
 
-  const disponible = Math.max(0, lot.cantidad - lot.cantidadDespachada);
+  const disponible = Math.max(0, lot.cantidad - lot.cantidadParaEnsayo - lot.cantidadDespachada);
 
   return (
     <AppShell
@@ -192,11 +196,13 @@ export default function PoleLotDetail({ params }: { params: { id: string } }) {
             {lot.andeAprobado && <CBadge color="success">ANDE aprobado</CBadge>}
             <span>{lot.specNombre}</span>
           </div>
+          <div className="text-body-secondary small mono mt-1">ID: {lot.id}</div>
         </div>
         <div className="project-hero-kpis">
           <CCard><CCardBody><div className="label">Cantidad</div><div className="value mono">{lot.cantidad}</div><div className="sub">postes en el lote</div></CCardBody></CCard>
           <CCard><CCardBody><div className="label">Despachados</div><div className="value mono">{lot.cantidadDespachada}</div><div className="sub">ya entregados</div></CCardBody></CCard>
           <CCard><CCardBody><div className="label">Disponible</div><div className="value mono">{disponible}</div><div className="sub">listos para despacho</div></CCardBody></CCard>
+          <CCard><CCardBody><div className="label">Para ensayo</div><div className="value mono">{lot.cantidadParaEnsayo}</div><div className="sub">reservados (destructivo)</div></CCardBody></CCard>
         </div>
       </div>
 
@@ -208,7 +214,8 @@ export default function PoleLotDetail({ params }: { params: { id: string } }) {
               <CRow className="g-3">
                 <CCol xs={6}><span className="module-desc">Fecha de colado</span><div>{fmtDate(lot.fechaColado)}</div></CCol>
                 <CCol xs={6}><span className="module-desc">Fecha de desmolde</span><div>{fmtDate(lot.fechaDesmolde)}</div></CCol>
-                <CCol xs={12}><span className="module-desc">Responsable</span><div>{lot.responsable || "—"}</div></CCol>
+                <CCol xs={6}><span className="module-desc">Responsable</span><div>{lot.responsable || "—"}</div></CCol>
+                <CCol xs={6}><span className="module-desc">Ciudad de destino</span><div>{lot.ciudadDestino || "—"}</div></CCol>
                 {lot.notas && <CCol xs={12}><span className="module-desc">Notas</span><div className="item-row-notes">{lot.notas}</div></CCol>}
               </CRow>
             </CCardBody>
@@ -218,12 +225,35 @@ export default function PoleLotDetail({ params }: { params: { id: string } }) {
           <CCard className="h-100">
             <CCardHeader className="fw-semibold">Aprobación ANDE</CCardHeader>
             <CCardBody>
-              {!lot.andeAprobado && <p className="empty-col">Todavía sin aprobación ANDE cargada.</p>}
+              {!lot.andeAprobado && (() => {
+                const estimada = fechaFiscalizacionEstimada(lot.fechaColado);
+                const hoy = new Date();
+                const msPorDia = 86400000;
+                const diffDias = Math.ceil((estimada.getTime() - hoy.getTime()) / msPorDia);
+                const yaPaso = diffDias <= 0;
+                return (
+                  <div>
+                    {yaPaso ? (
+                      <>
+                        <CBadge color="success">Lista para fiscalizar</CBadge>
+                        <div className="mt-2">Fiscalización estimada: {fmtDate(estimada.toISOString().slice(0, 10))} ({Math.abs(diffDias) === 0 ? "hoy" : `hace ${Math.abs(diffDias)} día${Math.abs(diffDias) === 1 ? "" : "s"}`})</div>
+                      </>
+                    ) : (
+                      <>
+                        <CBadge color="info">Faltan {diffDias} día{diffDias === 1 ? "" : "s"}</CBadge>
+                        <div className="mt-2">Fiscalización estimada: {fmtDate(estimada.toISOString().slice(0, 10))}</div>
+                      </>
+                    )}
+                    <p className="empty-col mt-2 mb-0 small">Todavía sin aprobación ANDE cargada. Esto es una estimación, no la aprobación real.</p>
+                  </div>
+                );
+              })()}
               {lot.andeAprobado && (
                 <CRow className="g-3">
                   <CCol xs={6}><span className="module-desc">Fecha</span><div>{fmtDate(lot.andeFecha)}</div></CCol>
                   <CCol xs={6}><span className="module-desc">N° de acta</span><div>{lot.andeActa || "—"}</div></CCol>
                   <CCol xs={12}><span className="module-desc">Inspector</span><div>{lot.andeInspector || "—"}</div></CCol>
+                  <CCol xs={12}><span className="module-desc">Numeración ANDE asignada</span><div>{lot.numeracionAnde || "—"}</div></CCol>
                 </CRow>
               )}
             </CCardBody>
@@ -380,6 +410,10 @@ export default function PoleLotDetail({ params }: { params: { id: string } }) {
                   <CFormInput type="number" min={1} step={1} value={editForm.cantidad || ""} onChange={(e) => setEditForm({ ...editForm, cantidad: Number(e.target.value) })} required />
                 </CCol>
                 <CCol>
+                  <CFormLabel>Para ensayo (destructivo)</CFormLabel>
+                  <CFormInput type="number" min={0} step={1} value={editForm.cantidadParaEnsayo ?? 0} onChange={(e) => setEditForm({ ...editForm, cantidadParaEnsayo: Number(e.target.value) })} />
+                </CCol>
+                <CCol>
                   <CFormLabel>Despachados</CFormLabel>
                   <CFormInput type="number" min={0} step={1} value={editForm.cantidadDespachada || 0} onChange={(e) => setEditForm({ ...editForm, cantidadDespachada: Number(e.target.value) })} />
                 </CCol>
@@ -403,6 +437,10 @@ export default function PoleLotDetail({ params }: { params: { id: string } }) {
                   <CFormLabel>Responsable</CFormLabel>
                   <CFormInput value={editForm.responsable ?? ""} onChange={(e) => setEditForm({ ...editForm, responsable: e.target.value })} />
                 </CCol>
+                <CCol>
+                  <CFormLabel>Ciudad de destino</CFormLabel>
+                  <CFormInput value={editForm.ciudadDestino ?? ""} onChange={(e) => setEditForm({ ...editForm, ciudadDestino: e.target.value })} />
+                </CCol>
               </CRow>
               <hr />
               <p className="module-desc mb-2">Aprobación ANDE</p>
@@ -422,6 +460,10 @@ export default function PoleLotDetail({ params }: { params: { id: string } }) {
                 <CCol>
                   <CFormLabel>Inspector</CFormLabel>
                   <CFormInput value={editForm.andeInspector ?? ""} onChange={(e) => setEditForm({ ...editForm, andeInspector: e.target.value })} />
+                </CCol>
+                <CCol>
+                  <CFormLabel>Numeración ANDE asignada</CFormLabel>
+                  <CFormInput placeholder="Ej. Del 004521 al 004620" value={editForm.numeracionAnde ?? ""} onChange={(e) => setEditForm({ ...editForm, numeracionAnde: e.target.value })} />
                 </CCol>
               </CRow>
               <div className="mb-1">

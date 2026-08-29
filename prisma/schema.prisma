@@ -176,17 +176,27 @@ model PoleLot {
   spec               PoleSpec      @relation(fields: [specId], references: [id])
   codigo             String
   cantidad           Int
-  /// Cuántos de los `cantidad` ya salieron despachados — el stock
-  /// disponible de un lote aprobado es `cantidad - cantidadDespachada`.
+  /// Postes del lote reservados para ensayo destructivo — no se entregan.
+  /// Default 1: la fábrica produce 101 postes por lote porque son 100 los
+  /// que hay que entregar y uno se rompe el día de la fiscalización por
+  /// las pruebas a las que se somete. El "disponible para despacho" real
+  /// es `cantidad - cantidadParaEnsayo - cantidadDespachada`.
+  cantidadParaEnsayo Int           @default(1)
+  /// Cuántos de los `cantidad` ya salieron despachados.
   cantidadDespachada Int           @default(0)
   fechaColado        DateTime      @db.Date
   fechaDesmolde      DateTime?     @db.Date
   estado             PoleLotStatus @default(en_curado)
   responsable        String?
+  /// Ciudad a la que se debe enviar este lote.
+  ciudadDestino      String?
   andeAprobado       Boolean       @default(false)
   andeFecha          DateTime?     @db.Date
   andeActa           String?
   andeInspector      String?
+  /// Numeración asignada por la ANDE a los postes entregados de este lote
+  /// — texto libre (ej. un rango) porque no siempre son números consecutivos.
+  numeracionAnde     String?
   notas              String?
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
@@ -218,8 +228,39 @@ model RawMaterial {
 
   recipeItems  PoleRecipeItem[]
   consumptions PoleLotMaterialConsumption[]
+  purchases    MaterialPurchase[]
 
   @@index([activo])
+}
+
+enum PurchaseDocType {
+  factura
+  orden_compra
+  remision
+  otro
+}
+
+/// Registro de compra de materia prima — trazabilidad de qué se compró,
+/// cuándo, a quién y con qué documento (factura/orden de compra/remisión).
+/// Sin onDelete Cascade desde RawMaterial a propósito: es un registro real
+/// de compra, igual que PoleLot/PoleQualityTest — bloquea el borrado del
+/// material en vez de desaparecer con él (ver lib/prismaErrors.ts).
+model MaterialPurchase {
+  id              String          @id @default(cuid())
+  materialId      String
+  material        RawMaterial     @relation(fields: [materialId], references: [id])
+  fecha           DateTime        @db.Date
+  cantidad        Decimal         @db.Decimal(12, 4)
+  costoUnitarioGs Decimal         @db.Decimal(14, 2)
+  costoTotalGs    Decimal         @db.Decimal(16, 2)
+  proveedor       String?
+  tipoDocumento   PurchaseDocType @default(factura)
+  numeroDocumento String?
+  notas           String?
+  createdAt       DateTime        @default(now())
+
+  @@index([materialId])
+  @@index([fecha])
 }
 
 /// Un ítem de la receta (BOM) de un tipo de poste: cuánta cantidad de una

@@ -12,6 +12,7 @@ export async function GET(req: NextRequest) {
     include: {
       recipeItems: { select: { id: true } },
       consumptions: { select: { cantidadTotal: true, costoTotalGs: true } },
+      purchases: { select: { cantidad: true } },
     },
     orderBy: { nombre: "asc" },
   });
