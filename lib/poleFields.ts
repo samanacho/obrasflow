@@ -45,3 +45,6 @@ export const TEST_RESULTADO_COLOR: Record<string, string> = {
   Aprobado: "success",
   Rechazado: "danger",
 };
+
+/** Sugerencias de unidad para el datalist del formulario de materia prima — campo libre, no una lista cerrada. */
+export const COMMON_UNITS = ["kg", "bolsa", "m", "m³", "litro", "unidad", "tonelada"];

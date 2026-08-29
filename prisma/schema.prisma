@@ -161,7 +161,8 @@ model PoleSpec {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  lots PoleLot[]
+  lots        PoleLot[]
+  recipeItems PoleRecipeItem[]
 
   @@index([activo])
 }
@@ -190,10 +191,80 @@ model PoleLot {
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 
-  tests PoleQualityTest[]
+  tests               PoleQualityTest[]
+  materialConsumptions PoleLotMaterialConsumption[]
 
   @@index([specId])
   @@index([estado])
+}
+
+/// Catálogo de materias primas (cemento, hierro, alambre, arena...) que
+/// entran en las recetas de los postes. `costoUnitarioGs` es el precio
+/// "de mercado actual" en guaraníes — se edita a mano cuando cambia. Cada
+/// consumo de lote (PoleLotMaterialConsumption) guarda una copia congelada
+/// de este costo al momento de producir, así el costo histórico de un lote
+/// ya hecho no se mueve cuando el precio de hoy cambia.
+model RawMaterial {
+  id              String   @id @default(cuid())
+  nombre          String
+  /// Unidad de medida libre: "kg", "m", "m³", "litro", "bolsa", "unidad"...
+  unidad          String
+  costoUnitarioGs Decimal  @db.Decimal(14, 2)
+  proveedor       String?
+  notas           String?
+  activo          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  recipeItems  PoleRecipeItem[]
+  consumptions PoleLotMaterialConsumption[]
+
+  @@index([activo])
+}
+
+/// Un ítem de la receta (BOM) de un tipo de poste: cuánta cantidad de una
+/// materia prima entra en UN poste de esa especificación. La receta se
+/// arma agregando materiales uno por uno desde la ficha de la especificación.
+model PoleRecipeItem {
+  id               String      @id @default(cuid())
+  specId           String
+  spec             PoleSpec    @relation(fields: [specId], references: [id], onDelete: Cascade)
+  materialId       String
+  material         RawMaterial @relation(fields: [materialId], references: [id])
+  cantidadPorPoste Decimal     @db.Decimal(12, 4)
+  notas            String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@unique([specId, materialId])
+  @@index([materialId])
+}
+
+/// Consumo de materia prima de un lote ya producido. Se genera automático
+/// a partir de la receta de la especificación en el momento en que se crea
+/// el lote (cantidadPorPoste de la receta × cantidad de postes del lote),
+/// con el costo unitario CONGELADO a ese momento — el costo de un lote no
+/// cambia después aunque el precio de mercado del material se actualice.
+/// Si se edita la cantidad de postes del lote, se recalcula la cantidad y
+/// costo total consumido (con el mismo costo unitario ya congelado).
+model PoleLotMaterialConsumption {
+  id               String      @id @default(cuid())
+  lotId            String
+  lot              PoleLot     @relation(fields: [lotId], references: [id], onDelete: Cascade)
+  materialId       String
+  material         RawMaterial @relation(fields: [materialId], references: [id])
+  /// Snapshot del nombre/unidad de la receta al momento de producir.
+  materialNombre   String
+  unidad           String
+  cantidadPorPoste Decimal     @db.Decimal(12, 4)
+  costoUnitarioGs  Decimal     @db.Decimal(14, 2)
+  cantidadTotal    Decimal     @db.Decimal(14, 4)
+  costoTotalGs     Decimal     @db.Decimal(16, 2)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@index([lotId])
+  @@index([materialId])
 }
 
 /// Un ensayo de control de calidad sobre un lote (ruptura/flexión,

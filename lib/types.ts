@@ -127,7 +127,16 @@ export interface PoleSpecDTO {
   notas: string | null;
   activo: boolean;
   lotCount: number;
+  /** Cuántos ítems tiene la receta cargada para este poste. */
+  recipeCount: number;
+  /** Costo estimado de materia prima por poste, con los costos ACTUALES de cada material (para planificación) — suma de cantidadPorPoste × costoUnitarioGs de la receta. */
+  costoEstimadoPorPosteGs: number;
   createdAt: string;
+}
+
+/** Forma extendida que devuelve GET /api/postes/specs/[id]: el detalle de una especificación con su receta completa. */
+export interface PoleSpecDetailDTO extends PoleSpecDTO {
+  recipe: PoleRecipeItemDTO[];
 }
 
 export interface PoleSpecInput {
@@ -180,6 +189,9 @@ export interface PoleLotDTO {
   andeInspector: string | null;
   notas: string | null;
   tests: PoleQualityTestDTO[];
+  materialConsumptions: PoleLotMaterialConsumptionDTO[];
+  /** Suma de costoTotalGs de todos los materialConsumptions — costo total de materia prima de este lote, en guaraníes. */
+  costoMaterialTotalGs: number;
   createdAt: string;
 }
 
@@ -197,4 +209,68 @@ export interface PoleLotInput {
   andeActa?: string | null;
   andeInspector?: string | null;
   notas?: string | null;
+}
+
+// ── Materias primas y recetas de poste ─────────────────────────────────
+// Costos siempre en guaraníes (Gs.), sin decimales en la UI — ver lib/currency.ts.
+
+export interface RawMaterialDTO {
+  id: string;
+  nombre: string;
+  unidad: string;
+  costoUnitarioGs: number;
+  proveedor: string | null;
+  notas: string | null;
+  activo: boolean;
+  /** En cuántas recetas de poste está este material. */
+  recipeCount: number;
+  /** Suma histórica de cantidadTotal consumida en todos los lotes producidos (en la unidad del material). */
+  consumidoTotal: number;
+  /** Suma histórica de costoTotalGs consumido en todos los lotes producidos. */
+  costoTotalConsumidoGs: number;
+  createdAt: string;
+}
+
+export interface RawMaterialInput {
+  nombre: string;
+  unidad: string;
+  costoUnitarioGs: number;
+  proveedor?: string | null;
+  notas?: string | null;
+  activo?: boolean;
+}
+
+export interface PoleRecipeItemDTO {
+  id: string;
+  specId: string;
+  materialId: string;
+  materialNombre: string;
+  unidad: string;
+  /** Costo ACTUAL del material (en vivo, no congelado) — para planificación. */
+  costoUnitarioGs: number;
+  cantidadPorPoste: number;
+  /** cantidadPorPoste × costoUnitarioGs actual. */
+  subtotalGs: number;
+  notas: string | null;
+  createdAt: string;
+}
+
+export interface PoleRecipeItemInput {
+  materialId: string;
+  cantidadPorPoste: number;
+  notas?: string | null;
+}
+
+export interface PoleLotMaterialConsumptionDTO {
+  id: string;
+  lotId: string;
+  materialId: string;
+  materialNombre: string;
+  unidad: string;
+  /** Cantidad por poste que tenía la receta al momento de producir (congelada). */
+  cantidadPorPoste: number;
+  /** Costo unitario del material al momento de producir (congelado — no cambia si el precio de hoy cambia). */
+  costoUnitarioGs: number;
+  cantidadTotal: number;
+  costoTotalGs: number;
 }

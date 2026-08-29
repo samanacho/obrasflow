@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   CCard, CCardBody, CCardHeader, CButton, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
   CForm, CFormLabel, CFormInput, CFormSelect, CFormTextarea, CBadge, CAlert, CListGroup, CListGroupItem, CRow, CCol,
+  CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell,
 } from "@coreui/react";
 import CIcon from "@coreui/icons-react";
 import { cilPlus, cilPencil, cilTrash } from "@coreui/icons";
@@ -14,6 +15,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import Toast from "@/components/Toast";
 import { useToast } from "@/lib/useToast";
 import { LOT_STATUS_ORDER, LOT_STATUS_LABEL, LOT_STATUS_COLOR, TEST_TIPOS, TEST_RESULTADOS, TEST_RESULTADO_COLOR } from "@/lib/poleFields";
+import { fmtGs } from "@/lib/currency";
 import type { PoleLotDTO, PoleLotInput, PoleLotStatus, PoleSpecDTO, PoleQualityTestInput } from "@/lib/types";
 
 function fmtDate(d: string | null) {
@@ -228,6 +230,51 @@ export default function PoleLotDetail({ params }: { params: { id: string } }) {
           </CCard>
         </CCol>
       </CRow>
+
+      <CCard className="mb-4">
+        <CCardHeader className="module-panel-head">
+          <div>
+            <span className="fw-semibold fs-5">Consumo de materia prima</span>
+            <p className="module-desc mb-0">Calculado automáticamente a partir de la receta de la especificación al momento de crear este lote — el costo queda congelado aunque el precio de mercado cambie después.</p>
+          </div>
+        </CCardHeader>
+        <CCardBody>
+          {lot.materialConsumptions.length === 0 && (
+            <p className="empty-col">Este lote no tiene consumo de materia prima registrado (la especificación no tenía receta cargada al momento de crear el lote).</p>
+          )}
+          {lot.materialConsumptions.length > 0 && (
+            <>
+              <div className="table-wrap">
+                <CTable hover responsive>
+                  <CTableHead>
+                    <CTableRow>
+                      <CTableHeaderCell>Material</CTableHeaderCell>
+                      <CTableHeaderCell>Unidad</CTableHeaderCell>
+                      <CTableHeaderCell>Cantidad por poste</CTableHeaderCell>
+                      <CTableHeaderCell>Cantidad total</CTableHeaderCell>
+                      <CTableHeaderCell>Costo unitario (Gs)</CTableHeaderCell>
+                      <CTableHeaderCell>Costo total (Gs)</CTableHeaderCell>
+                    </CTableRow>
+                  </CTableHead>
+                  <CTableBody>
+                    {lot.materialConsumptions.map((c) => (
+                      <CTableRow key={c.id}>
+                        <CTableDataCell className="fw-semibold">{c.materialNombre}</CTableDataCell>
+                        <CTableDataCell>{c.unidad}</CTableDataCell>
+                        <CTableDataCell className="mono">{c.cantidadPorPoste}</CTableDataCell>
+                        <CTableDataCell className="mono">{c.cantidadTotal}</CTableDataCell>
+                        <CTableDataCell className="mono">{fmtGs(c.costoUnitarioGs)}</CTableDataCell>
+                        <CTableDataCell className="mono">{fmtGs(c.costoTotalGs)}</CTableDataCell>
+                      </CTableRow>
+                    ))}
+                  </CTableBody>
+                </CTable>
+              </div>
+              <p className="fw-semibold fs-5 mt-3 mb-0">Costo total de materia prima: {fmtGs(lot.costoMaterialTotalGs)}</p>
+            </>
+          )}
+        </CCardBody>
+      </CCard>
 
       <CCard>
         <CCardHeader className="module-panel-head">

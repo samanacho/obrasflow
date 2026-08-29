@@ -1,5 +1,12 @@
-import type { Project, ProjectItem, Contractor, ContractorHistoryEntry, PoleSpec, PoleLot, PoleQualityTest } from "@prisma/client";
-import type { ProjectDTO, ProjectItemDTO, ContractorDTO, ContractorHistoryDTO, PoleSpecDTO, PoleLotDTO, PoleQualityTestDTO } from "./types";
+import type {
+  Project, ProjectItem, Contractor, ContractorHistoryEntry,
+  PoleSpec, PoleLot, PoleQualityTest, RawMaterial, PoleRecipeItem, PoleLotMaterialConsumption,
+} from "@prisma/client";
+import type {
+  ProjectDTO, ProjectItemDTO, ContractorDTO, ContractorHistoryDTO,
+  PoleSpecDTO, PoleSpecDetailDTO, PoleLotDTO, PoleQualityTestDTO,
+  RawMaterialDTO, PoleRecipeItemDTO, PoleLotMaterialConsumptionDTO,
+} from "./types";
 
 /** Convierte el registro de Prisma (Decimal, Date) a la forma plana que consume el frontend. */
 export function serializeProject(p: Project): ProjectDTO {
@@ -67,7 +74,13 @@ export function serializeContractor(c: Contractor & { history?: { rating: number
   };
 }
 
-export function serializePoleSpec(s: PoleSpec & { lots?: { id: string }[] }): PoleSpecDTO {
+type SpecWithRecipe = PoleSpec & {
+  lots?: { id: string }[];
+  recipeItems?: (PoleRecipeItem & { material: RawMaterial })[];
+};
+
+export function serializePoleSpec(s: SpecWithRecipe): PoleSpecDTO {
+  const recipeItems = s.recipeItems ?? [];
   return {
     id: s.id,
     nombre: s.nombre,
@@ -80,7 +93,66 @@ export function serializePoleSpec(s: PoleSpec & { lots?: { id: string }[] }): Po
     notas: s.notas,
     activo: s.activo,
     lotCount: s.lots?.length ?? 0,
+    recipeCount: recipeItems.length,
+    costoEstimadoPorPosteGs: recipeItems.reduce((sum, ri) => sum + Number(ri.cantidadPorPoste) * Number(ri.material.costoUnitarioGs), 0),
     createdAt: s.createdAt.toISOString(),
+  };
+}
+
+export function serializePoleSpecDetail(s: SpecWithRecipe): PoleSpecDetailDTO {
+  return {
+    ...serializePoleSpec(s),
+    recipe: (s.recipeItems ?? []).map(serializeRecipeItem),
+  };
+}
+
+export function serializeRawMaterial(
+  m: RawMaterial & { recipeItems?: { id: string }[]; consumptions?: { cantidadTotal: any; costoTotalGs: any }[] }
+): RawMaterialDTO {
+  const consumptions = m.consumptions ?? [];
+  return {
+    id: m.id,
+    nombre: m.nombre,
+    unidad: m.unidad,
+    costoUnitarioGs: Number(m.costoUnitarioGs),
+    proveedor: m.proveedor,
+    notas: m.notas,
+    activo: m.activo,
+    recipeCount: m.recipeItems?.length ?? 0,
+    consumidoTotal: consumptions.reduce((sum, c) => sum + Number(c.cantidadTotal), 0),
+    costoTotalConsumidoGs: consumptions.reduce((sum, c) => sum + Number(c.costoTotalGs), 0),
+    createdAt: m.createdAt.toISOString(),
+  };
+}
+
+export function serializeRecipeItem(ri: PoleRecipeItem & { material: RawMaterial }): PoleRecipeItemDTO {
+  const cantidadPorPoste = Number(ri.cantidadPorPoste);
+  const costoUnitarioGs = Number(ri.material.costoUnitarioGs);
+  return {
+    id: ri.id,
+    specId: ri.specId,
+    materialId: ri.materialId,
+    materialNombre: ri.material.nombre,
+    unidad: ri.material.unidad,
+    costoUnitarioGs,
+    cantidadPorPoste,
+    subtotalGs: cantidadPorPoste * costoUnitarioGs,
+    notas: ri.notas,
+    createdAt: ri.createdAt.toISOString(),
+  };
+}
+
+export function serializeConsumption(c: PoleLotMaterialConsumption): PoleLotMaterialConsumptionDTO {
+  return {
+    id: c.id,
+    lotId: c.lotId,
+    materialId: c.materialId,
+    materialNombre: c.materialNombre,
+    unidad: c.unidad,
+    cantidadPorPoste: Number(c.cantidadPorPoste),
+    costoUnitarioGs: Number(c.costoUnitarioGs),
+    cantidadTotal: Number(c.cantidadTotal),
+    costoTotalGs: Number(c.costoTotalGs),
   };
 }
 
@@ -99,8 +171,9 @@ export function serializeQualityTest(t: PoleQualityTest): PoleQualityTestDTO {
 }
 
 export function serializePoleLot(
-  l: PoleLot & { spec?: { nombre: string }; tests?: PoleQualityTest[] }
+  l: PoleLot & { spec?: { nombre: string }; tests?: PoleQualityTest[]; materialConsumptions?: PoleLotMaterialConsumption[] }
 ): PoleLotDTO {
+  const materialConsumptions = (l.materialConsumptions ?? []).map(serializeConsumption);
   return {
     id: l.id,
     specId: l.specId,
@@ -118,6 +191,8 @@ export function serializePoleLot(
     andeInspector: l.andeInspector,
     notas: l.notas,
     tests: (l.tests ?? []).map(serializeQualityTest),
+    materialConsumptions,
+    costoMaterialTotalGs: materialConsumptions.reduce((sum, c) => sum + c.costoTotalGs, 0),
     createdAt: l.createdAt.toISOString(),
   };
 }

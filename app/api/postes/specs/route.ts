@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const activo = req.nextUrl.searchParams.get("activo");
   const specs = await prisma.poleSpec.findMany({
     where: activo ? { activo: activo === "true" } : {},
-    include: { lots: { select: { id: true } } },
+    include: { lots: { select: { id: true } }, recipeItems: { include: { material: true } } },
     orderBy: { nombre: "asc" },
   });
   return NextResponse.json(specs.map(serializePoleSpec));

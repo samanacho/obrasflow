@@ -16,12 +16,14 @@ import AppShell from "@/components/AppShell";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import Toast from "@/components/Toast";
 import { useToast } from "@/lib/useToast";
-import { LOT_STATUS_ORDER, LOT_STATUS_LABEL, LOT_STATUS_COLOR } from "@/lib/poleFields";
-import type { PoleSpecDTO, PoleSpecInput, PoleLotDTO, PoleLotInput, PoleLotStatus } from "@/lib/types";
+import { LOT_STATUS_ORDER, LOT_STATUS_LABEL, LOT_STATUS_COLOR, COMMON_UNITS } from "@/lib/poleFields";
+import { fmtGs } from "@/lib/currency";
+import type { PoleSpecDTO, PoleSpecInput, PoleLotDTO, PoleLotInput, PoleLotStatus, RawMaterialDTO, RawMaterialInput } from "@/lib/types";
 
 const POSTES_TABS = [
   { key: "resumen", label: "Resumen" },
   { key: "specs", label: "Especificaciones" },
+  { key: "materiales", label: "Materias primas" },
   { key: "lotes", label: "Lotes de producción" },
 ] as const;
 type PostesTab = (typeof POSTES_TABS)[number]["key"];
@@ -29,6 +31,10 @@ type PostesTab = (typeof POSTES_TABS)[number]["key"];
 const EMPTY_SPEC: PoleSpecInput = {
   nombre: "", longitud: 0, esfuerzoNominal: 0, diametroBase: null,
   resistenciaHormigon: "", armadura: "", normaAnde: "", notas: "", activo: true,
+};
+
+const EMPTY_MATERIAL: RawMaterialInput = {
+  nombre: "", unidad: "", costoUnitarioGs: 0, proveedor: "", notas: "", activo: true,
 };
 
 function emptyLot(specId = ""): PoleLotInput {
@@ -60,15 +66,21 @@ export default function PostesPage() {
   const [tab, setTab] = useState<PostesTab>("resumen");
   const [specs, setSpecs] = useState<PoleSpecDTO[]>([]);
   const [lots, setLots] = useState<PoleLotDTO[]>([]);
+  const [materials, setMaterials] = useState<RawMaterialDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast, showToast } = useToast();
 
   async function loadAll() {
     setLoading(true);
     try {
-      const [specsRes, lotsRes] = await Promise.all([fetch("/api/postes/specs"), fetch("/api/postes/lots")]);
+      const [specsRes, lotsRes, materialsRes] = await Promise.all([
+        fetch("/api/postes/specs"),
+        fetch("/api/postes/lots"),
+        fetch("/api/postes/materials"),
+      ]);
       setSpecs(specsRes.ok ? await specsRes.json() : []);
       setLots(lotsRes.ok ? await lotsRes.json() : []);
+      setMaterials(materialsRes.ok ? await materialsRes.json() : []);
     } finally {
       setLoading(false);
     }
@@ -94,6 +106,7 @@ export default function PostesPage() {
 
       {!loading && tab === "resumen" && <ResumenView specs={specs} lots={lots} />}
       {!loading && tab === "specs" && <SpecsView specs={specs} onChanged={loadAll} showToast={showToast} />}
+      {!loading && tab === "materiales" && <MaterialesView materials={materials} onChanged={loadAll} showToast={showToast} />}
       {!loading && tab === "lotes" && <LotesView lots={lots} specs={specs} onChanged={loadAll} showToast={showToast} />}
 
       <Toast message={toast} />
@@ -109,6 +122,7 @@ function ResumenView({ specs, lots }: { specs: PoleSpecDTO[]; lots: PoleLotDTO[]
   const stockDisponible = lots
     .filter((l) => l.estado === "aprobado")
     .reduce((sum, l) => sum + Math.max(0, l.cantidad - l.cantidadDespachada), 0);
+  const costoMaterialConsumido = lots.reduce((sum, l) => sum + l.costoMaterialTotalGs, 0);
 
   const porEstado = LOT_STATUS_ORDER.map((e) => ({ estado: e, count: lots.filter((l) => l.estado === e).length })).filter((x) => x.count > 0);
   const isDark = typeof document !== "undefined" && document.documentElement.getAttribute("data-coreui-theme") === "dark";
@@ -146,6 +160,13 @@ function ResumenView({ specs, lots }: { specs: PoleSpecDTO[]; lots: PoleLotDTO[]
             <div className="text-uppercase text-body-secondary small mb-1">Postes en stock</div>
             <div className="fs-3 fw-bold mono">{stockDisponible}</div>
             <div className="text-body-secondary small">aprobados, listos para despacho</div>
+          </CCardBody></CCard>
+        </div>
+        <div className="col-md-3 col-6">
+          <CCard className="h-100"><CCardBody>
+            <div className="text-uppercase text-body-secondary small mb-1">Costo de materia prima consumida</div>
+            <div className="fs-3 fw-bold mono">{fmtGs(costoMaterialConsumido)}</div>
+            <div className="text-body-secondary small">en todos los lotes producidos</div>
           </CCardBody></CCard>
         </div>
       </div>
@@ -265,6 +286,7 @@ function SpecsView({
                   <CTableHeaderCell>Esfuerzo nominal (kgf)</CTableHeaderCell>
                   <CTableHeaderCell>Diámetro base (cm)</CTableHeaderCell>
                   <CTableHeaderCell>Hormigón</CTableHeaderCell>
+                  <CTableHeaderCell>Costo est./poste</CTableHeaderCell>
                   <CTableHeaderCell>Lotes</CTableHeaderCell>
                   <CTableHeaderCell>Estado</CTableHeaderCell>
                   <CTableHeaderCell className="text-end">Acciones</CTableHeaderCell>
@@ -273,11 +295,12 @@ function SpecsView({
               <CTableBody>
                 {specs.map((s) => (
                   <CTableRow key={s.id}>
-                    <CTableDataCell className="fw-semibold">{s.nombre}</CTableDataCell>
+                    <CTableDataCell className="fw-semibold"><Link href={`/postes/specs/${s.id}`}>{s.nombre} ↗</Link></CTableDataCell>
                     <CTableDataCell className="mono">{s.longitud}</CTableDataCell>
                     <CTableDataCell className="mono">{s.esfuerzoNominal}</CTableDataCell>
                     <CTableDataCell className="mono">{s.diametroBase ?? "—"}</CTableDataCell>
                     <CTableDataCell>{s.resistenciaHormigon || "—"}</CTableDataCell>
+                    <CTableDataCell className="mono">{fmtGs(s.costoEstimadoPorPosteGs)}</CTableDataCell>
                     <CTableDataCell className="mono">{s.lotCount}</CTableDataCell>
                     <CTableDataCell><CBadge color={s.activo ? "success" : "secondary"}>{s.activo ? "Activa" : "Inactiva"}</CBadge></CTableDataCell>
                     <CTableDataCell className="text-end">
@@ -345,6 +368,188 @@ function SpecsView({
       <ConfirmDialog
         open={confirmTarget !== null}
         title="Eliminar especificación"
+        message={`¿Eliminar "${confirmTarget?.nombre}"? Esta acción no se puede deshacer.`}
+        busy={deleting}
+        error={deleteError}
+        onConfirm={() => confirmTarget && performDelete(confirmTarget)}
+        onCancel={() => setConfirmTarget(null)}
+      />
+    </CCard>
+  );
+}
+
+function MaterialesView({
+  materials, onChanged, showToast,
+}: {
+  materials: RawMaterialDTO[];
+  onChanged: () => void;
+  showToast: (m: string) => void;
+}) {
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<RawMaterialDTO | null>(null);
+  const [form, setForm] = useState<RawMaterialInput>(EMPTY_MATERIAL);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<RawMaterialDTO | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  function openModal(m: RawMaterialDTO | null) {
+    setFormError(null);
+    setEditing(m);
+    setForm(
+      m
+        ? { nombre: m.nombre, unidad: m.unidad, costoUnitarioGs: m.costoUnitarioGs, proveedor: m.proveedor ?? "", notas: m.notas ?? "", activo: m.activo }
+        : EMPTY_MATERIAL
+    );
+    setModalOpen(true);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.nombre.trim()) { setFormError("El nombre es obligatorio."); return; }
+    if (!form.unidad.trim()) { setFormError("Cargá la unidad de medida."); return; }
+    if (!form.costoUnitarioGs || form.costoUnitarioGs <= 0) { setFormError("Cargá el costo unitario (Gs.)."); return; }
+    setSaving(true);
+    setFormError(null);
+    try {
+      const url = editing ? `/api/postes/materials/${editing.id}` : "/api/postes/materials";
+      const res = await fetch(url, {
+        method: editing ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `HTTP ${res.status}`);
+      }
+      setModalOpen(false);
+      onChanged();
+    } catch (err: any) {
+      setFormError(err.message || "No se pudo guardar.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function performDelete(m: RawMaterialDTO) {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(`/api/postes/materials/${m.id}`, { method: "DELETE" });
+      if (!res.ok && res.status !== 204) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `HTTP ${res.status}`);
+      }
+      setConfirmTarget(null);
+      onChanged();
+    } catch (err: any) {
+      setDeleteError(err.message || "No se pudo eliminar.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <CCard>
+      <CCardHeader className="module-panel-head">
+        <div>
+          <span className="fw-semibold fs-5">Materias primas</span>
+          <p className="module-desc mb-0">Insumos usados en las recetas de fabricación — cemento, hierro, arena, etc. — con su costo unitario vigente.</p>
+        </div>
+        <CButton color="primary" size="sm" onClick={() => openModal(null)}>
+          <CIcon icon={cilPlus} className="me-1" /> Nueva materia prima
+        </CButton>
+      </CCardHeader>
+      <CCardBody>
+        {materials.length === 0 && <p className="empty-col">Sin materias primas todavía. Cargá la primera con &quot;+ Nueva materia prima&quot;.</p>}
+        {materials.length > 0 && (
+          <div className="table-wrap">
+            <CTable hover responsive>
+              <CTableHead>
+                <CTableRow>
+                  <CTableHeaderCell>Nombre</CTableHeaderCell>
+                  <CTableHeaderCell>Unidad</CTableHeaderCell>
+                  <CTableHeaderCell>Costo unitario (Gs)</CTableHeaderCell>
+                  <CTableHeaderCell>Proveedor</CTableHeaderCell>
+                  <CTableHeaderCell>En X recetas</CTableHeaderCell>
+                  <CTableHeaderCell>Consumido histórico</CTableHeaderCell>
+                  <CTableHeaderCell>Estado</CTableHeaderCell>
+                  <CTableHeaderCell className="text-end">Acciones</CTableHeaderCell>
+                </CTableRow>
+              </CTableHead>
+              <CTableBody>
+                {materials.map((m) => (
+                  <CTableRow key={m.id}>
+                    <CTableDataCell className="fw-semibold">{m.nombre}</CTableDataCell>
+                    <CTableDataCell>{m.unidad}</CTableDataCell>
+                    <CTableDataCell className="mono">{fmtGs(m.costoUnitarioGs)}</CTableDataCell>
+                    <CTableDataCell>{m.proveedor || "—"}</CTableDataCell>
+                    <CTableDataCell className="mono">{m.recipeCount}</CTableDataCell>
+                    <CTableDataCell className="mono">{`${m.consumidoTotal} ${m.unidad}`}</CTableDataCell>
+                    <CTableDataCell><CBadge color={m.activo ? "success" : "secondary"}>{m.activo ? "Activa" : "Inactiva"}</CBadge></CTableDataCell>
+                    <CTableDataCell className="text-end">
+                      <CButton size="sm" color="secondary" variant="outline" className="me-1" onClick={() => openModal(m)}><CIcon icon={cilPencil} size="sm" /></CButton>
+                      <CButton size="sm" color="danger" variant="outline" onClick={() => { setDeleteError(null); setConfirmTarget(m); }}><CIcon icon={cilTrash} size="sm" /></CButton>
+                    </CTableDataCell>
+                  </CTableRow>
+                ))}
+              </CTableBody>
+            </CTable>
+          </div>
+        )}
+      </CCardBody>
+
+      <CModal visible={modalOpen} onClose={() => setModalOpen(false)} alignment="center" size="lg">
+        <CModalHeader><CModalTitle>{editing ? "Editar" : "Nueva"} materia prima</CModalTitle></CModalHeader>
+        <CForm onSubmit={handleSubmit}>
+          <CModalBody>
+            {formError && <CAlert color="danger">{formError}</CAlert>}
+            <CRow className="mb-3 g-2">
+              <CCol md={8}>
+                <CFormLabel>Nombre</CFormLabel>
+                <CFormInput placeholder="Ej. Cemento Portland" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required />
+              </CCol>
+              <CCol md={4}>
+                <CFormLabel>Unidad</CFormLabel>
+                <CFormInput
+                  list="unidad-suggestions"
+                  placeholder="Ej. kg"
+                  value={form.unidad}
+                  onChange={(e) => setForm({ ...form, unidad: e.target.value })}
+                  required
+                />
+                <datalist id="unidad-suggestions">
+                  {COMMON_UNITS.map((u) => <option key={u} value={u} />)}
+                </datalist>
+              </CCol>
+            </CRow>
+            <CRow className="mb-3 g-2">
+              <CCol>
+                <CFormLabel>Costo unitario (Gs.)</CFormLabel>
+                <CFormInput type="number" min={0} step="1" value={form.costoUnitarioGs || ""} onChange={(e) => setForm({ ...form, costoUnitarioGs: Number(e.target.value) })} required />
+              </CCol>
+              <CCol>
+                <CFormLabel>Proveedor (opcional)</CFormLabel>
+                <CFormInput value={form.proveedor ?? ""} onChange={(e) => setForm({ ...form, proveedor: e.target.value })} />
+              </CCol>
+            </CRow>
+            <div className="mb-3">
+              <CFormLabel>Notas</CFormLabel>
+              <CFormTextarea rows={2} value={form.notas ?? ""} onChange={(e) => setForm({ ...form, notas: e.target.value })} />
+            </div>
+            <CFormCheck id="material-activo" label="Materia prima activa (se puede elegir en recetas nuevas)" checked={form.activo !== false} onChange={(e) => setForm({ ...form, activo: e.target.checked })} />
+          </CModalBody>
+          <CModalFooter>
+            <CButton color="secondary" variant="ghost" onClick={() => setModalOpen(false)}>Cancelar</CButton>
+            <CButton color="primary" type="submit" disabled={saving}>{saving ? "Guardando…" : "Guardar"}</CButton>
+          </CModalFooter>
+        </CForm>
+      </CModal>
+
+      <ConfirmDialog
+        open={confirmTarget !== null}
+        title="Eliminar materia prima"
         message={`¿Eliminar "${confirmTarget?.nombre}"? Esta acción no se puede deshacer.`}
         busy={deleting}
         error={deleteError}
@@ -466,6 +671,7 @@ function LotesView({
                   <CTableHeaderCell>Disponible</CTableHeaderCell>
                   <CTableHeaderCell>Colado</CTableHeaderCell>
                   <CTableHeaderCell>Estado</CTableHeaderCell>
+                  <CTableHeaderCell>Costo materiales</CTableHeaderCell>
                   <CTableHeaderCell>ANDE</CTableHeaderCell>
                   <CTableHeaderCell className="text-end">Acciones</CTableHeaderCell>
                 </CTableRow>
@@ -479,6 +685,7 @@ function LotesView({
                     <CTableDataCell className="mono">{Math.max(0, l.cantidad - l.cantidadDespachada)}</CTableDataCell>
                     <CTableDataCell className="mono">{fmtDate(l.fechaColado)}</CTableDataCell>
                     <CTableDataCell><CBadge color={LOT_STATUS_COLOR[l.estado]}>{LOT_STATUS_LABEL[l.estado]}</CBadge></CTableDataCell>
+                    <CTableDataCell className="mono">{fmtGs(l.costoMaterialTotalGs)}</CTableDataCell>
                     <CTableDataCell>{l.andeAprobado ? <CBadge color="success">Aprobado</CBadge> : <span className="text-body-secondary">—</span>}</CTableDataCell>
                     <CTableDataCell className="text-end">
                       <CButton size="sm" color="secondary" variant="outline" className="me-1" onClick={() => openModal(l)}><CIcon icon={cilPencil} size="sm" /></CButton>

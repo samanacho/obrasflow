@@ -10,11 +10,14 @@ interface Params {
   params: { id: string };
 }
 
+const LOT_INCLUDE = {
+  spec: { select: { nombre: true } },
+  tests: { orderBy: { fecha: "desc" as const } },
+  materialConsumptions: { orderBy: { materialNombre: "asc" as const } },
+};
+
 export async function GET(_req: NextRequest, { params }: Params) {
-  const lot = await prisma.poleLot.findUnique({
-    where: { id: params.id },
-    include: { spec: { select: { nombre: true } }, tests: { orderBy: { fecha: "desc" } } },
-  });
+  const lot = await prisma.poleLot.findUnique({ where: { id: params.id }, include: LOT_INCLUDE });
   if (!lot) return NextResponse.json({ error: "Lote no encontrado." }, { status: 404 });
   return NextResponse.json(serializePoleLot(lot));
 }
@@ -41,25 +44,43 @@ export async function PUT(req: NextRequest, { params }: Params) {
     if (!fechaColado) return NextResponse.json({ error: "La fecha de colado es obligatoria." }, { status: 400 });
     const estado = LOT_STATUS_ORDER.includes(body.estado as any) ? String(body.estado) : "en_curado";
 
-    const updated = await prisma.poleLot.update({
-      where: { id: params.id },
-      data: {
-        specId,
-        codigo,
-        cantidad,
-        cantidadDespachada,
-        fechaColado: new Date(fechaColado),
-        fechaDesmolde: body.fechaDesmolde ? new Date(String(body.fechaDesmolde)) : null,
-        estado: estado as any,
-        responsable: body.responsable ? String(body.responsable) : null,
-        andeAprobado: Boolean(body.andeAprobado),
-        andeFecha: body.andeFecha ? new Date(String(body.andeFecha)) : null,
-        andeActa: body.andeActa ? String(body.andeActa) : null,
-        andeInspector: body.andeInspector ? String(body.andeInspector) : null,
-        notas: body.notas ? String(body.notas) : null,
-      },
-      include: { spec: { select: { nombre: true } }, tests: { orderBy: { fecha: "desc" } } },
+    // Si cambia la cantidad de postes del lote, se re-escala la cantidad y
+    // costo total de cada consumo de materia prima YA registrado — pero
+    // usando el costo unitario que ya estaba congelado en ese consumo, no
+    // el costo actual del material. Editar un lote no debe re-tasar su
+    // costo histórico a precios de hoy.
+    const updated = await prisma.$transaction(async (tx) => {
+      const lot = await tx.poleLot.update({
+        where: { id: params.id },
+        data: {
+          specId,
+          codigo,
+          cantidad,
+          cantidadDespachada,
+          fechaColado: new Date(fechaColado),
+          fechaDesmolde: body.fechaDesmolde ? new Date(String(body.fechaDesmolde)) : null,
+          estado: estado as any,
+          responsable: body.responsable ? String(body.responsable) : null,
+          andeAprobado: Boolean(body.andeAprobado),
+          andeFecha: body.andeFecha ? new Date(String(body.andeFecha)) : null,
+          andeActa: body.andeActa ? String(body.andeActa) : null,
+          andeInspector: body.andeInspector ? String(body.andeInspector) : null,
+          notas: body.notas ? String(body.notas) : null,
+        },
+      });
+
+      const consumptions = await tx.poleLotMaterialConsumption.findMany({ where: { lotId: params.id } });
+      for (const c of consumptions) {
+        const cantidadTotal = Number(c.cantidadPorPoste) * cantidad;
+        await tx.poleLotMaterialConsumption.update({
+          where: { id: c.id },
+          data: { cantidadTotal, costoTotalGs: cantidadTotal * Number(c.costoUnitarioGs) },
+        });
+      }
+
+      return tx.poleLot.findUniqueOrThrow({ where: { id: lot.id }, include: LOT_INCLUDE });
     });
+
     return NextResponse.json(serializePoleLot(updated));
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
