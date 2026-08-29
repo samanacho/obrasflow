@@ -172,4 +172,11 @@ El módulo Cotización de cada proyecto se alimenta de este directorio (`GET /ap
 
 ## Fábrica de Postes (`/postes`)
 
-Lugar reservado en el menú (sidebar + al lado de Dashboard/Tablero/Tabla) para lo que eventualmente será el módulo de control de producción de una fábrica de postes de hormigón bajo especificaciones técnicas de la ANDE — todavía no tiene funcionalidad, solo una página de "Próximamente" con lo que probablemente va a incluir. Se diseña con el usuario cuando esté listo para definir el flujo real, mismo criterio que se usó con Movimientos/Ejecución antes de construirlo.
+Control de producción de postes de hormigón bajo especificaciones técnicas de la ANDE — sección global aparte de las obras (sidebar + al lado de Dashboard/Tablero/Tabla), con su propio modelo relacional (`PoleSpec`/`PoleLot`/`PoleQualityTest` en `prisma/schema.prisma`) en vez del patrón `ProjectItem`/JSON que usan los módulos de proyecto, porque acá los campos son fijos y conocidos de antemano.
+
+**No hay una tabla de "clases ANDE oficiales" hardcodeada** — la nomenclatura exacta de clases varía y hay que cargarla real, no inventada (se investigó contra pliegos reales de licitaciones DNCP de adquisición de postes para ANDE — ver comentarios en [lib/poleFields.ts](lib/poleFields.ts)). Lo que sí está confirmado es la estructura de campos que describe una ficha técnica: longitud en metros, esfuerzo nominal en kgf, diámetro en la base, calidad del hormigón.
+
+Tres pestañas dentro de `/postes`:
+- **Resumen**: especificaciones activas, lotes en proceso/aprobados/rechazados, stock de postes en depósito (aprobados menos despachados), donut de lotes por estado.
+- **Especificaciones**: catálogo de tipos de poste que produce la fábrica (longitud, esfuerzo nominal, diámetro, calidad del hormigón, armadura, norma ANDE) — CRUD completo; no se puede eliminar una especificación con lotes cargados (se sugiere marcarla inactiva).
+- **Lotes de producción**: cada lote (código, especificación, cantidad, fecha de colado/desmolde, responsable) recorre `en_curado → listo_para_ensayo → en_ensayo → aprobado/rechazado → despachado`, con filtro por estado. Cada lote tiene su propia ficha (`/postes/lotes/[id]`) con los datos de aprobación ANDE (fecha, N° de acta, inspector), cantidad despachada vs. disponible, y el listado de **ensayos de calidad** (ruptura/flexión, verificación dimensional, curado) con alta/eliminación.

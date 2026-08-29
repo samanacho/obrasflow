@@ -1,5 +1,5 @@
-import type { Project, ProjectItem, Contractor, ContractorHistoryEntry } from "@prisma/client";
-import type { ProjectDTO, ProjectItemDTO, ContractorDTO, ContractorHistoryDTO } from "./types";
+import type { Project, ProjectItem, Contractor, ContractorHistoryEntry, PoleSpec, PoleLot, PoleQualityTest } from "@prisma/client";
+import type { ProjectDTO, ProjectItemDTO, ContractorDTO, ContractorHistoryDTO, PoleSpecDTO, PoleLotDTO, PoleQualityTestDTO } from "./types";
 
 /** Convierte el registro de Prisma (Decimal, Date) a la forma plana que consume el frontend. */
 export function serializeProject(p: Project): ProjectDTO {
@@ -64,5 +64,60 @@ export function serializeContractor(c: Contractor & { history?: { rating: number
     avgRating,
     historyCount: c.history?.length ?? 0,
     createdAt: c.createdAt.toISOString(),
+  };
+}
+
+export function serializePoleSpec(s: PoleSpec & { lots?: { id: string }[] }): PoleSpecDTO {
+  return {
+    id: s.id,
+    nombre: s.nombre,
+    longitud: Number(s.longitud),
+    esfuerzoNominal: Number(s.esfuerzoNominal),
+    diametroBase: s.diametroBase !== null ? Number(s.diametroBase) : null,
+    resistenciaHormigon: s.resistenciaHormigon,
+    armadura: s.armadura,
+    normaAnde: s.normaAnde,
+    notas: s.notas,
+    activo: s.activo,
+    lotCount: s.lots?.length ?? 0,
+    createdAt: s.createdAt.toISOString(),
+  };
+}
+
+export function serializeQualityTest(t: PoleQualityTest): PoleQualityTestDTO {
+  return {
+    id: t.id,
+    lotId: t.lotId,
+    tipo: t.tipo,
+    resultado: t.resultado,
+    fecha: t.fecha.toISOString().slice(0, 10),
+    valorMedido: t.valorMedido,
+    responsable: t.responsable,
+    observaciones: t.observaciones,
+    createdAt: t.createdAt.toISOString(),
+  };
+}
+
+export function serializePoleLot(
+  l: PoleLot & { spec?: { nombre: string }; tests?: PoleQualityTest[] }
+): PoleLotDTO {
+  return {
+    id: l.id,
+    specId: l.specId,
+    specNombre: l.spec?.nombre ?? "",
+    codigo: l.codigo,
+    cantidad: l.cantidad,
+    cantidadDespachada: l.cantidadDespachada,
+    fechaColado: l.fechaColado.toISOString().slice(0, 10),
+    fechaDesmolde: l.fechaDesmolde ? l.fechaDesmolde.toISOString().slice(0, 10) : null,
+    estado: l.estado as PoleLotDTO["estado"],
+    responsable: l.responsable,
+    andeAprobado: l.andeAprobado,
+    andeFecha: l.andeFecha ? l.andeFecha.toISOString().slice(0, 10) : null,
+    andeActa: l.andeActa,
+    andeInspector: l.andeInspector,
+    notas: l.notas,
+    tests: (l.tests ?? []).map(serializeQualityTest),
+    createdAt: l.createdAt.toISOString(),
   };
 }

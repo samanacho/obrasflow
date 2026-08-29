@@ -110,3 +110,91 @@ export interface ContractorInput {
   status: ContractorStatus;
   notes?: string | null;
 }
+
+// ── Fábrica de Postes ──────────────────────────────────────────────────
+
+export type PoleLotStatus = "en_curado" | "listo_para_ensayo" | "en_ensayo" | "aprobado" | "rechazado" | "despachado";
+
+export interface PoleSpecDTO {
+  id: string;
+  nombre: string;
+  longitud: number;
+  esfuerzoNominal: number;
+  diametroBase: number | null;
+  resistenciaHormigon: string | null;
+  armadura: string | null;
+  normaAnde: string | null;
+  notas: string | null;
+  activo: boolean;
+  lotCount: number;
+  createdAt: string;
+}
+
+export interface PoleSpecInput {
+  nombre: string;
+  longitud: number;
+  esfuerzoNominal: number;
+  diametroBase?: number | null;
+  resistenciaHormigon?: string | null;
+  armadura?: string | null;
+  normaAnde?: string | null;
+  notas?: string | null;
+  activo?: boolean;
+}
+
+export interface PoleQualityTestDTO {
+  id: string;
+  lotId: string;
+  tipo: string;
+  resultado: string;
+  fecha: string;
+  valorMedido: string | null;
+  responsable: string | null;
+  observaciones: string | null;
+  createdAt: string;
+}
+
+export interface PoleQualityTestInput {
+  tipo: string;
+  resultado: string;
+  fecha: string;
+  valorMedido?: string | null;
+  responsable?: string | null;
+  observaciones?: string | null;
+}
+
+export interface PoleLotDTO {
+  id: string;
+  specId: string;
+  specNombre: string;
+  codigo: string;
+  cantidad: number;
+  cantidadDespachada: number;
+  fechaColado: string;
+  fechaDesmolde: string | null;
+  estado: PoleLotStatus;
+  responsable: string | null;
+  andeAprobado: boolean;
+  andeFecha: string | null;
+  andeActa: string | null;
+  andeInspector: string | null;
+  notas: string | null;
+  tests: PoleQualityTestDTO[];
+  createdAt: string;
+}
+
+export interface PoleLotInput {
+  specId: string;
+  codigo: string;
+  cantidad: number;
+  cantidadDespachada?: number;
+  fechaColado: string;
+  fechaDesmolde?: string | null;
+  estado?: PoleLotStatus;
+  responsable?: string | null;
+  andeAprobado?: boolean;
+  andeFecha?: string | null;
+  andeActa?: string | null;
+  andeInspector?: string | null;
+  notas?: string | null;
+}

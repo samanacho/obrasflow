@@ -125,3 +125,90 @@ model ContractorHistoryEntry {
 
   @@index([contractorId])
 }
+
+// ── Fábrica de Postes ───────────────────────────────────────────────────
+// Dominio completamente aparte de las obras (es control de producción de
+// fábrica, no gestión de proyectos de construcción) — por eso son modelos
+// relacionales propios en vez de reusar el patrón ProjectItem/data-JSON:
+// acá los campos SÍ son fijos y conocidos de antemano (longitud, esfuerzo,
+// resultado de ensayo...), no un formulario configurable por módulo.
+
+enum PoleLotStatus {
+  en_curado
+  listo_para_ensayo
+  en_ensayo
+  aprobado
+  rechazado
+  despachado
+}
+
+/// Catálogo de especificaciones técnicas de poste — el usuario carga acá
+/// los tipos que realmente produce (longitud, esfuerzo nominal, diámetro,
+/// calidad del hormigón). No se hardcodean clases "oficiales" de ANDE en
+/// el código: la nomenclatura exacta de clases varía y hay que cargarla
+/// real, no inventada — ver lib/poleFields.ts para el detalle de por qué.
+model PoleSpec {
+  id                  String   @id @default(cuid())
+  nombre              String
+  longitud            Decimal  @db.Decimal(5, 2)
+  esfuerzoNominal     Decimal  @db.Decimal(8, 2)
+  diametroBase        Decimal? @db.Decimal(6, 2)
+  resistenciaHormigon String?
+  armadura            String?
+  normaAnde           String?
+  notas               String?
+  activo              Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  lots PoleLot[]
+
+  @@index([activo])
+}
+
+/// Un lote de producción: una tanda de postes de una misma especificación,
+/// coladas juntas, que recorren el mismo ciclo de curado -> ensayo ->
+/// aprobación ANDE -> despacho.
+model PoleLot {
+  id                 String        @id @default(cuid())
+  specId             String
+  spec               PoleSpec      @relation(fields: [specId], references: [id])
+  codigo             String
+  cantidad           Int
+  /// Cuántos de los `cantidad` ya salieron despachados — el stock
+  /// disponible de un lote aprobado es `cantidad - cantidadDespachada`.
+  cantidadDespachada Int           @default(0)
+  fechaColado        DateTime      @db.Date
+  fechaDesmolde      DateTime?     @db.Date
+  estado             PoleLotStatus @default(en_curado)
+  responsable        String?
+  andeAprobado       Boolean       @default(false)
+  andeFecha          DateTime?     @db.Date
+  andeActa           String?
+  andeInspector      String?
+  notas              String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  tests PoleQualityTest[]
+
+  @@index([specId])
+  @@index([estado])
+}
+
+/// Un ensayo de control de calidad sobre un lote (ruptura/flexión,
+/// verificación dimensional, curado...). Varios ensayos por lote.
+model PoleQualityTest {
+  id            String   @id @default(cuid())
+  lotId         String
+  lot           PoleLot  @relation(fields: [lotId], references: [id], onDelete: Cascade)
+  tipo          String
+  resultado     String
+  fecha         DateTime @db.Date
+  valorMedido   String?
+  responsable   String?
+  observaciones String?
+  createdAt     DateTime @default(now())
+
+  @@index([lotId])
+}
