@@ -82,6 +82,17 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  // Edición rápida del presupuesto — atajo al lado del "Editar" general,
+  // que abre el wizard completo. El presupuesto es la única fuente de
+  // verdad para todo lo que depende de él (% ejecutado, saldo disponible,
+  // gráficos de /ejecucion, alertas de "sobre presupuesto" en Inicio): no
+  // hay ningún valor derivado guardado aparte, así que con actualizar acá
+  // `project.budget` y refrescar el estado ya queda todo al día.
+  const [budgetEditOpen, setBudgetEditOpen] = useState(false);
+  const [budgetValue, setBudgetValue] = useState("");
+  const [budgetError, setBudgetError] = useState<string | null>(null);
+  const [savingBudget, setSavingBudget] = useState(false);
+
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -113,6 +124,39 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
       if (res.ok) setProject(await res.json());
     } catch {
       /* si falla, el usuario igual puede recargar manualmente */
+    }
+  }
+
+  function openBudgetEdit() {
+    if (!project) return;
+    setBudgetError(null);
+    setBudgetValue(String(project.budget));
+    setBudgetEditOpen(true);
+  }
+
+  async function handleBudgetSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!project) return;
+    const budget = Number(budgetValue);
+    if (!Number.isFinite(budget) || budget < 0) { setBudgetError("Cargá un presupuesto válido."); return; }
+    setSavingBudget(true);
+    setBudgetError(null);
+    try {
+      const res = await fetch(`/api/projects/${project.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ budget }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `HTTP ${res.status}`);
+      }
+      setProject(await res.json());
+      setBudgetEditOpen(false);
+    } catch (err: any) {
+      setBudgetError(err.message || "No se pudo actualizar el presupuesto.");
+    } finally {
+      setSavingBudget(false);
     }
   }
 
@@ -165,7 +209,21 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
           </div>
         </div>
         <div className="project-hero-kpis">
-          <CCard><CCardBody><div className="label">Presupuesto</div><div className="value mono">{fmtMoney(project.budget)}</div><div className={"sub" + (overBudget ? " alert-text" : "")}>{fmtMoney(project.spent)} ejecutado{overBudget ? " · sobre presupuesto" : ""}</div></CCardBody></CCard>
+          <CCard className="position-relative">
+            <CButton
+              color="secondary" variant="ghost" size="sm"
+              className="position-absolute top-0 end-0 m-1 p-1"
+              title="Editar presupuesto"
+              onClick={openBudgetEdit}
+            >
+              <CIcon icon={cilPencil} size="sm" />
+            </CButton>
+            <CCardBody>
+              <div className="label">Presupuesto</div>
+              <div className="value mono">{fmtMoney(project.budget)}</div>
+              <div className={"sub" + (overBudget ? " alert-text" : "")}>{fmtMoney(project.spent)} ejecutado{overBudget ? " · sobre presupuesto" : ""}</div>
+            </CCardBody>
+          </CCard>
           <CCard><CCardBody><div className="label">Avance</div><div className="value mono">{project.progress}%</div><div className="sub">Estado: {project.status.replace("_", " ")}</div></CCardBody></CCard>
           <CCard><CCardBody><div className="label">Fecha fin</div><div className="value mono">{project.end.split("-").reverse().join("/")}</div><div className={"sub" + (daysLeft < 7 ? " alert-text" : "")}>{daysLeft < 0 ? `Vencido hace ${Math.abs(daysLeft)}d` : `${daysLeft} días restantes`}</div></CCardBody></CCard>
         </div>
@@ -224,6 +282,30 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
         onClose={() => setEditOpen(false)}
         onSaved={handleSaved}
       />
+
+      <CModal visible={budgetEditOpen} onClose={() => setBudgetEditOpen(false)} alignment="center">
+        <CModalHeader><CModalTitle>Editar presupuesto</CModalTitle></CModalHeader>
+        <CForm onSubmit={handleBudgetSubmit}>
+          <CModalBody>
+            {budgetError && <CAlert color="danger">{budgetError}</CAlert>}
+            <CFormLabel>Presupuesto (Gs.)</CFormLabel>
+            <CFormInput
+              type="number" min={0} step="1" autoFocus
+              value={budgetValue}
+              onChange={(e) => setBudgetValue(e.target.value)}
+              required
+            />
+            <p className="module-desc mt-2 mb-0">
+              Al guardar se recalcula automáticamente todo lo que depende del presupuesto: % ejecutado, saldo disponible,
+              los gráficos de <Link href="/ejecucion">Ejecución Presupuestaria</Link> y las alertas de sobre-presupuesto de Inicio.
+            </p>
+          </CModalBody>
+          <CModalFooter>
+            <CButton color="secondary" variant="ghost" onClick={() => setBudgetEditOpen(false)}>Cancelar</CButton>
+            <CButton color="primary" type="submit" disabled={savingBudget}>{savingBudget ? "Guardando…" : "Guardar"}</CButton>
+          </CModalFooter>
+        </CForm>
+      </CModal>
 
       <ConfirmDialog
         open={confirmDeleteOpen}

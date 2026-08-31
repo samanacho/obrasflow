@@ -47,13 +47,28 @@ export async function PUT(req: NextRequest, { params }: Params) {
   }
 }
 
-/** Actualización parcial (usado por los botones de mover estado en el Kanban). */
+/**
+ * Actualización parcial (usado por los botones de mover estado en el
+ * Kanban, y por el editor rápido de presupuesto de la ficha de la obra).
+ * `budget` es solo el número: nada más se recalcula en el servidor
+ * porque nada más lo guarda por separado — % ejecutado, saldo disponible,
+ * los gráficos de /ejecucion y las alertas de "sobre presupuesto" de
+ * Inicio se calculan siempre en vivo a partir de este mismo valor, así
+ * que quedan al día apenas se vuelve a pedir el proyecto.
+ */
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const body = (await req.json()) as Record<string, unknown>;
     const data: Record<string, unknown> = {};
     if (typeof body.status === "string") data.status = body.status;
     if (typeof body.progress === "number") data.progress = Math.max(0, Math.min(100, Math.round(body.progress)));
+    if (body.budget !== undefined) {
+      const budget = Number(body.budget);
+      if (!Number.isFinite(budget) || budget < 0) {
+        return NextResponse.json({ error: "Presupuesto inválido." }, { status: 400 });
+      }
+      data.budget = budget;
+    }
 
     const updated = await prisma.project.update({ where: { id: params.id }, data });
     return NextResponse.json(serializeProject(updated));
