@@ -32,28 +32,34 @@ enum ProjectSector {
 }
 
 model Project {
-  id         String        @id @default(cuid())
-  name       String
-  type       ProjectType
+  id          String         @id @default(cuid())
+  name        String
+  type        ProjectType
   /// Rubro escrito a mano cuando `type` es "otro" — null para el resto.
-  customType String?
-  status     ProjectStatus @default(planificado)
-  manager    String
-  start      DateTime      @db.Date
-  end        DateTime      @db.Date
-  budget     Decimal       @default(0) @db.Decimal(14, 2)
-  spent      Decimal       @default(0) @db.Decimal(14, 2)
-  progress   Int           @default(0)
+  customType  String?
+  status      ProjectStatus  @default(planificado)
+  manager     String
+  /// Ciudad donde se ejecuta la obra — distinto de sectorData.localidad
+  /// (lista de ciudades para trámites de licitación pública): esto es la
+  /// ubicación general de la obra, un solo valor, para cualquier sector.
+  city        String?
+  /// "lat,lng" del pin en el mapa — mismo formato que ProjectItem.data.coordenadas (Relevamiento).
+  coordinates String?
+  start       DateTime       @db.Date
+  end         DateTime       @db.Date
+  budget      Decimal        @default(0) @db.Decimal(14, 2)
+  spent       Decimal        @default(0) @db.Decimal(14, 2)
+  progress    Int            @default(0)
   /// Privado o público — null en proyectos creados antes de este campo.
-  sector     ProjectSector?
+  sector      ProjectSector?
   /// Respuestas del paso 3 del wizard (varían según `sector`): para
   /// público incluye entidadConvocante/nombreLicitacion/procedimiento +
   /// extras; para privado, los campos de client-intake. JSON en vez de
   /// columnas propias porque el set de campos es específico del sector y
   /// se decide/ajusta desde la config del wizard, no desde el schema.
-  sectorData Json?
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  sectorData  Json?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
   items ProjectItem[]
 
@@ -201,7 +207,7 @@ model PoleLot {
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 
-  tests               PoleQualityTest[]
+  tests                PoleQualityTest[]
   materialConsumptions PoleLotMaterialConsumption[]
 
   @@index([specId])

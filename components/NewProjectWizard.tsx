@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
   CForm, CFormLabel, CFormInput, CFormSelect, CFormTextarea,
@@ -11,6 +12,19 @@ import { cilArrowLeft, cilBriefcase, cilHome } from "@coreui/icons";
 import type { ProjectDTO, ProjectInput, ProjectStatus, ProjectType, ProjectSector } from "@/lib/types";
 import { PUBLIC_FIELDS, PRIVATE_FIELDS, SectorField } from "@/lib/sectorFields";
 import CityMultiSelect from "@/components/CityMultiSelect";
+
+const LocationPicker = dynamic(() => import("@/components/LocationPicker"), {
+  ssr: false,
+  loading: () => <p className="empty-col">Cargando mapa…</p>,
+});
+
+/** "lat,lng" (como se guarda en Project.coordinates) -> {lat,lng}, o null si todavía no hay nada cargado. */
+function parseCoords(raw: string | null | undefined): { lat: number; lng: number } | null {
+  const [latStr, lngStr] = String(raw ?? "").split(",");
+  const lat = Number(latStr);
+  const lng = Number(lngStr);
+  return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+}
 
 const STATUS_LABEL: Record<ProjectStatus, string> = {
   planificado: "Planificado",
@@ -26,6 +40,8 @@ const EMPTY_FORM: ProjectInput = {
   customType: "",
   status: "planificado",
   manager: "",
+  city: "",
+  coordinates: "",
   start: "",
   end: "",
   budget: 0,
@@ -42,6 +58,8 @@ function toForm(project: ProjectDTO): ProjectInput {
     customType: project.customType ?? "",
     status: project.status,
     manager: project.manager,
+    city: project.city ?? "",
+    coordinates: project.coordinates ?? "",
     start: project.start,
     end: project.end,
     budget: project.budget,
@@ -219,6 +237,17 @@ function StepGeneral({ form, setForm }: { form: ProjectInput; setForm: (f: Proje
       <div className="mb-3">
         <CFormLabel>Responsable</CFormLabel>
         <CFormInput required placeholder="Ej. Ana Torres" value={form.manager} onChange={(e) => setForm({ ...form, manager: e.target.value })} />
+      </div>
+      <div className="mb-3">
+        <CFormLabel>Ciudad (opcional)</CFormLabel>
+        <CFormInput placeholder="Ej. Encarnación" value={form.city ?? ""} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+      </div>
+      <div className="mb-3">
+        <CFormLabel>Ubicación en el mapa (opcional)</CFormLabel>
+        <LocationPicker
+          value={parseCoords(form.coordinates)}
+          onChange={(coords) => setForm({ ...form, coordinates: `${coords.lat},${coords.lng}` })}
+        />
       </div>
       <CRow className="mb-3 g-2">
         <CCol>

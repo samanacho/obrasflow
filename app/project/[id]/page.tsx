@@ -206,6 +206,19 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
             <CBadge color={STATUS_COLOR[project.status]}>{project.status.replace("_", " ")}</CBadge>
             {project.sector && <CBadge color={project.sector === "publico" ? "dark" : "info"}>{SECTOR_LABEL[project.sector]}</CBadge>}
             <span>{project.manager}</span>
+            {project.city && <span>· {project.city}</span>}
+            {(() => {
+              const coords = parseCoords(project.coordinates);
+              return coords ? (
+                <a
+                  href={`https://www.openstreetmap.org/?mlat=${coords.lat}&mlon=${coords.lng}#map=17/${coords.lat}/${coords.lng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  📍 Ver ubicación en el mapa ↗
+                </a>
+              ) : null;
+            })()}
           </div>
         </div>
         <div className="project-hero-kpis">

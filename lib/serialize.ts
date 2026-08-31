@@ -17,6 +17,8 @@ export function serializeProject(p: Project): ProjectDTO {
     customType: p.customType,
     status: p.status as ProjectDTO["status"],
     manager: p.manager,
+    city: p.city,
+    coordinates: p.coordinates,
     start: p.start.toISOString().slice(0, 10),
     end: p.end.toISOString().slice(0, 10),
     budget: Number(p.budget),

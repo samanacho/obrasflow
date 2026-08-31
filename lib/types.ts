@@ -10,6 +10,10 @@ export interface ProjectDTO {
   customType: string | null;
   status: ProjectStatus;
   manager: string;
+  /** Ciudad donde se ejecuta la obra (distinto de sectorData.localidad, la lista de ciudades de licitación pública). */
+  city: string | null;
+  /** "lat,lng" del pin en el mapa, o null si no se cargó ubicación. */
+  coordinates: string | null;
   start: string;
   end: string;
   budget: number;
@@ -25,6 +29,8 @@ export interface ProjectInput {
   customType?: string | null;
   status: ProjectStatus;
   manager: string;
+  city?: string | null;
+  coordinates?: string | null;
   start: string;
   end: string;
   budget: number;

@@ -28,6 +28,10 @@ export function parseProjectInput(body: unknown): ProjectInput {
   const manager = String(b.manager ?? "").trim();
   if (!manager) throw new ValidationError("El responsable es obligatorio.");
 
+  const city = String(b.city ?? "").trim() || null;
+  const coordinatesRaw = String(b.coordinates ?? "").trim();
+  const coordinates = /^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/.test(coordinatesRaw) ? coordinatesRaw : null;
+
   const start = String(b.start ?? "");
   const end = String(b.end ?? "");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) throw new ValidationError("Fecha de inicio inválida.");
@@ -54,6 +58,8 @@ export function parseProjectInput(body: unknown): ProjectInput {
     customType: type === "otro" ? customType : null,
     status: status as ProjectInput["status"],
     manager,
+    city,
+    coordinates,
     start,
     end,
     budget,
