@@ -100,10 +100,13 @@ export interface ContractorDTO {
   phone: string | null;
   email: string | null;
   city: string | null;
-  province: string | null;
+  department: string | null;
+  /** Calificación general puesta a mano (1-5), o null si no se cargó. */
+  rating: number | null;
   rubros: ProjectType[];
   status: ContractorStatus;
   notes: string | null;
+  /** Promedio de ContractorHistoryEntry.rating — se usa como respaldo cuando `rating` no está cargado. */
   avgRating: number | null;
   historyCount: number;
   createdAt: string;
@@ -124,7 +127,8 @@ export interface ContractorInput {
   phone?: string | null;
   email?: string | null;
   city?: string | null;
-  province?: string | null;
+  department?: string | null;
+  rating?: number | null;
   rubros: ProjectType[];
   status: ContractorStatus;
   notes?: string | null;

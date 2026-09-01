@@ -129,7 +129,14 @@ model Contractor {
   phone       String?
   email       String?
   city        String?
-  province    String?
+  /// Ver lib/departments.ts — los 17 departamentos de Paraguay + Asunción capital, mismo criterio que Project.department.
+  department  String?
+  /// Calificación general del contratista, puesta a mano (1-5) — distinta
+  /// del promedio calculado por obra en ContractorHistoryEntry.rating: esa
+  /// requiere cargar un historial completo por cada obra trabajada, esto
+  /// es una calificación directa y rápida. La ficha usa esta si está
+  /// cargada, y si no cae al promedio del historial.
+  rating      Int?
   rubros      ProjectType[]
   status      ContractorStatus @default(activo)
   notes       String?

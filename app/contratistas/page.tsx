@@ -13,6 +13,7 @@ import AppShell from "@/components/AppShell";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import Toast from "@/components/Toast";
 import { useToast } from "@/lib/useToast";
+import { PARAGUAY_DEPARTMENTS } from "@/lib/departments";
 import type { ContractorDTO, ContractorInput, ProjectType, ContractorStatus } from "@/lib/types";
 
 const RUBRO_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
@@ -20,7 +21,7 @@ const RUBRO_COLOR: Record<ProjectType, string> = { civil: "info", electrico: "wa
 const RUBROS: ProjectType[] = ["civil", "electrico", "vial", "otro"];
 
 const EMPTY_FORM: ContractorInput = {
-  name: "", ruc: "", contactName: "", phone: "", email: "", city: "", province: "", rubros: [], status: "activo", notes: "",
+  name: "", ruc: "", contactName: "", phone: "", email: "", city: "", department: "", rating: null, rubros: [], status: "activo", notes: "",
 };
 
 function Stars({ value }: { value: number | null }) {
@@ -71,7 +72,7 @@ export default function ContratistasPage() {
     setEditing(c);
     setForm(
       c
-        ? { name: c.name, ruc: c.ruc ?? "", contactName: c.contactName ?? "", phone: c.phone ?? "", email: c.email ?? "", city: c.city ?? "", province: c.province ?? "", rubros: c.rubros, status: c.status, notes: c.notes ?? "" }
+        ? { name: c.name, ruc: c.ruc ?? "", contactName: c.contactName ?? "", phone: c.phone ?? "", email: c.email ?? "", city: c.city ?? "", department: c.department ?? "", rating: c.rating, rubros: c.rubros, status: c.status, notes: c.notes ?? "" }
         : EMPTY_FORM
     );
     setModalOpen(true);
@@ -168,10 +169,10 @@ export default function ContratistasPage() {
                   {c.rubros.map((r) => <CBadge key={r} color={RUBRO_COLOR[r]}>{RUBRO_LABEL[r]}</CBadge>)}
                 </div>
                 <div className="contractor-meta">
-                  {c.city && <span><CIcon icon={cilLocationPin} size="sm" className="me-1" />{c.city}{c.province ? `, ${c.province}` : ""}</span>}
+                  {c.city && <span><CIcon icon={cilLocationPin} size="sm" className="me-1" />{c.city}{c.department ? `, ${c.department}` : ""}</span>}
                   {c.phone && <span><CIcon icon={cilPhone} size="sm" className="me-1" />{c.phone}</span>}
                 </div>
-                <Stars value={c.avgRating} />
+                <Stars value={c.rating ?? c.avgRating} />
                 <div className="d-flex gap-2 mt-1">
                   <Link href={`/contratistas/${c.id}`} className="btn btn-sm btn-outline-secondary">Ver ficha</Link>
                   <CButton size="sm" color="secondary" variant="outline" onClick={() => openModal(c)}>Editar</CButton>
@@ -202,8 +203,22 @@ export default function ContratistasPage() {
             </div>
             <CRow className="mb-3 g-2">
               <CCol><CFormLabel>Ciudad</CFormLabel><CFormInput value={form.city ?? ""} onChange={(e) => setForm({ ...form, city: e.target.value })} /></CCol>
-              <CCol><CFormLabel>Provincia</CFormLabel><CFormInput value={form.province ?? ""} onChange={(e) => setForm({ ...form, province: e.target.value })} /></CCol>
+              <CCol>
+                <CFormLabel>Departamento</CFormLabel>
+                <CFormSelect value={form.department ?? ""} onChange={(e) => setForm({ ...form, department: e.target.value })}>
+                  <option value="">Seleccioná…</option>
+                  {PARAGUAY_DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+                </CFormSelect>
+              </CCol>
             </CRow>
+            <div className="mb-3">
+              <CFormLabel>Calificación (1-5)</CFormLabel>
+              <CFormSelect value={form.rating ?? ""} onChange={(e) => setForm({ ...form, rating: e.target.value ? Number(e.target.value) : null })}>
+                <option value="">Sin calificar</option>
+                {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{"★".repeat(n)} ({n})</option>)}
+              </CFormSelect>
+              <div className="form-hint mb-0">Calificación general del contratista — distinta de las que se cargan por obra en su ficha.</div>
+            </div>
             <CRow className="mb-3 g-2">
               <CCol><CFormLabel>Celular</CFormLabel><CFormInput value={form.phone ?? ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></CCol>
               <CCol><CFormLabel>Email</CFormLabel><CFormInput type="email" value={form.email ?? ""} onChange={(e) => setForm({ ...form, email: e.target.value })} /></CCol>

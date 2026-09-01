@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { serializeContractor } from "@/lib/serialize";
+import { PARAGUAY_DEPARTMENTS } from "@/lib/departments";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,20 @@ export async function PUT(req: NextRequest, { params }: Params) {
     const rubros = Array.isArray(body.rubros) ? body.rubros.filter((r) => RUBROS.includes(String(r))) : [];
     const status = STATUSES.includes(String(body.status)) ? String(body.status) : "activo";
 
+    const departmentRaw = String(body.department ?? "").trim();
+    if (departmentRaw && !(PARAGUAY_DEPARTMENTS as readonly string[]).includes(departmentRaw)) {
+      return NextResponse.json({ error: `Departamento inválido: "${departmentRaw}".` }, { status: 400 });
+    }
+
+    let rating: number | null = null;
+    if (body.rating !== undefined && body.rating !== null && body.rating !== "") {
+      const r = Number(body.rating);
+      if (!Number.isInteger(r) || r < 1 || r > 5) {
+        return NextResponse.json({ error: "La calificación tiene que ser un número entero entre 1 y 5." }, { status: 400 });
+      }
+      rating = r;
+    }
+
     const updated = await prisma.contractor.update({
       where: { id: params.id },
       data: {
@@ -39,7 +54,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
         phone: body.phone ? String(body.phone) : null,
         email: body.email ? String(body.email) : null,
         city: body.city ? String(body.city) : null,
-        province: body.province ? String(body.province) : null,
+        department: departmentRaw || null,
+        rating,
         rubros: rubros as any,
         status: status as any,
         notes: body.notes ? String(body.notes) : null,

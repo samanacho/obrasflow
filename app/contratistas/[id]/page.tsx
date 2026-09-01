@@ -128,7 +128,7 @@ export default function ContractorDetail({ params }: { params: { id: string } })
           <div className="project-hero-meta">
             {contractor.rubros.map((r) => <CBadge key={r} color={RUBRO_COLOR[r]}>{RUBRO_LABEL[r]}</CBadge>)}
             <CBadge color={contractor.status === "activo" ? "success" : "secondary"}>{contractor.status}</CBadge>
-            {contractor.city && <span>📍 {contractor.city}{contractor.province ? `, ${contractor.province}` : ""}</span>}
+            {contractor.city && <span>📍 {contractor.city}{contractor.department ? `, ${contractor.department}` : ""}</span>}
           </div>
         </div>
         <div className="project-hero-kpis">
