@@ -8,7 +8,7 @@ import {
   CBadge, CAlert, CRow, CCol,
 } from "@coreui/react";
 import CIcon from "@coreui/icons-react";
-import { cilPlus, cilLocationPin, cilPhone } from "@coreui/icons";
+import { cilPlus, cilLocationPin, cilPhone, cilUser } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import Toast from "@/components/Toast";
@@ -181,11 +181,16 @@ export default function ContratistasPage() {
               <CCardBody className="d-flex flex-column gap-2">
                 <div className="d-flex justify-content-between align-items-start">
                   <Link href={`/contratistas/${c.id}`} className="contractor-name">{c.name}</Link>
-                  <CBadge color={c.status === "activo" ? "success" : "secondary"}>{c.status}</CBadge>
+                  <div className="d-flex gap-1 flex-wrap justify-content-end">
+                    {c.rubros.map((r) => <CBadge key={r} color={RUBRO_COLOR[r]}>{RUBRO_LABEL[r]}</CBadge>)}
+                    <CBadge color={c.status === "activo" ? "success" : "secondary"}>{c.status}</CBadge>
+                  </div>
                 </div>
-                <div className="d-flex gap-1 flex-wrap">
-                  {c.rubros.map((r) => <CBadge key={r} color={RUBRO_COLOR[r]}>{RUBRO_LABEL[r]}</CBadge>)}
-                </div>
+                {c.contactName && (
+                  <div className="text-body-secondary small">
+                    <CIcon icon={cilUser} size="sm" className="me-1" />{c.contactName}
+                  </div>
+                )}
                 <div className="contractor-meta">
                   {c.city && <span><CIcon icon={cilLocationPin} size="sm" className="me-1" />{c.city}{c.department ? `, ${c.department}` : ""}</span>}
                   {c.phone && <span><CIcon icon={cilPhone} size="sm" className="me-1" />{c.phone}</span>}
