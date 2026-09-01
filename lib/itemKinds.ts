@@ -4,7 +4,7 @@
 
 import { MOVIMIENTO_TIPOS } from "./movimientos";
 
-export type FieldType = "text" | "textarea" | "number" | "date" | "contractor" | "quote" | "select" | "location";
+export type FieldType = "text" | "textarea" | "number" | "date" | "contractor" | "quote" | "select" | "location" | "select-search" | "file";
 
 export interface ItemField {
   key: string;
@@ -12,9 +12,30 @@ export interface ItemField {
   type: FieldType;
   required?: boolean;
   placeholder?: string;
-  /** Solo para type "select". */
+  /** Para type "select": las únicas opciones válidas. Para "select-search": sugerencias de un datalist — el campo sigue siendo texto libre. */
   options?: string[];
 }
+
+// Sugerencias del centro de costos / partida presupuestaria de Ejecución
+// — es un campo de texto libre con datalist ("selector con buscador"),
+// no un select cerrado: cada obra tiene su propia estructura de rubros y
+// no tiene sentido bloquear la carga a una lista fija. Estos son solo
+// ejemplos típicos de construcción para autocompletar más rápido.
+export const COST_CENTER_SUGGESTIONS = [
+  "Movimiento de suelos",
+  "Fundaciones",
+  "Estructura de hormigón",
+  "Mampostería",
+  "Instalación eléctrica",
+  "Instalación sanitaria",
+  "Techos y cubiertas",
+  "Revoques y terminaciones",
+  "Pintura",
+  "Carpintería",
+  "Materiales y equipos",
+  "Gastos generales",
+  "Otro",
+];
 
 export interface ItemKindConfig {
   key: string;
@@ -147,9 +168,23 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
       { key: "fecha", label: "Fecha del movimiento", type: "date", required: true },
       { key: "contratistaId", label: "Contratista (opcional)", type: "contractor" },
       { key: "cotizacionId", label: "Cotización vinculada (opcional)", type: "quote" },
-      { key: "categoria", label: "Categoría", type: "select", options: ["Materiales y equipos", "Otro"] },
+      { key: "categoria", label: "Centro de costos / Partida", type: "select-search", options: COST_CENTER_SUGGESTIONS },
+      {
+        key: "tipoInsumo",
+        label: "Tipo de insumo",
+        type: "select",
+        options: ["Materiales", "Mano de obra", "Maquinaria / Alquileres", "Gastos administrativos / Varios"],
+      },
+      { key: "frenteTrabajo", label: "Frente de trabajo / Sector (opcional)", type: "text", placeholder: "Ej. Planta baja, fundaciones, sector norte" },
       { key: "medioPago", label: "Medio de pago", type: "select", options: ["Efectivo", "Transferencia", "Cheque", "Tarjeta"] },
-      { key: "comprobante", label: "N° de factura/recibo, o link a una foto del comprobante", type: "text" },
+      {
+        key: "tipoComprobante",
+        label: "Tipo de comprobante",
+        type: "select",
+        options: ["Factura", "Nota de remisión", "Recibo de dinero", "Vale de caja chica", "Liquidación de jornales", "Otro"],
+      },
+      { key: "comprobante", label: "N° de comprobante (timbrado y N° de factura)", type: "text" },
+      { key: "comprobanteArchivo", label: "Archivo adjunto (foto o PDF del comprobante)", type: "file" },
       { key: "notas", label: "Notas", type: "textarea" },
     ],
     summary: (d) => [d.tipo, d.monto ? `Gs. ${Number(d.monto).toLocaleString("es-PY")}` : "", d.contratistaNombre].filter(Boolean).join(" · "),

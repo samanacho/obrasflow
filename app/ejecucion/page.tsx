@@ -257,7 +257,8 @@ function PlanillaGastosView({ project, items }: { project: ProjectDTO; items: Pr
     .filter((i) => {
       if (!search) return true;
       const q = search.toLowerCase();
-      return i.title.toLowerCase().includes(q) || String(i.data?.notas ?? "").toLowerCase().includes(q) || String(i.data?.categoria ?? "").toLowerCase().includes(q);
+      return [i.title, i.data?.notas, i.data?.categoria, i.data?.tipoInsumo, i.data?.frenteTrabajo, i.data?.tipoComprobante, i.data?.comprobante]
+        .some((v) => String(v ?? "").toLowerCase().includes(q));
     })
     .slice()
     .sort((a, b) => {
@@ -308,7 +309,7 @@ function PlanillaGastosView({ project, items }: { project: ProjectDTO; items: Pr
         {items.length > 0 && (
           <CRow className="g-2 mb-3">
             <CCol md={5}>
-              <CFormInput placeholder="Buscar por descripción, categoría o notas…" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <CFormInput placeholder="Buscar por descripción, centro de costos, comprobante o notas…" value={search} onChange={(e) => setSearch(e.target.value)} />
             </CCol>
             <CCol md={4}>
               <CFormSelect value={filterTipo} onChange={(e) => setFilterTipo(e.target.value)}>
@@ -361,7 +362,7 @@ function PlanillaGastosView({ project, items }: { project: ProjectDTO; items: Pr
                     <CTableDataCell className="mono">{fmtMoney(Number(i.data?.monto ?? 0))}</CTableDataCell>
                     <CTableDataCell>{i.data?.medioPago || "—"}</CTableDataCell>
                     <CTableDataCell>{i.status && <span className={"status-chip status-generic status-" + i.status.toLowerCase().replace(/\s+/g, "_")}>{i.status}</span>}</CTableDataCell>
-                    <CTableDataCell>{i.data?.comprobante ? "📎" : "—"}</CTableDataCell>
+                    <CTableDataCell>{i.attachment || i.data?.comprobante ? "📎" : "—"}</CTableDataCell>
                   </CTableRow>
                 ))}
               </CTableBody>
@@ -376,14 +377,14 @@ function PlanillaGastosView({ project, items }: { project: ProjectDTO; items: Pr
 // ── Tab 2: Archivos y facturas ─────────────────────────────────────────
 
 function ArchivosView({ items }: { items: ProjectItemDTO[] }) {
-  const conComprobante = items.filter((i) => i.data?.comprobante);
+  const conComprobante = items.filter((i) => i.attachment || i.data?.comprobante);
 
   return (
     <CCard>
       <CCardHeader className="module-panel-head">
         <div>
           <span className="fw-semibold fs-5">Archivos y facturas</span>
-          <p className="module-desc mb-0">Comprobantes cargados en cada gasto — fotos de factura/recibo o el número de comprobante.</p>
+          <p className="module-desc mb-0">Comprobantes cargados en cada gasto — fotos de factura/recibo, PDF adjunto o el número de comprobante.</p>
         </div>
       </CCardHeader>
       <CCardBody>
@@ -391,14 +392,26 @@ function ArchivosView({ items }: { items: ProjectItemDTO[] }) {
         {conComprobante.length > 0 && (
           <CRow className="g-3">
             {conComprobante.map((i) => {
-              const comprobante = i.data.comprobante as string;
-              const esImagen = /^https?:\/\//i.test(comprobante);
+              // El archivo adjunto real (subido por drag&drop) tiene prioridad
+              // sobre el viejo comprobante de texto/link — ver lib/itemKinds.ts
+              // (campo "comprobanteArchivo") y components/FileDropZone.tsx.
+              const attachmentUrl = i.attachment ? `/api/attachments/${i.attachment.id}` : null;
+              const attachmentEsImagen = i.attachment?.mimeType.startsWith("image/") ?? false;
+              const comprobante = !i.attachment ? (i.data?.comprobante as string | undefined) : undefined;
+              const comprobanteEsImagen = comprobante ? /^https?:\/\//i.test(comprobante) : false;
+              const previewUrl = attachmentUrl ?? (comprobanteEsImagen ? comprobante : null);
+              const previewIsImage = attachmentUrl ? attachmentEsImagen : comprobanteEsImagen;
+              const linkHref = attachmentUrl ?? comprobante ?? "#";
               return (
                 <CCol md={4} sm={6} key={i.id}>
                   <CCard className="h-100">
-                    {esImagen ? (
-                      <a href={comprobante} target="_blank" rel="noopener noreferrer">
-                        <img src={comprobante} alt="Comprobante" style={{ width: "100%", maxHeight: 160, objectFit: "cover", borderTopLeftRadius: 6, borderTopRightRadius: 6 }} />
+                    {previewUrl && previewIsImage ? (
+                      <a href={linkHref} target="_blank" rel="noopener noreferrer">
+                        <img src={previewUrl} alt="Comprobante" style={{ width: "100%", maxHeight: 160, objectFit: "cover", borderTopLeftRadius: 6, borderTopRightRadius: 6 }} />
+                      </a>
+                    ) : attachmentUrl ? (
+                      <a href={attachmentUrl} target="_blank" rel="noopener noreferrer" className="d-flex align-items-center justify-content-center" style={{ height: 100, background: "var(--panel-2, rgba(0,0,0,.03))" }}>
+                        <CIcon icon={cilDescription} size="xl" className="text-body-secondary" />
                       </a>
                     ) : (
                       <div className="d-flex align-items-center justify-content-center" style={{ height: 100, background: "var(--panel-2, rgba(0,0,0,.03))" }}>
@@ -409,7 +422,8 @@ function ArchivosView({ items }: { items: ProjectItemDTO[] }) {
                       <div className="fw-semibold">{i.title}</div>
                       <div className="item-row-sub">{itemDate(i)} · {fmtMoney(Number(i.data?.monto ?? 0))}</div>
                       {i.data?.tipo && <div className="item-row-sub">{i.data.tipo}</div>}
-                      {!esImagen && <div className="item-row-notes">Comprobante: {comprobante}</div>}
+                      {i.attachment && <div className="item-row-notes">📄 {i.attachment.filename}</div>}
+                      {!i.attachment && comprobante && !comprobanteEsImagen && <div className="item-row-notes">Comprobante: {comprobante}</div>}
                     </CCardBody>
                   </CCard>
                 </CCol>

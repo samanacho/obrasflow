@@ -10,11 +10,18 @@ interface Params {
   params: { id: string };
 }
 
+// Nunca seleccionar `data` (Bytes) acá — los items se listan seguido y no
+// hace falta el contenido del archivo para mostrar la fila, solo su
+// metadata (nombre/tipo/tamaño). El contenido real se sirve aparte por
+// GET /api/attachments/[id], bajo demanda.
+const ATTACHMENT_META_SELECT = { id: true, filename: true, mimeType: true, size: true, createdAt: true };
+
 /** Lista los items de un proyecto, opcionalmente filtrados por ?kind=. */
 export async function GET(req: NextRequest, { params }: Params) {
   const kind = req.nextUrl.searchParams.get("kind");
   const items = await prisma.projectItem.findMany({
     where: { projectId: params.id, ...(kind ? { kind } : {}) },
+    include: { attachments: { select: ATTACHMENT_META_SELECT, orderBy: { createdAt: "desc" }, take: 1 } },
     orderBy: { createdAt: "desc" },
   });
   return NextResponse.json(items.map(serializeItem));

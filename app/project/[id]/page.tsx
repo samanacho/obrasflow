@@ -16,6 +16,9 @@ import { cilPlus, cilPencil, cilTrash } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
 import NewProjectWizard from "@/components/NewProjectWizard";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import FileDropZone from "@/components/FileDropZone";
+import Toast from "@/components/Toast";
+import { useToast } from "@/lib/useToast";
 import type { ProjectDTO, ProjectItemDTO, ContractorDTO } from "@/lib/types";
 import { ITEM_KINDS, ITEM_KIND_ORDER, ItemField } from "@/lib/itemKinds";
 import { PUBLIC_FIELDS, PRIVATE_FIELDS } from "@/lib/sectorFields";
@@ -81,6 +84,7 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
   const [deleting, setDeleting] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const { toast, showToast } = useToast();
 
   // Edición rápida del presupuesto — atajo al lado del "Editar" general,
   // que abre el wizard completo. El presupuesto es la única fuente de
@@ -322,7 +326,7 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
         })}
       </CNav>
 
-      <ModuleView key={tab} projectId={id} kind={tab} project={project} onProjectChanged={refreshProject} />
+      <ModuleView key={tab} projectId={id} kind={tab} project={project} onProjectChanged={refreshProject} showToast={showToast} />
 
       <NewProjectWizard
         visible={editOpen}
@@ -364,17 +368,19 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
         onConfirm={handleDelete}
         onCancel={() => setConfirmDeleteOpen(false)}
       />
+      <Toast message={toast} />
     </AppShell>
   );
 }
 
 function ModuleView({
-  projectId, kind, project, onProjectChanged,
+  projectId, kind, project, onProjectChanged, showToast,
 }: {
   projectId: string;
   kind: string;
   project: ProjectDTO;
   onProjectChanged: () => void;
+  showToast: (m: string) => void;
 }) {
   const cfg = ITEM_KINDS[kind];
   const [items, setItems] = useState<ProjectItemDTO[]>([]);
@@ -713,7 +719,15 @@ function ModuleView({
                 {item.data?.notas && <div className="item-row-notes">{item.data.notas}</div>}
                 {item.data?.respuesta && <div className="item-row-notes">↳ {item.data.respuesta}</div>}
                 {item.data?.motivo && <div className="item-row-notes">{item.data.motivo}</div>}
-                {comprobante && (
+                {item.attachment ? (
+                  <a href={`/api/attachments/${item.attachment.id}`} target="_blank" rel="noopener noreferrer" className="item-row-notes d-inline-block">
+                    {item.attachment.mimeType.startsWith("image/") ? (
+                      <img src={`/api/attachments/${item.attachment.id}`} alt={item.attachment.filename} className="item-receipt-thumb" />
+                    ) : (
+                      <span>📄 {item.attachment.filename}</span>
+                    )}
+                  </a>
+                ) : comprobante && (
                   comprobanteEsImagen ? (
                     <a href={comprobante} target="_blank" rel="noopener noreferrer" className="item-row-notes d-inline-block">
                       <img src={comprobante} alt="Comprobante" className="item-receipt-thumb" />
@@ -744,6 +758,7 @@ function ModuleView({
           projectId={projectId}
           kind={kind}
           existing={editing}
+          showToast={showToast}
           onClose={() => setShowForm(false)}
           onSaved={(saved) => {
             setShowForm(false);
@@ -771,11 +786,12 @@ function ModuleView({
 }
 
 function ItemFormModal({
-  projectId, kind, existing, onClose, onSaved,
+  projectId, kind, existing, showToast, onClose, onSaved,
 }: {
   projectId: string;
   kind: string;
   existing: ProjectItemDTO | null;
+  showToast: (m: string) => void;
   onClose: () => void;
   onSaved: (item: ProjectItemDTO) => void;
 }) {
@@ -792,6 +808,12 @@ function ItemFormModal({
   const [saving, setSaving] = useState(false);
   const [contractors, setContractors] = useState<ContractorDTO[]>([]);
   const [quotes, setQuotes] = useState<ProjectItemDTO[]>([]);
+  // Archivo adjunto: se sube recién después de guardar el item (necesita
+  // su id) — ver handleSubmit. `pendingFile` es lo elegido en esta sesión
+  // de edición todavía sin subir; `removeAttachment` marca que se pidió
+  // sacar el que ya estaba guardado.
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [removeAttachment, setRemoveAttachment] = useState(false);
 
   useEffect(() => {
     if (!cfg.fields.some((f) => f.type === "contractor")) return;
@@ -848,7 +870,26 @@ function ItemFormModal({
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || `HTTP ${res.status}`);
       }
-      onSaved(await res.json());
+      const saved = await res.json();
+
+      // El adjunto se sube/borra recién ahora que el item ya tiene id —
+      // si algo de esto falla, el item ya se guardó igual: se avisa pero
+      // no se bloquea el cierre del modal por un problema solo del archivo.
+      if (pendingFile) {
+        const fd = new FormData();
+        fd.append("file", pendingFile);
+        const upRes = await fetch(`/api/items/${saved.id}/attachment`, { method: "POST", body: fd });
+        if (upRes.ok) saved.attachment = await upRes.json();
+        else {
+          const upBody = await upRes.json().catch(() => ({}));
+          showToast(upBody.error || "El movimiento se guardó, pero no se pudo subir el archivo adjunto.");
+        }
+      } else if (removeAttachment && existing?.attachment) {
+        await fetch(`/api/attachments/${existing.attachment.id}`, { method: "DELETE" }).catch(() => {});
+        saved.attachment = null;
+      }
+
+      onSaved(saved);
     } catch (err: any) {
       setError(err.message || "No se pudo guardar.");
     } finally {
@@ -902,10 +943,31 @@ function ItemFormModal({
                   <option value="">Seleccioná…</option>
                   {f.options?.map((o) => <option key={o} value={o}>{o}</option>)}
                 </CFormSelect>
+              ) : f.type === "select-search" ? (
+                <>
+                  <CFormInput
+                    list={`${f.key}-suggestions`}
+                    value={data[f.key] ?? ""}
+                    onChange={(e) => setField(f.key, e.target.value)}
+                    required={f.required}
+                    placeholder="Escribí para buscar o elegí una sugerencia…"
+                  />
+                  <datalist id={`${f.key}-suggestions`}>
+                    {f.options?.map((o) => <option key={o} value={o} />)}
+                  </datalist>
+                </>
               ) : f.type === "location" ? (
                 <LocationPicker
                   value={parseCoords(data[f.key])}
                   onChange={(coords) => setField(f.key, `${coords.lat},${coords.lng}`)}
+                />
+              ) : f.type === "file" ? (
+                <FileDropZone
+                  file={pendingFile}
+                  existingAttachment={existing?.attachment ?? null}
+                  markedForRemoval={removeAttachment}
+                  onFileSelected={(picked) => { setPendingFile(picked); if (picked) setRemoveAttachment(false); }}
+                  onToggleRemove={() => setRemoveAttachment(true)}
                 />
               ) : (
                 <CFormInput type={f.type} value={data[f.key] ?? ""} onChange={(e) => setField(f.key, e.target.value)} required={f.required} placeholder={f.placeholder} />

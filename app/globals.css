@@ -420,6 +420,17 @@ a{color:inherit;}
 
 /* Selector de ubicación (components/LocationPicker.tsx, Relevamiento) */
 .of-location-picker{height:280px;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:6px;}
+
+/* Drag & drop de comprobante (components/FileDropZone.tsx, Ejecución) */
+.of-dropzone{border:2px dashed var(--line);border-radius:8px;padding:24px 16px;text-align:center;cursor:pointer;background:var(--surface);transition:border-color .15s,background .15s;}
+.of-dropzone:hover{border-color:var(--accent);}
+.of-dropzone.dragging{border-color:var(--accent);background:var(--paper);}
+.of-dropzone-icon{font-size:1.8rem;margin-bottom:6px;}
+.of-dropzone-text{font-size:.85rem;color:var(--ink);margin-bottom:4px;}
+.of-dropzone-preview{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--surface);}
+.of-dropzone-thumb{width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid var(--line);flex-shrink:0;}
+.of-dropzone-file-icon{width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;border-radius:6px;border:1px solid var(--line);background:var(--paper);flex-shrink:0;}
+.of-dropzone-meta{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .gantt_task_line.of-gantt-task{border:none;border-radius:4px;}
 .gantt_task_line.of-gantt-task .gantt_task_progress{background:rgba(0,0,0,.28);border-radius:4px 0 0 4px;}
 .gantt_grid_scale,.gantt_task_scale{background:var(--surface);color:var(--ink-soft);}

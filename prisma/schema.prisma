@@ -87,7 +87,30 @@ model ProjectItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  attachments Attachment[]
+
   @@index([projectId, kind])
+}
+
+/// Archivo adjunto real (foto o PDF de un comprobante, por ahora) — un
+/// registro guarda como mucho uno a la vez, ver app/api/items/[itemId]/
+/// attachment/route.ts. Se guarda el contenido directo en la base
+/// (Bytes/bytea) en vez de un servicio externo tipo Vercel Blob: no hay
+/// credenciales de storage configuradas en este proyecto todavía, así que
+/// esto funciona sin depender de una configuración manual nueva — la
+/// contrapartida es un límite práctico de tamaño por archivo (ver el
+/// límite de 4MB validado en la propia ruta de subida).
+model Attachment {
+  id            String      @id @default(cuid())
+  projectItemId String
+  projectItem   ProjectItem @relation(fields: [projectItemId], references: [id], onDelete: Cascade)
+  filename      String
+  mimeType      String
+  size          Int
+  data          Bytes
+  createdAt     DateTime    @default(now())
+
+  @@index([projectItemId])
 }
 
 enum ContractorStatus {

@@ -11,6 +11,8 @@ interface Params {
   params: { itemId: string };
 }
 
+const ATTACHMENT_META_SELECT = { id: true, filename: true, mimeType: true, size: true, createdAt: true };
+
 export async function PUT(req: NextRequest, { params }: Params) {
   try {
     const body = (await req.json()) as { title?: string; status?: string | null; data?: unknown };
@@ -30,6 +32,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
         status: body.status === undefined ? existing.status : body.status,
         data: (body.data as any) ?? existing.data,
       },
+      include: { attachments: { select: ATTACHMENT_META_SELECT, orderBy: { createdAt: "desc" }, take: 1 } },
     });
 
     if (existing.kind === "change_order") await recomputeProjectSpent(existing.projectId);

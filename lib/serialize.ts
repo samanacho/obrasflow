@@ -1,9 +1,9 @@
 import type {
-  Project, ProjectItem, Contractor, ContractorHistoryEntry,
+  Project, ProjectItem, Contractor, ContractorHistoryEntry, Attachment,
   PoleSpec, PoleLot, PoleQualityTest, RawMaterial, PoleRecipeItem, PoleLotMaterialConsumption, MaterialPurchase,
 } from "@prisma/client";
 import type {
-  ProjectDTO, ProjectItemDTO, ContractorDTO, ContractorHistoryDTO,
+  ProjectDTO, ProjectItemDTO, ContractorDTO, ContractorHistoryDTO, AttachmentDTO,
   PoleSpecDTO, PoleSpecDetailDTO, PoleLotDTO, PoleQualityTestDTO,
   RawMaterialDTO, PoleRecipeItemDTO, PoleLotMaterialConsumptionDTO, MaterialPurchaseDTO, PurchaseDocType,
 } from "./types";
@@ -30,7 +30,14 @@ export function serializeProject(p: Project): ProjectDTO {
   };
 }
 
-export function serializeItem(i: ProjectItem): ProjectItemDTO {
+/** Metadata únicamente — nunca incluye `data` (Bytes) del attachment, eso solo lo sirve GET /api/attachments/[id]. */
+export function serializeAttachmentMeta(a: Pick<Attachment, "id" | "filename" | "mimeType" | "size" | "createdAt">): AttachmentDTO {
+  return { id: a.id, filename: a.filename, mimeType: a.mimeType, size: a.size, createdAt: a.createdAt.toISOString() };
+}
+
+export function serializeItem(
+  i: ProjectItem & { attachments?: Pick<Attachment, "id" | "filename" | "mimeType" | "size" | "createdAt">[] }
+): ProjectItemDTO {
   return {
     id: i.id,
     projectId: i.projectId,
@@ -38,6 +45,7 @@ export function serializeItem(i: ProjectItem): ProjectItemDTO {
     title: i.title,
     status: i.status,
     data: (i.data as Record<string, any>) ?? {},
+    attachment: i.attachments?.[0] ? serializeAttachmentMeta(i.attachments[0]) : null,
     createdAt: i.createdAt.toISOString(),
     updatedAt: i.updatedAt.toISOString(),
   };

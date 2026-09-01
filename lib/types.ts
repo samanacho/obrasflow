@@ -43,6 +43,15 @@ export interface ProjectInput {
   sectorData?: Record<string, any> | null;
 }
 
+/** Metadata del archivo adjunto de un item — nunca el contenido (Bytes), que solo se sirve por GET /api/attachments/[id]. */
+export interface AttachmentDTO {
+  id: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  createdAt: string;
+}
+
 export interface ProjectItemDTO {
   id: string;
   projectId: string;
@@ -50,6 +59,7 @@ export interface ProjectItemDTO {
   title: string;
   status: string | null;
   data: Record<string, any>;
+  attachment: AttachmentDTO | null;
   createdAt: string;
   updatedAt: string;
 }
