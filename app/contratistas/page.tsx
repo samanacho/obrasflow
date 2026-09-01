@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   CCard, CCardBody, CButton, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
@@ -48,6 +48,24 @@ export default function ContratistasPage() {
   const [confirmTarget, setConfirmTarget] = useState<ContractorDTO | null>(null);
   const [deleting, setDeleting] = useState(false);
   const { toast, showToast } = useToast();
+
+  // Autocompletado de Ciudad + Departamento a partir de lo ya cargado: no
+  // hay una tabla "oficial" ciudad→departamento acá adentro (mismo criterio
+  // que las clases ANDE o el centro de costos de Ejecución — no inventar
+  // un catálogo que puede estar mal) — en cambio, aprende de los propios
+  // contratistas ya guardados. Si la misma ciudad se cargó más de una vez
+  // con departamentos distintos, gana el último que aparece en `contractors`.
+  const cityDepartmentMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of contractors) {
+      if (c.city && c.department) map.set(c.city.trim().toLowerCase(), c.department);
+    }
+    return map;
+  }, [contractors]);
+  const knownCities = useMemo(
+    () => Array.from(new Set(contractors.filter((c) => c.city).map((c) => (c.city as string).trim()))).sort(),
+    [contractors]
+  );
 
   async function load() {
     setLoading(true);
@@ -202,7 +220,24 @@ export default function ContratistasPage() {
               </div>
             </div>
             <CRow className="mb-3 g-2">
-              <CCol><CFormLabel>Ciudad</CFormLabel><CFormInput value={form.city ?? ""} onChange={(e) => setForm({ ...form, city: e.target.value })} /></CCol>
+              <CCol>
+                <CFormLabel>Ciudad</CFormLabel>
+                <CFormInput
+                  list="known-cities"
+                  value={form.city ?? ""}
+                  onChange={(e) => {
+                    const city = e.target.value;
+                    // Si la ciudad coincide con una ya cargada antes, el
+                    // departamento se actualiza solo al que se guardó esa
+                    // vez — igual se puede corregir a mano después.
+                    const matched = cityDepartmentMap.get(city.trim().toLowerCase());
+                    setForm({ ...form, city, department: matched ?? form.department });
+                  }}
+                />
+                <datalist id="known-cities">
+                  {knownCities.map((c) => <option key={c} value={c} />)}
+                </datalist>
+              </CCol>
               <CCol>
                 <CFormLabel>Departamento</CFormLabel>
                 <CFormSelect value={form.department ?? ""} onChange={(e) => setForm({ ...form, department: e.target.value })}>
