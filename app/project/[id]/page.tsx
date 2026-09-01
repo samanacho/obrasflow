@@ -242,37 +242,72 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
         </div>
       </div>
 
-      {project.sector &&
-        project.sectorData &&
-        Object.values(project.sectorData).some((v) => (Array.isArray(v) ? v.length > 0 : Boolean(v))) && (
-        <CCard className="mb-4">
-          <CCardHeader className="fw-semibold">{SECTOR_LABEL[project.sector]} — datos adicionales</CCardHeader>
-          <CCardBody>
-            <CRow className="g-3">
-              {(project.sector === "publico" ? PUBLIC_FIELDS : PRIVATE_FIELDS)
-                .filter((f) => {
-                  const v = project.sectorData?.[f.key];
-                  return Array.isArray(v) ? v.length > 0 : Boolean(v);
-                })
-                .map((f) => {
-                  const v = project.sectorData?.[f.key];
-                  return (
-                    <CCol md={4} key={f.key}>
-                      <span className="module-desc">{f.label}</span>
-                      <div>
-                        {f.type === "number"
-                          ? fmtMoney(Number(v))
-                          : Array.isArray(v)
-                          ? v.join(", ")
-                          : String(v)}
-                      </div>
-                    </CCol>
-                  );
-                })}
-            </CRow>
-          </CCardBody>
-        </CCard>
-      )}
+      {(() => {
+        const hasSectorData =
+          project.sector &&
+          project.sectorData &&
+          Object.values(project.sectorData).some((v) => (Array.isArray(v) ? v.length > 0 : Boolean(v)));
+        const coords = parseCoords(project.coordinates);
+        if (!hasSectorData && !project.city && !project.department && !coords) return null;
+        return (
+          <CCard className="mb-4">
+            <CCardHeader className="fw-semibold">
+              {project.sector ? `${SECTOR_LABEL[project.sector]} — datos adicionales` : "Ubicación y datos adicionales"}
+            </CCardHeader>
+            <CCardBody>
+              <CRow className="g-3">
+                {project.city && (
+                  <CCol md={4}>
+                    <span className="module-desc">Ciudad</span>
+                    <div>{project.city}</div>
+                  </CCol>
+                )}
+                {project.department && (
+                  <CCol md={4}>
+                    <span className="module-desc">Departamento</span>
+                    <div>{project.department}</div>
+                  </CCol>
+                )}
+                {coords && (
+                  <CCol md={4}>
+                    <span className="module-desc">Ubicación</span>
+                    <div>
+                      <a
+                        href={`https://www.openstreetmap.org/?mlat=${coords.lat}&mlon=${coords.lng}#map=17/${coords.lat}/${coords.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        📍 Ver ubicación en el mapa ↗
+                      </a>
+                    </div>
+                  </CCol>
+                )}
+                {hasSectorData &&
+                  (project.sector === "publico" ? PUBLIC_FIELDS : PRIVATE_FIELDS)
+                    .filter((f) => {
+                      const v = project.sectorData?.[f.key];
+                      return Array.isArray(v) ? v.length > 0 : Boolean(v);
+                    })
+                    .map((f) => {
+                      const v = project.sectorData?.[f.key];
+                      return (
+                        <CCol md={4} key={f.key}>
+                          <span className="module-desc">{f.label}</span>
+                          <div>
+                            {f.type === "number"
+                              ? fmtMoney(Number(v))
+                              : Array.isArray(v)
+                              ? v.join(", ")
+                              : String(v)}
+                          </div>
+                        </CCol>
+                      );
+                    })}
+              </CRow>
+            </CCardBody>
+          </CCard>
+        );
+      })()}
 
       <CNav variant="underline" className="mb-4 module-tabs">
         {ITEM_KIND_ORDER.map((k) => {

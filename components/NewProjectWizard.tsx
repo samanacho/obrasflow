@@ -11,6 +11,7 @@ import CIcon from "@coreui/icons-react";
 import { cilArrowLeft, cilBriefcase, cilHome } from "@coreui/icons";
 import type { ProjectDTO, ProjectInput, ProjectStatus, ProjectType, ProjectSector } from "@/lib/types";
 import { PUBLIC_FIELDS, PRIVATE_FIELDS, SectorField } from "@/lib/sectorFields";
+import { PARAGUAY_DEPARTMENTS } from "@/lib/departments";
 import CityMultiSelect from "@/components/CityMultiSelect";
 
 const LocationPicker = dynamic(() => import("@/components/LocationPicker"), {
@@ -41,6 +42,7 @@ const EMPTY_FORM: ProjectInput = {
   status: "planificado",
   manager: "",
   city: "",
+  department: "",
   coordinates: "",
   start: "",
   end: "",
@@ -59,6 +61,7 @@ function toForm(project: ProjectDTO): ProjectInput {
     status: project.status,
     manager: project.manager,
     city: project.city ?? "",
+    department: project.department ?? "",
     coordinates: project.coordinates ?? "",
     start: project.start,
     end: project.end,
@@ -238,10 +241,19 @@ function StepGeneral({ form, setForm }: { form: ProjectInput; setForm: (f: Proje
         <CFormLabel>Responsable</CFormLabel>
         <CFormInput required placeholder="Ej. Ana Torres" value={form.manager} onChange={(e) => setForm({ ...form, manager: e.target.value })} />
       </div>
-      <div className="mb-3">
-        <CFormLabel>Ciudad (opcional)</CFormLabel>
-        <CFormInput placeholder="Ej. Encarnación" value={form.city ?? ""} onChange={(e) => setForm({ ...form, city: e.target.value })} />
-      </div>
+      <CRow className="mb-3 g-2">
+        <CCol>
+          <CFormLabel>Ciudad (opcional)</CFormLabel>
+          <CFormInput placeholder="Ej. Encarnación" value={form.city ?? ""} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+        </CCol>
+        <CCol>
+          <CFormLabel>Departamento (opcional)</CFormLabel>
+          <CFormSelect value={form.department ?? ""} onChange={(e) => setForm({ ...form, department: e.target.value })}>
+            <option value="">Seleccioná…</option>
+            {PARAGUAY_DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+          </CFormSelect>
+        </CCol>
+      </CRow>
       <div className="mb-3">
         <CFormLabel>Ubicación en el mapa (opcional)</CFormLabel>
         <LocationPicker

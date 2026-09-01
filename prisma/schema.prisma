@@ -43,6 +43,9 @@ model Project {
   /// (lista de ciudades para trámites de licitación pública): esto es la
   /// ubicación general de la obra, un solo valor, para cualquier sector.
   city        String?
+  /// Departamento de esa ciudad — ver lib/departments.ts (lista fija, los
+  /// 17 departamentos de Paraguay + Asunción capital).
+  department  String?
   /// "lat,lng" del pin en el mapa — mismo formato que ProjectItem.data.coordenadas (Relevamiento).
   coordinates String?
   start       DateTime       @db.Date

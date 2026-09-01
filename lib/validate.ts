@@ -1,4 +1,5 @@
 import type { ProjectInput } from "./types";
+import { PARAGUAY_DEPARTMENTS } from "./departments";
 
 const TYPES = ["civil", "electrico", "vial", "otro"];
 const STATUSES = ["planificado", "en_curso", "pausado", "finalizado"];
@@ -29,6 +30,11 @@ export function parseProjectInput(body: unknown): ProjectInput {
   if (!manager) throw new ValidationError("El responsable es obligatorio.");
 
   const city = String(b.city ?? "").trim() || null;
+  const departmentRaw = String(b.department ?? "").trim();
+  if (departmentRaw && !(PARAGUAY_DEPARTMENTS as readonly string[]).includes(departmentRaw)) {
+    throw new ValidationError(`Departamento inválido: "${departmentRaw}".`);
+  }
+  const department = departmentRaw || null;
   const coordinatesRaw = String(b.coordinates ?? "").trim();
   const coordinates = /^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/.test(coordinatesRaw) ? coordinatesRaw : null;
 
@@ -59,6 +65,7 @@ export function parseProjectInput(body: unknown): ProjectInput {
     status: status as ProjectInput["status"],
     manager,
     city,
+    department,
     coordinates,
     start,
     end,
