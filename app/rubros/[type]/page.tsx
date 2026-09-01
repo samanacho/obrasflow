@@ -28,6 +28,13 @@ function fmtMoney(n: number) {
 function typeLabel(p: { type: ProjectType; customType?: string | null }): string {
   return p.type === "otro" && p.customType ? p.customType : TYPE_LABEL[p.type];
 }
+/** "lat,lng" (como se guarda en Project.coordinates) -> {lat,lng}, o null si no hay nada cargado. */
+function parseCoords(raw: string | null): { lat: number; lng: number } | null {
+  const [latStr, lngStr] = String(raw ?? "").split(",");
+  const lat = Number(latStr);
+  const lng = Number(lngStr);
+  return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+}
 
 /**
  * Obras de un rubro puntual, clasificadas en 3 columnas por estado —
@@ -141,7 +148,9 @@ export default function RubroDetailPage({ params }: { params: { type: string } }
                   </CCardHeader>
                   <CCardBody className="d-flex flex-column gap-2">
                     {items.length === 0 && <p className="empty-col">Sin obras en este estado.</p>}
-                    {items.map((p) => (
+                    {items.map((p) => {
+                      const coords = parseCoords(p.coordinates);
+                      return (
                       <div key={p.id} className="rubro-project-card">
                         <div className="d-flex justify-content-between align-items-start gap-2">
                           <Link href={`/project/${p.id}`} className="rubro-project-name">{p.name}</Link>
@@ -149,6 +158,25 @@ export default function RubroDetailPage({ params }: { params: { type: string } }
                         </div>
                         <div className="rubro-project-meta">
                           {typeLabel(p)} · {p.manager} · {fmtMoney(p.budget)}
+                          {p.city && (
+                            <>
+                              {" · "}
+                              {coords ? (
+                                <a
+                                  href={`https://www.openstreetmap.org/?mlat=${coords.lat}&mlon=${coords.lng}#map=17/${coords.lat}/${coords.lng}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="📍 Ver ubicación en el mapa ↗"
+                                  className="rubro-project-city-link"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {p.city}
+                                </a>
+                              ) : (
+                                p.city
+                              )}
+                            </>
+                          )}
                         </div>
                         <div className="bar-track">
                           <div
@@ -165,7 +193,8 @@ export default function RubroDetailPage({ params }: { params: { type: string } }
                           </CButton>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </CCardBody>
                 </CCard>
               </div>
