@@ -14,7 +14,7 @@ import { CChartDoughnut, CChartBar } from "@coreui/react-chartjs";
 import CIcon from "@coreui/icons-react";
 import {
   cilPlus, cilArrowLeft, cilArrowRight, cilCloudDownload, cilPencil, cilTrash,
-  cilPeople, cilStar, cilSpeedometer, cilFlagAlt, cilCalculator, cilListRich, cilViewColumn, cilLightbulb,
+  cilPeople, cilSpeedometer, cilFlagAlt, cilCalculator, cilListRich, cilViewColumn, cilLightbulb, cilBalanceScale,
 } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
 import PlotlyGauge from "@/components/PlotlyGauge";
@@ -206,11 +206,11 @@ function HomeInner() {
   }
 
   const metrics = useMemo(() => {
-    const byType: Record<ProjectType, { count: number; budget: number }> = {
-      civil: { count: 0, budget: 0 },
-      electrico: { count: 0, budget: 0 },
-      vial: { count: 0, budget: 0 },
-      otro: { count: 0, budget: 0 },
+    const byType: Record<ProjectType, { count: number; budget: number; spent: number }> = {
+      civil: { count: 0, budget: 0, spent: 0 },
+      electrico: { count: 0, budget: 0, spent: 0 },
+      vial: { count: 0, budget: 0, spent: 0 },
+      otro: { count: 0, budget: 0, spent: 0 },
     };
     let totalBudget = 0,
       totalSpent = 0,
@@ -220,6 +220,7 @@ function HomeInner() {
     projects.forEach((p) => {
       byType[p.type].count++;
       byType[p.type].budget += p.budget;
+      byType[p.type].spent += p.spent;
       totalBudget += p.budget;
       totalSpent += p.spent;
       totalProgress += clampPct(p.progress);
@@ -228,7 +229,12 @@ function HomeInner() {
     });
     const avgProgress = projects.length ? Math.round(totalProgress / projects.length) : 0;
     const execPct = totalBudget ? Math.round((totalSpent / totalBudget) * 100) : 0;
-    return { byType, totalBudget, totalSpent, avgProgress, execPct, active, finished };
+    // "Beneficio" = presupuesto (lo contratado/adjudicado) menos ejecutado
+    // (lo realmente gastado) — mismo criterio que ya usa "sobre presupuesto"
+    // en Seguimiento rápido, solo que acá se lo enmarca explícitamente como
+    // ganancia (positivo) o pérdida (negativo) en vez de una alerta.
+    const totalBenefit = totalBudget - totalSpent;
+    return { byType, totalBudget, totalSpent, totalBenefit, avgProgress, execPct, active, finished };
   }, [projects]);
 
   return (
@@ -297,7 +303,7 @@ function HomeInner() {
   );
 }
 
-function Kpi({ label, value, sub, icon, href }: { label: string; value: string | number; sub: string; icon?: any; href?: string }) {
+function Kpi({ label, value, sub, icon, href, valueColor }: { label: string; value: string | number; sub: string; icon?: any; href?: string; valueColor?: string }) {
   const body = (
     <CCard className="h-100 kpi-card">
       <CCardBody>
@@ -305,7 +311,7 @@ function Kpi({ label, value, sub, icon, href }: { label: string; value: string |
           <div className="text-uppercase text-body-secondary small mb-1">{label}</div>
           {icon && <CIcon icon={icon} className="text-body-secondary" />}
         </div>
-        <div className="fs-3 fw-bold mono">{value}</div>
+        <div className="fs-3 fw-bold mono" style={valueColor ? { color: valueColor } : undefined}>{value}</div>
         <div className="text-body-secondary small">{sub}</div>
       </CCardBody>
     </CCard>
@@ -314,9 +320,10 @@ function Kpi({ label, value, sub, icon, href }: { label: string; value: string |
 }
 
 interface DashboardMetrics {
-  byType: Record<ProjectType, { count: number; budget: number }>;
+  byType: Record<ProjectType, { count: number; budget: number; spent: number }>;
   totalBudget: number;
   totalSpent: number;
+  totalBenefit: number;
   avgProgress: number;
   execPct: number;
   active: number;
@@ -333,7 +340,7 @@ function DashboardView({
   poleSpecs: PoleSpecDTO[];
   onNewProject: () => void;
 }) {
-  const { byType, totalBudget, totalSpent, avgProgress, execPct, active, finished } = metrics;
+  const { byType, totalBudget, totalSpent, totalBenefit, avgProgress, execPct, active, finished } = metrics;
   const sortedByProgress = [...projects].sort((a, b) => clampPct(b.progress) - clampPct(a.progress));
 
   const now = Date.now();
@@ -432,7 +439,15 @@ function DashboardView({
 
       <div className="row row-cols-2 row-cols-md-4 g-3 mb-4">
         <div className="col"><Kpi label="Contratistas activos" value={summary?.contractorsActive ?? "—"} sub="en el directorio" icon={cilPeople} href="/contratistas" /></div>
-        <div className="col"><Kpi label="Calificación prom." value={summary?.contractorsAvgRating != null ? `${summary.contractorsAvgRating.toFixed(1)} ★` : "—"} sub="de contratistas" icon={cilStar} href="/contratistas" /></div>
+        <div className="col">
+          <Kpi
+            label="Costos vs. beneficios"
+            value={`${totalBenefit < 0 ? "-" : ""}${fmtMoney(Math.abs(totalBenefit))}`}
+            sub={totalBudget === 0 ? "sin obras cargadas" : totalBenefit >= 0 ? "ganancia sobre presupuesto" : "pérdida sobre presupuesto"}
+            icon={cilBalanceScale}
+            valueColor={totalBudget === 0 ? undefined : totalBenefit >= 0 ? "var(--ok)" : "var(--crit)"}
+          />
+        </div>
         <div className="col"><Kpi label="Relevamientos abiertos" value={summary?.openRelevamientos ?? "—"} sub="pendientes o en proceso" icon={cilListRich} /></div>
         <div className="col"><Kpi label="Cotizaciones pendientes" value={summary?.pendingCotizaciones ?? "—"} sub="esperando decisión" icon={cilFlagAlt} /></div>
       </div>
@@ -474,6 +489,34 @@ function DashboardView({
           </CCard>
         </div>
       </div>
+
+      <CCard className="mb-4">
+        <CCardHeader className="fw-semibold">Costos vs. beneficios por rubro</CCardHeader>
+        <CCardBody>
+          {totalBudget === 0 ? (
+            <EmptyMsg />
+          ) : (
+            <div className="row g-3">
+              {(["civil", "electrico", "vial", "otro"] as ProjectType[])
+                .filter((t) => byType[t].count > 0)
+                .map((t) => {
+                  const benefit = byType[t].budget - byType[t].spent;
+                  return (
+                    <div className="col-md-3 col-6" key={t}>
+                      <div className="d-flex align-items-center gap-2 mb-1">
+                        <CBadge color={TYPE_COLOR[t]}>{TYPE_LABEL[t]}</CBadge>
+                        <span className="text-body-secondary small">{byType[t].count} obra{byType[t].count === 1 ? "" : "s"}</span>
+                      </div>
+                      <div className="fs-5 fw-bold mono" style={{ color: benefit >= 0 ? "var(--ok)" : "var(--crit)" }}>
+                        {benefit < 0 ? "-" : ""}{fmtMoney(Math.abs(benefit))}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+        </CCardBody>
+      </CCard>
 
       <CCard className="mb-4">
         <CCardHeader className="fw-semibold">Avance por proyecto</CCardHeader>
