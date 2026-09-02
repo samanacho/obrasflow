@@ -37,6 +37,7 @@ const STATUS_ORDER: ProjectStatus[] = ["planificado", "en_curso", "pausado", "fi
 
 const EMPTY_FORM: ProjectInput = {
   name: "",
+  reference: "",
   type: "civil",
   customType: "",
   status: "planificado",
@@ -56,6 +57,7 @@ const EMPTY_FORM: ProjectInput = {
 function toForm(project: ProjectDTO): ProjectInput {
   return {
     name: project.name,
+    reference: project.reference ?? "",
     type: project.type,
     customType: project.customType ?? "",
     status: project.status,
@@ -208,6 +210,15 @@ function StepGeneral({ form, setForm }: { form: ProjectInput; setForm: (f: Proje
       <div className="mb-3">
         <CFormLabel>Nombre del proyecto</CFormLabel>
         <CFormInput required placeholder="Ej. Puente Río Claro" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+      </div>
+      <div className="mb-3">
+        <CFormLabel>Referencia (opcional)</CFormLabel>
+        <CFormInput
+          placeholder="Ej. Sucursal Norte, Lote 3, Fase 2…"
+          value={form.reference ?? ""}
+          onChange={(e) => setForm({ ...form, reference: e.target.value })}
+        />
+        <div className="form-hint mb-0">Para distinguir obras que de otro modo se ven idénticas (mismo tipo, ciudad, responsable y hasta presupuesto).</div>
       </div>
       <CRow className="mb-3 g-2">
         <CCol>

@@ -13,6 +13,7 @@ export function serializeProject(p: Project): ProjectDTO {
   return {
     id: p.id,
     name: p.name,
+    reference: p.reference,
     type: p.type as ProjectDTO["type"],
     customType: p.customType,
     status: p.status as ProjectDTO["status"],

@@ -34,6 +34,11 @@ enum ProjectSector {
 model Project {
   id          String         @id @default(cuid())
   name        String
+  /// Referencia corta para distinguir obras que de otro modo se ven
+  /// idénticas en las tarjetas (mismo tipo, ciudad, responsable y hasta
+  /// presupuesto) — ej. "Sucursal Norte", "Lote 3", "Fase 2". Puramente
+  /// identificatoria, no afecta ningún cálculo.
+  reference   String?
   type        ProjectType
   /// Rubro escrito a mano cuando `type` es "otro" — null para el resto.
   customType  String?

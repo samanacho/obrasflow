@@ -184,6 +184,7 @@ export default function RubroDetailPage({ params }: { params: { type: string } }
                             style={{ width: `${Math.max(0, Math.min(100, p.progress))}%`, background: `var(--${p.type})` }}
                           />
                         </div>
+                        {p.reference && <div className="item-row-sub text-end mt-1">REF: {p.reference}</div>}
                         <div className="row-actions mt-2">
                           <CButton size="sm" color="secondary" variant="outline" onClick={() => openEdit(p)}>
                             <CIcon icon={cilPencil} size="sm" />

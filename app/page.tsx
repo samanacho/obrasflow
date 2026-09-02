@@ -698,6 +698,7 @@ function KanbanView({
                         </div>
                         <span className="mono">{pct}%</span>
                       </div>
+                      {p.reference && <div className="item-row-sub text-end">REF: {p.reference}</div>}
                       <div className="card-actions">
                         <CButton size="sm" color="secondary" variant="outline" onClick={() => onEdit(p)}><CIcon icon={cilPencil} size="sm" /></CButton>
                         {idx > 0 && <CButton size="sm" color="secondary" variant="outline" onClick={() => onMove(p, -1)}><CIcon icon={cilArrowLeft} size="sm" /></CButton>}
@@ -716,9 +717,9 @@ function KanbanView({
 }
 
 function exportCSV(projects: ProjectDTO[]) {
-  const headers = ["Nombre", "Tipo", "Responsable", "Inicio", "Fin", "Estado", "Presupuesto", "Ejecutado", "Avance"];
+  const headers = ["Nombre", "Referencia", "Tipo", "Responsable", "Inicio", "Fin", "Estado", "Presupuesto", "Ejecutado", "Avance"];
   const rows = projects.map((p) => [
-    p.name, typeLabel(p), p.manager, p.start, p.end, STATUS_LABEL[p.status], p.budget, p.spent, `${p.progress}%`,
+    p.name, p.reference ?? "", typeLabel(p), p.manager, p.start, p.end, STATUS_LABEL[p.status], p.budget, p.spent, `${p.progress}%`,
   ]);
   const csv = [headers, ...rows]
     .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
@@ -746,7 +747,7 @@ function TablaView({
   const filtered = projects.filter((p) => {
     if (typeFilter && p.type !== typeFilter) return false;
     if (statusFilter && p.status !== statusFilter) return false;
-    if (search && !(`${p.name} ${p.manager}`.toLowerCase().includes(search.toLowerCase()))) return false;
+    if (search && !(`${p.name} ${p.manager} ${p.reference ?? ""}`.toLowerCase().includes(search.toLowerCase()))) return false;
     return true;
   });
 
@@ -762,7 +763,7 @@ function TablaView({
         <div className="row g-2 mb-3">
           <div className="col-md-6">
             <CInputGroup>
-              <CFormInput placeholder="Buscar por nombre o responsable…" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <CFormInput placeholder="Buscar por nombre, responsable o referencia…" value={search} onChange={(e) => setSearch(e.target.value)} />
             </CInputGroup>
           </div>
           <div className="col-md-3">
@@ -787,6 +788,7 @@ function TablaView({
             <CTableHead>
               <CTableRow>
                 <CTableHeaderCell>Proyecto</CTableHeaderCell>
+                <CTableHeaderCell>Referencia</CTableHeaderCell>
                 <CTableHeaderCell>Tipo</CTableHeaderCell>
                 <CTableHeaderCell>Responsable</CTableHeaderCell>
                 <CTableHeaderCell>Inicio</CTableHeaderCell>
@@ -800,7 +802,7 @@ function TablaView({
             <CTableBody>
               {filtered.length === 0 && (
                 <CTableRow>
-                  <CTableDataCell colSpan={9} className="empty-col">
+                  <CTableDataCell colSpan={10} className="empty-col">
                     {projects.length === 0 ? "Sin proyectos todavía." : "Ningún proyecto coincide con el filtro."}
                   </CTableDataCell>
                 </CTableRow>
@@ -808,6 +810,7 @@ function TablaView({
               {filtered.map((p) => (
                 <CTableRow key={p.id}>
                   <CTableDataCell><Link href={`/project/${p.id}`}><strong>{p.name}</strong></Link></CTableDataCell>
+                  <CTableDataCell>{p.reference || "—"}</CTableDataCell>
                   <CTableDataCell><CBadge color={TYPE_COLOR[p.type]}>{typeLabel(p)}</CBadge></CTableDataCell>
                   <CTableDataCell>{p.manager}</CTableDataCell>
                   <CTableDataCell className="mono">{fmtDate(p.start)}</CTableDataCell>

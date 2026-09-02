@@ -6,6 +6,8 @@ export type ProjectSector = "privado" | "publico";
 export interface ProjectDTO {
   id: string;
   name: string;
+  /** Referencia corta para distinguir obras que se ven idénticas en las tarjetas (mismo tipo/ciudad/responsable/presupuesto). */
+  reference: string | null;
   type: ProjectType;
   customType: string | null;
   status: ProjectStatus;
@@ -27,6 +29,7 @@ export interface ProjectDTO {
 
 export interface ProjectInput {
   name: string;
+  reference?: string | null;
   type: ProjectType;
   customType?: string | null;
   status: ProjectStatus;

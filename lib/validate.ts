@@ -17,6 +17,8 @@ export function parseProjectInput(body: unknown): ProjectInput {
   const name = String(b.name ?? "").trim();
   if (!name) throw new ValidationError("El nombre del proyecto es obligatorio.");
 
+  const reference = String(b.reference ?? "").trim().slice(0, 120) || null;
+
   const type = String(b.type ?? "");
   if (!TYPES.includes(type)) throw new ValidationError(`Tipo inválido: "${type}".`);
 
@@ -60,6 +62,7 @@ export function parseProjectInput(body: unknown): ProjectInput {
 
   return {
     name,
+    reference,
     type: type as ProjectInput["type"],
     customType: type === "otro" ? customType : null,
     status: status as ProjectInput["status"],
