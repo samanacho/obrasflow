@@ -20,7 +20,7 @@ import FileDropZone from "@/components/FileDropZone";
 import Toast from "@/components/Toast";
 import { useToast } from "@/lib/useToast";
 import type { ProjectDTO, ProjectItemDTO, ContractorDTO, SupplierDTO } from "@/lib/types";
-import { ITEM_KINDS, ITEM_KIND_ORDER, ItemField } from "@/lib/itemKinds";
+import { ITEM_KINDS, ITEM_KIND_ORDER, ItemField, ItemKindConfig } from "@/lib/itemKinds";
 import { PUBLIC_FIELDS, PRIVATE_FIELDS } from "@/lib/sectorFields";
 import { MOVIMIENTO_TIPOS } from "@/lib/movimientos";
 
@@ -33,6 +33,27 @@ const TYPE_LABEL: Record<string, string> = { civil: "Civil", electrico: "Eléctr
 const TYPE_COLOR: Record<string, string> = { civil: "info", electrico: "warning", vial: "secondary", otro: "dark" };
 const STATUS_COLOR: Record<string, string> = { planificado: "info", en_curso: "warning", pausado: "secondary", finalizado: "success" };
 const SECTOR_LABEL: Record<string, string> = { privado: "Obra privada", publico: "Obra pública" };
+
+// Ejecución agrupada por rubro: cada movimiento tiene un "Tipo de insumo"
+// (lib/itemKinds.ts, campo tipoInsumo de change_order) — estas 4 son las
+// únicas opciones reales del select; todo lo que no tenga ninguna de estas
+// cuatro (campo vacío, o datos viejos de antes de que existiera el campo)
+// cae en "Sin clasificar" al armar la ficha de un rubro.
+const TIPO_INSUMO_ORDER = ["Materiales", "Mano de obra", "Maquinaria / Alquileres", "Gastos administrativos / Varios"];
+const TIPO_INSUMO_ICON: Record<string, string> = {
+  "Materiales": "🧱",
+  "Mano de obra": "👷",
+  "Maquinaria / Alquileres": "🚜",
+  "Gastos administrativos / Varios": "🗂️",
+  "Sin clasificar": "❔",
+};
+const TIPO_INSUMO_COLOR: Record<string, string> = {
+  "Materiales": "info",
+  "Mano de obra": "warning",
+  "Maquinaria / Alquileres": "secondary",
+  "Gastos administrativos / Varios": "dark",
+  "Sin clasificar": "light",
+};
 
 // Mismo mapeo que lib/spent.ts (servidor) — acá se usa para armar el
 // gráfico de ejecución en el tiempo del lado del cliente, sin pegarle de
@@ -387,6 +408,11 @@ function ModuleView({
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<ProjectItemDTO | null>(null);
+  // Con qué título prellenar el formulario al crear un ítem nuevo — se usa
+  // para "Agregar insumo a este rubro" desde adentro de la ficha de un
+  // rubro (ver RubroFicha), así el nuevo movimiento cae en el mismo grupo
+  // sin que el usuario tenga que reescribir el nombre a mano.
+  const [prefillTitle, setPrefillTitle] = useState<string | null>(null);
 
   // Filtro/orden — solo para Movimientos (ver isMovimientos más abajo).
   const [search, setSearch] = useState("");
@@ -395,6 +421,13 @@ function ModuleView({
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [sortBy, setSortBy] = useState<"fecha_desc" | "fecha_asc" | "monto_desc" | "monto_asc">("fecha_desc");
+
+  // Ejecución: cada movimiento representa un insumo de un rubro (el
+  // "título" del item ahora es el nombre del rubro, no una descripción
+  // libre) — acá se agrupan por título para mostrar una ficha por rubro
+  // en vez de una lista plana de insumos sueltos. `null` = viendo la
+  // grilla de rubros; un string = adentro de la ficha de ese rubro.
+  const [openRubro, setOpenRubro] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -489,6 +522,64 @@ function ModuleView({
         })
     : items;
 
+  // Nombres de rubro ya usados en esta obra — alimenta el datalist del
+  // campo "Nombre del rubro" en el formulario, para que cargar un insumo
+  // más de un rubro existente sea elegir de una lista y no repetir el
+  // nombre a mano letra por letra (un typo rompe el agrupamiento).
+  const existingRubros = isMovimientos
+    ? Array.from(new Set(items.map((i) => i.title.trim()).filter(Boolean))).sort()
+    : undefined;
+
+  // Agrupa los movimientos visibles (ya filtrados/ordenados arriba) por
+  // rubro — cada grupo es una "ficha" con el total gastado entre todos sus
+  // insumos. El filtro de fecha/tipo/estado se aplica ANTES de agrupar, así
+  // que un rubro cuyos insumos quedaron todos afuera del filtro simplemente
+  // no aparece, igual que pasaba antes con la lista plana.
+  const rubroGroups = isMovimientos
+    ? (() => {
+        const map = new Map<string, ProjectItemDTO[]>();
+        visibleItems.forEach((i) => {
+          const key = i.title.trim() || "(Sin nombre)";
+          const arr = map.get(key) ?? [];
+          arr.push(i);
+          map.set(key, arr);
+        });
+        const groups = Array.from(map.entries()).map(([rubro, arr]) => {
+          const total = arr.reduce((sum, i) => sum + Number(i.data?.monto ?? 0), 0);
+          const sorted = arr.slice().sort((a, b) => {
+            const da = (a.data?.fecha || a.createdAt).slice(0, 10);
+            const db = (b.data?.fecha || b.createdAt).slice(0, 10);
+            return db.localeCompare(da);
+          });
+          const typeCounts: Record<string, number> = {};
+          arr.forEach((i) => {
+            const t = i.data?.tipoInsumo && TIPO_INSUMO_ORDER.includes(i.data.tipoInsumo) ? i.data.tipoInsumo : "Sin clasificar";
+            typeCounts[t] = (typeCounts[t] ?? 0) + 1;
+          });
+          return {
+            rubro,
+            items: arr,
+            total,
+            lastFecha: (sorted[0].data?.fecha || sorted[0].createdAt).slice(0, 10),
+            lastDateLabel: itemDate(sorted[0]),
+            typeCounts,
+          };
+        });
+        groups.sort((a, b) => {
+          if (sortBy === "monto_desc") return b.total - a.total;
+          if (sortBy === "monto_asc") return a.total - b.total;
+          return sortBy === "fecha_asc" ? a.lastFecha.localeCompare(b.lastFecha) : b.lastFecha.localeCompare(a.lastFecha);
+        });
+        return groups;
+      })()
+    : [];
+
+  // Ítems del rubro abierto — se toman de `items` sin filtrar (no de
+  // visibleItems): adentro de la ficha de un rubro se quiere ver SIEMPRE
+  // todo lo cargado de ese rubro, sin que los filtros de la grilla de
+  // arriba (que ya no se muestran en este modo) escondan insumos.
+  const rubroItems = openRubro ? items.filter((i) => (i.title.trim() || "(Sin nombre)") === openRubro) : [];
+
   function clearFilters() {
     setSearch(""); setFilterTipo(""); setFilterEstado(""); setDateFrom(""); setDateTo("");
   }
@@ -530,14 +621,26 @@ function ModuleView({
             </p>
           )}
         </div>
-        {!cfg.readOnly && (
-          <CButton color="primary" size="sm" onClick={() => { setEditing(null); setShowForm(true); }}>
+        {!cfg.readOnly && !(isMovimientos && openRubro) && (
+          <CButton color="primary" size="sm" onClick={() => { setEditing(null); setPrefillTitle(null); setShowForm(true); }}>
             <CIcon icon={cilPlus} className="me-1" /> Agregar {cfg.singular}
           </CButton>
         )}
       </CCardHeader>
       <CCardBody>
-        {isCotizacion && !loading && (
+        {isMovimientos && openRubro && (
+          <RubroFicha
+            rubro={openRubro}
+            items={rubroItems}
+            cfg={cfg}
+            kind={kind}
+            onBack={() => setOpenRubro(null)}
+            onAdd={() => { setEditing(null); setPrefillTitle(openRubro); setShowForm(true); }}
+            onEdit={(item) => { setEditing(item); setPrefillTitle(null); setShowForm(true); }}
+            onDelete={(item) => { setDeleteError(null); setConfirmTarget(item); }}
+          />
+        )}
+        {!(isMovimientos && openRubro) && isCotizacion && !loading && (
           <div className="quote-budget-panel">
             <div className="quote-budget-item">
               <span className="qb-label">Presupuesto de la obra</span>
@@ -560,7 +663,7 @@ function ModuleView({
           </div>
         )}
 
-        {isMovimientos && !loading && (
+        {isMovimientos && !openRubro && !loading && (
           <div className="quote-budget-panel">
             <div className="quote-budget-item">
               <span className="qb-label">Presupuesto de la obra</span>
@@ -585,7 +688,7 @@ function ModuleView({
           </div>
         )}
 
-        {isMovimientos && !loading && (
+        {isMovimientos && !openRubro && !loading && (
           <div className="mb-3">
             <div className="bar-track">
               <div className="bar-fill" style={{ width: `${ejecucionPct}%`, background: project.spent > project.budget ? "var(--crit)" : "var(--ok)" }} />
@@ -594,7 +697,7 @@ function ModuleView({
           </div>
         )}
 
-        {isMovimientos && !loading && items.length > 0 && (
+        {isMovimientos && !openRubro && !loading && items.length > 0 && (
           <CRow className="g-3 mb-4">
             {categoriaLabels.length > 0 && (
               <CCol md={6}>
@@ -642,9 +745,9 @@ function ModuleView({
           </CRow>
         )}
 
-        {isMovimientos && !loading && items.length > 0 && (
+        {isMovimientos && !openRubro && !loading && items.length > 0 && (
           <CRow className="g-2 mb-3">
-            <CCol md={3}><CFormInput placeholder="Buscar…" value={search} onChange={(e) => setSearch(e.target.value)} /></CCol>
+            <CCol md={3}><CFormInput placeholder="Buscar por rubro o notas…" value={search} onChange={(e) => setSearch(e.target.value)} /></CCol>
             <CCol md={2}>
               <CFormSelect value={filterTipo} onChange={(e) => setFilterTipo(e.target.value)}>
                 <option value="">Todos los tipos</option>
@@ -675,82 +778,59 @@ function ModuleView({
           </CRow>
         )}
 
-        {loading && <p className="empty-col">Cargando…</p>}
-        {!loading && items.length === 0 && <p className="empty-col">Sin registros todavía.</p>}
-        {!loading && items.length > 0 && visibleItems.length === 0 && (
+        {!(isMovimientos && openRubro) && loading && <p className="empty-col">Cargando…</p>}
+        {!(isMovimientos && openRubro) && !loading && items.length === 0 && <p className="empty-col">Sin registros todavía.</p>}
+        {!openRubro && !loading && items.length > 0 && isMovimientos && rubroGroups.length === 0 && (
+          <p className="empty-col">Ningún rubro coincide con estos filtros.</p>
+        )}
+        {!loading && items.length > 0 && !isMovimientos && visibleItems.length === 0 && (
           <p className="empty-col">Ningún registro coincide con estos filtros.</p>
         )}
 
-        <CListGroup>
-          {visibleItems.map((item) => {
-            const isWinner = isCotizacion && item.status === "Seleccionada";
-            const comprobante = item.data?.comprobante as string | undefined;
-            const comprobanteEsImagen = comprobante && /^https?:\/\//i.test(comprobante);
-            const coords = parseCoords(item.data?.coordenadas);
-            return (
-              <CListGroupItem key={item.id} className={"item-row border-0 border-bottom rounded-0 px-0" + (isWinner ? " item-row-winner" : "")}>
-                <div className="item-row-main">
-                  {isWinner && <span className="item-row-winner-badge" title="Cotización ganadora">✓</span>}
-                  <span className="item-title">{item.title}</span>
-                  {item.status && <span className={"status-chip status-generic status-" + item.status.toLowerCase().replace(/\s+/g, "_")}>{item.status}</span>}
-                </div>
-                {item.data?.contratistaId && (
-                  <div className="item-row-sub">
-                    <Link href={`/contratistas/${item.data.contratistaId}`}>{item.data.contratistaNombre || "Ver ficha del contratista"} ↗</Link>
-                  </div>
-                )}
-                {item.data?.cotizacionId && (
-                  <div className="item-row-sub">Cotización vinculada: {item.data.cotizacionNombre || "—"}</div>
-                )}
-                {coords && (
-                  <div className="item-row-sub">
-                    <a
-                      href={`https://www.openstreetmap.org/?mlat=${coords.lat}&mlon=${coords.lng}#map=17/${coords.lat}/${coords.lng}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      📍 Ver ubicación en el mapa ↗
-                    </a>
-                  </div>
-                )}
-                <div className="item-row-sub">
-                  {cfg.summary(item.data)}{cfg.summary(item.data) ? " · " : ""}{isMovimientos ? itemDate(item) : fmtDateTime(item.createdAt)}
-                </div>
-                {item.data?.notas && <div className="item-row-notes">{item.data.notas}</div>}
-                {item.data?.respuesta && <div className="item-row-notes">↳ {item.data.respuesta}</div>}
-                {item.data?.motivo && <div className="item-row-notes">{item.data.motivo}</div>}
-                {item.attachment ? (
-                  <a href={`/api/attachments/${item.attachment.id}`} target="_blank" rel="noopener noreferrer" className="item-row-notes d-inline-block">
-                    {item.attachment.mimeType.startsWith("image/") ? (
-                      <img src={`/api/attachments/${item.attachment.id}`} alt={item.attachment.filename} className="item-receipt-thumb" />
-                    ) : (
-                      <span>📄 {item.attachment.filename}</span>
-                    )}
-                  </a>
-                ) : comprobante && (
-                  comprobanteEsImagen ? (
-                    <a href={comprobante} target="_blank" rel="noopener noreferrer" className="item-row-notes d-inline-block">
-                      <img src={comprobante} alt="Comprobante" className="item-receipt-thumb" />
-                    </a>
-                  ) : (
-                    <div className="item-row-notes">Comprobante: {comprobante}</div>
-                  )
-                )}
-                {kind === "photo" && item.data?.url && (
-                  <a href={item.data.url} target="_blank" rel="noopener noreferrer" className="item-row-notes d-inline-block">
-                    <img src={item.data.url} alt={item.title} className="item-receipt-thumb" />
-                  </a>
-                )}
-                {!cfg.readOnly && (
-                  <div className="item-row-actions">
-                    <CButton size="sm" color="secondary" variant="outline" onClick={() => { setEditing(item); setShowForm(true); }}><CIcon icon={cilPencil} size="sm" /></CButton>
-                    <CButton size="sm" color="danger" variant="outline" onClick={() => { setDeleteError(null); setConfirmTarget(item); }}><CIcon icon={cilTrash} size="sm" /></CButton>
-                  </div>
-                )}
-              </CListGroupItem>
-            );
-          })}
-        </CListGroup>
+        {!openRubro && (isMovimientos ? (
+          <CRow className="g-3">
+            {rubroGroups.map((g) => (
+              <CCol md={6} key={g.rubro}>
+                <CCard className="rubro-summary-card h-100" onClick={() => setOpenRubro(g.rubro)}>
+                  <CCardBody>
+                    <div className="d-flex justify-content-between align-items-start gap-2">
+                      <span className="fw-semibold">{g.rubro}</span>
+                      <span className="mono fw-semibold">{fmtMoney(g.total)}</span>
+                    </div>
+                    <div className="item-row-sub mt-1">
+                      {g.items.length} insumo{g.items.length === 1 ? "" : "s"} cargado{g.items.length === 1 ? "" : "s"} · Última carga: {g.lastDateLabel}
+                    </div>
+                    <div className="d-flex gap-1 flex-wrap mt-2">
+                      {TIPO_INSUMO_ORDER.filter((t) => g.typeCounts[t]).map((t) => (
+                        <CBadge key={t} color={TIPO_INSUMO_COLOR[t]}>{TIPO_INSUMO_ICON[t]} {g.typeCounts[t]}</CBadge>
+                      ))}
+                      {g.typeCounts["Sin clasificar"] > 0 && (
+                        <CBadge color={TIPO_INSUMO_COLOR["Sin clasificar"]} className="text-dark">
+                          {TIPO_INSUMO_ICON["Sin clasificar"]} {g.typeCounts["Sin clasificar"]} sin clasificar
+                        </CBadge>
+                      )}
+                    </div>
+                  </CCardBody>
+                </CCard>
+              </CCol>
+            ))}
+          </CRow>
+        ) : (
+          <CListGroup>
+            {visibleItems.map((item) => (
+              <ItemRow
+                key={item.id}
+                item={item}
+                cfg={cfg}
+                kind={kind}
+                isMovimientos={isMovimientos}
+                isWinner={isCotizacion && item.status === "Seleccionada"}
+                onEdit={() => { setEditing(item); setPrefillTitle(null); setShowForm(true); }}
+                onDelete={() => { setDeleteError(null); setConfirmTarget(item); }}
+              />
+            ))}
+          </CListGroup>
+        ))}
       </CCardBody>
 
       {showForm && (
@@ -758,6 +838,8 @@ function ModuleView({
           projectId={projectId}
           kind={kind}
           existing={editing}
+          initialTitle={prefillTitle}
+          existingRubros={existingRubros}
           showToast={showToast}
           onClose={() => setShowForm(false)}
           onSaved={(saved) => {
@@ -785,18 +867,183 @@ function ModuleView({
   );
 }
 
+/** Una fila de ítem — la misma card se usa en la lista plana (kinds que no
+ * son Ejecución) y adentro de la ficha de un rubro (RubroFicha, abajo),
+ * agrupada por tipo de insumo. Factorizada acá para no duplicar el bloque
+ * de adjunto/comprobante/notas/acciones entre los dos lugares. */
+function ItemRow({
+  item, cfg, kind, isMovimientos, isWinner = false, onEdit, onDelete,
+}: {
+  item: ProjectItemDTO;
+  cfg: ItemKindConfig;
+  kind: string;
+  isMovimientos: boolean;
+  isWinner?: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const comprobante = item.data?.comprobante as string | undefined;
+  const comprobanteEsImagen = comprobante && /^https?:\/\//i.test(comprobante);
+  const coords = parseCoords(item.data?.coordenadas);
+  return (
+    <CListGroupItem className={"item-row border-0 border-bottom rounded-0 px-0" + (isWinner ? " item-row-winner" : "")}>
+      <div className="item-row-main">
+        {isWinner && <span className="item-row-winner-badge" title="Cotización ganadora">✓</span>}
+        <span className="item-title">{item.title}</span>
+        {item.status && <span className={"status-chip status-generic status-" + item.status.toLowerCase().replace(/\s+/g, "_")}>{item.status}</span>}
+      </div>
+      {item.data?.contratistaId && (
+        <div className="item-row-sub">
+          <Link href={`/contratistas/${item.data.contratistaId}`}>{item.data.contratistaNombre || "Ver ficha del contratista"} ↗</Link>
+        </div>
+      )}
+      {item.data?.cotizacionId && (
+        <div className="item-row-sub">Cotización vinculada: {item.data.cotizacionNombre || "—"}</div>
+      )}
+      {coords && (
+        <div className="item-row-sub">
+          <a
+            href={`https://www.openstreetmap.org/?mlat=${coords.lat}&mlon=${coords.lng}#map=17/${coords.lat}/${coords.lng}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            📍 Ver ubicación en el mapa ↗
+          </a>
+        </div>
+      )}
+      <div className="item-row-sub">
+        {cfg.summary(item.data)}{cfg.summary(item.data) ? " · " : ""}{isMovimientos ? itemDate(item) : fmtDateTime(item.createdAt)}
+      </div>
+      {isMovimientos && item.data?.tipoInsumo === "Mano de obra" && item.data?.cantidadEjecutada && (
+        <div className="item-row-sub">Cantidad ejecutada: {item.data.cantidadEjecutada} {item.data.unidadMedida || ""}</div>
+      )}
+      {item.data?.notas && <div className="item-row-notes">{item.data.notas}</div>}
+      {item.data?.respuesta && <div className="item-row-notes">↳ {item.data.respuesta}</div>}
+      {item.data?.motivo && <div className="item-row-notes">{item.data.motivo}</div>}
+      {item.attachment ? (
+        <a href={`/api/attachments/${item.attachment.id}`} target="_blank" rel="noopener noreferrer" className="item-row-notes d-inline-block">
+          {item.attachment.mimeType.startsWith("image/") ? (
+            <img src={`/api/attachments/${item.attachment.id}`} alt={item.attachment.filename} className="item-receipt-thumb" />
+          ) : (
+            <span>📄 {item.attachment.filename}</span>
+          )}
+        </a>
+      ) : comprobante && (
+        comprobanteEsImagen ? (
+          <a href={comprobante} target="_blank" rel="noopener noreferrer" className="item-row-notes d-inline-block">
+            <img src={comprobante} alt="Comprobante" className="item-receipt-thumb" />
+          </a>
+        ) : (
+          <div className="item-row-notes">Comprobante: {comprobante}</div>
+        )
+      )}
+      {kind === "photo" && item.data?.url && (
+        <a href={item.data.url} target="_blank" rel="noopener noreferrer" className="item-row-notes d-inline-block">
+          <img src={item.data.url} alt={item.title} className="item-receipt-thumb" />
+        </a>
+      )}
+      {!cfg.readOnly && (
+        <div className="item-row-actions">
+          <CButton size="sm" color="secondary" variant="outline" onClick={onEdit}><CIcon icon={cilPencil} size="sm" /></CButton>
+          <CButton size="sm" color="danger" variant="outline" onClick={onDelete}><CIcon icon={cilTrash} size="sm" /></CButton>
+        </div>
+      )}
+    </CListGroupItem>
+  );
+}
+
+/** Ficha de un rubro de Ejecución: todos los insumos cargados bajo el mismo
+ * "Nombre del rubro" (item.title), separados por Tipo de insumo — para ver
+ * de un vistazo cuánto se llevan materiales vs. mano de obra vs. maquinaria
+ * dentro de ese rubro puntual, con el detalle (proveedor, cantidad
+ * ejecutada, fecha, monto) de cada insumo. */
+function RubroFicha({
+  rubro, items, cfg, kind, onBack, onAdd, onEdit, onDelete,
+}: {
+  rubro: string;
+  items: ProjectItemDTO[];
+  cfg: ItemKindConfig;
+  kind: string;
+  onBack: () => void;
+  onAdd: () => void;
+  onEdit: (item: ProjectItemDTO) => void;
+  onDelete: (item: ProjectItemDTO) => void;
+}) {
+  const total = items.reduce((sum, i) => sum + Number(i.data?.monto ?? 0), 0);
+  const sections = TIPO_INSUMO_ORDER.map((tipo) => ({ tipo, items: items.filter((i) => i.data?.tipoInsumo === tipo) })).filter(
+    (s) => s.items.length > 0
+  );
+  const sinClasificar = items.filter((i) => !i.data?.tipoInsumo || !TIPO_INSUMO_ORDER.includes(i.data.tipoInsumo));
+
+  return (
+    <div>
+      <div className="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+        <div>
+          <button type="button" className="btn btn-sm btn-link px-0 mb-1" onClick={onBack}>← Volver a Ejecución</button>
+          <h2 className="h5 mb-0">{rubro}</h2>
+          <span className="item-row-sub">{items.length} insumo{items.length === 1 ? "" : "s"} cargado{items.length === 1 ? "" : "s"}</span>
+        </div>
+        <div className="text-end">
+          <div className="module-desc mb-0">Total del rubro</div>
+          <div className="value mono fw-semibold fs-5">{fmtMoney(total)}</div>
+        </div>
+      </div>
+
+      <CButton color="primary" size="sm" className="mb-4" onClick={onAdd}>
+        <CIcon icon={cilPlus} className="me-1" /> Agregar insumo a este rubro
+      </CButton>
+
+      {items.length === 0 && <p className="empty-col">Este rubro todavía no tiene insumos cargados.</p>}
+
+      {sections.map((s) => (
+        <div className="mb-4" key={s.tipo}>
+          <div className="d-flex align-items-center gap-2 mb-2">
+            <span className="fw-semibold">{TIPO_INSUMO_ICON[s.tipo]} {s.tipo}</span>
+            <CBadge color={TIPO_INSUMO_COLOR[s.tipo]}>{s.items.length}</CBadge>
+            <span className="mono item-row-sub">{fmtMoney(s.items.reduce((sum, i) => sum + Number(i.data?.monto ?? 0), 0))}</span>
+          </div>
+          <CListGroup>
+            {s.items.map((item) => (
+              <ItemRow key={item.id} item={item} cfg={cfg} kind={kind} isMovimientos onEdit={() => onEdit(item)} onDelete={() => onDelete(item)} />
+            ))}
+          </CListGroup>
+        </div>
+      ))}
+
+      {sinClasificar.length > 0 && (
+        <div className="mb-2">
+          <div className="d-flex align-items-center gap-2 mb-2">
+            <span className="fw-semibold">{TIPO_INSUMO_ICON["Sin clasificar"]} Sin clasificar</span>
+            <CBadge color={TIPO_INSUMO_COLOR["Sin clasificar"]} className="text-dark">{sinClasificar.length}</CBadge>
+            <span className="mono item-row-sub">{fmtMoney(sinClasificar.reduce((sum, i) => sum + Number(i.data?.monto ?? 0), 0))}</span>
+          </div>
+          <CListGroup>
+            {sinClasificar.map((item) => (
+              <ItemRow key={item.id} item={item} cfg={cfg} kind={kind} isMovimientos onEdit={() => onEdit(item)} onDelete={() => onDelete(item)} />
+            ))}
+          </CListGroup>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ItemFormModal({
-  projectId, kind, existing, showToast, onClose, onSaved,
+  projectId, kind, existing, initialTitle, existingRubros, showToast, onClose, onSaved,
 }: {
   projectId: string;
   kind: string;
   existing: ProjectItemDTO | null;
+  /** Con qué título prellenar el campo al crear un ítem nuevo (ver "Agregar insumo a este rubro" en RubroFicha). */
+  initialTitle?: string | null;
+  /** Nombres de rubro ya cargados en esta obra (solo Ejecución) — sugerencias del campo "Nombre del rubro" para que agrupar insumos del mismo rubro sea elegir de una lista, no repetir el nombre a mano. */
+  existingRubros?: string[];
   showToast: (m: string) => void;
   onClose: () => void;
   onSaved: (item: ProjectItemDTO) => void;
 }) {
   const cfg = ITEM_KINDS[kind];
-  const [title, setTitle] = useState(existing?.title ?? "");
+  const [title, setTitle] = useState(existing?.title ?? initialTitle ?? "");
   const [status, setStatus] = useState(existing?.status ?? cfg.defaultStatus ?? "");
   // Parte Diario: un registro nuevo arranca con la fecha de hoy ya
   // cargada — es lo primero que se pide y no tiene sentido hacer que el
@@ -944,7 +1191,20 @@ function ItemFormModal({
           {error && <CAlert color="danger">{error}</CAlert>}
           <div className="mb-3">
             <CFormLabel>{cfg.titleLabel}</CFormLabel>
-            <CFormInput value={title} onChange={(e) => setTitle(e.target.value)} required />
+            <CFormInput
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+              list={existingRubros && existingRubros.length > 0 ? "rubro-title-suggestions" : undefined}
+            />
+            {existingRubros && existingRubros.length > 0 && (
+              <datalist id="rubro-title-suggestions">
+                {existingRubros.map((r) => <option key={r} value={r} />)}
+              </datalist>
+            )}
+            {kind === "change_order" && (
+              <p className="form-hint mb-0 mt-1">Los insumos con el mismo nombre de rubro se agrupan juntos en Ejecución.</p>
+            )}
           </div>
           {cfg.statusOptions && (
             <div className="mb-3">

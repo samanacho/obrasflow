@@ -184,7 +184,7 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
     singular: "movimiento",
     icon: "💸",
     description: "Gastos, adelantos, pagos a contratistas y demás movimientos de plata de la obra — el Ejecutado de la ficha se calcula solo a partir de esto.",
-    titleLabel: "Descripción del movimiento",
+    titleLabel: "Nombre del rubro",
     statusOptions: ["Pendiente", "Pagado", "Conciliado"],
     defaultStatus: "Pendiente",
     fields: [
