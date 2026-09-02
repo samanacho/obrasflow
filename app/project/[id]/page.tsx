@@ -440,6 +440,19 @@ function ModuleView({
   }
   useEffect(() => { load(); }, [projectId, kind]);
 
+  // Contratistas: "Rubro a cargo" sugiere también los rubros ya cargados en
+  // Ejecución de esta misma obra (no solo los ya asignados acá) — así desde
+  // el primer contratista se puede elegir un rubro que ya tiene costos
+  // registrados, en vez de escribirlo de nuevo a mano.
+  const [ejecucionRubros, setEjecucionRubros] = useState<string[]>([]);
+  useEffect(() => {
+    if (kind !== "contratista") { setEjecucionRubros([]); return; }
+    fetch(`/api/projects/${projectId}/items?kind=change_order`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rows: ProjectItemDTO[]) => setEjecucionRubros(rows.map((r) => r.title.trim()).filter(Boolean)))
+      .catch(() => setEjecucionRubros([]));
+  }, [projectId, kind]);
+
   // Parte Diario: al entrar a la pestaña se abre directo el formulario
   // para cargar algo del día — un solo `useEffect` sin dependencias
   // (ModuleView se remonta entero por key={tab} en el padre, así que esto
@@ -523,11 +536,15 @@ function ModuleView({
     : items;
 
   // Nombres de rubro ya usados en esta obra — alimenta el datalist del
-  // campo "Nombre del rubro" en el formulario, para que cargar un insumo
-  // más de un rubro existente sea elegir de una lista y no repetir el
-  // nombre a mano letra por letra (un typo rompe el agrupamiento).
+  // campo "Nombre del rubro" (Ejecución) o "Rubro a cargo" (Contratistas)
+  // en el formulario, para elegir de una lista en vez de repetir el nombre
+  // a mano letra por letra (un typo rompe el agrupamiento/cruce). En
+  // Contratistas se suman también los rubros ya cargados en Ejecución de
+  // esta obra (ver ejecucionRubros arriba).
   const existingRubros = isMovimientos
     ? Array.from(new Set(items.map((i) => i.title.trim()).filter(Boolean))).sort()
+    : kind === "contratista"
+    ? Array.from(new Set([...items.map((i) => i.title.trim()), ...ejecucionRubros].filter(Boolean))).sort()
     : undefined;
 
   // Agrupa los movimientos visibles (ya filtrados/ordenados arriba) por
@@ -1205,6 +1222,9 @@ function ItemFormModal({
             {kind === "change_order" && (
               <p className="form-hint mb-0 mt-1">Los insumos con el mismo nombre de rubro se agrupan juntos en Ejecución.</p>
             )}
+            {kind === "contratista" && (
+              <p className="form-hint mb-0 mt-1">Podés elegir un rubro ya usado en Contratistas o en Ejecución de esta obra, o cargar uno nuevo.</p>
+            )}
           </div>
           {cfg.statusOptions && (
             <div className="mb-3">
@@ -1223,7 +1243,9 @@ function ItemFormModal({
                 <CFormSelect value={data[f.key] ?? ""} onChange={(e) => setContractorField(f.key, e.target.value)} required={f.required}>
                   <option value="">Seleccioná un contratista…</option>
                   {contractors.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}{c.city ? ` — ${c.city}` : ""}</option>
+                    <option key={c.id} value={c.id}>
+                      {c.name}{c.city ? ` — ${c.city}` : ""}{c.contactName ? ` — Encargado: ${c.contactName}` : ""}
+                    </option>
                   ))}
                 </CFormSelect>
               ) : f.type === "supplier" ? (

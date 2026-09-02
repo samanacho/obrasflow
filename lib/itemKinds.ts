@@ -129,7 +129,7 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
     singular: "contratista",
     icon: "🧰",
     description: "Contratistas con los que se está trabajando en esta obra, por rubro — cada uno linkea a su ficha completa en el directorio.",
-    titleLabel: "Tarea o alcance en esta obra",
+    titleLabel: "Rubro a cargo",
     statusOptions: ["Activo", "Finalizado"],
     defaultStatus: "Activo",
     fields: [
