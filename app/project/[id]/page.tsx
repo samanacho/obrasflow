@@ -19,7 +19,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import FileDropZone from "@/components/FileDropZone";
 import Toast from "@/components/Toast";
 import { useToast } from "@/lib/useToast";
-import type { ProjectDTO, ProjectItemDTO, ContractorDTO } from "@/lib/types";
+import type { ProjectDTO, ProjectItemDTO, ContractorDTO, SupplierDTO } from "@/lib/types";
 import { ITEM_KINDS, ITEM_KIND_ORDER, ItemField } from "@/lib/itemKinds";
 import { PUBLIC_FIELDS, PRIVATE_FIELDS } from "@/lib/sectorFields";
 import { MOVIMIENTO_TIPOS } from "@/lib/movimientos";
@@ -808,6 +808,7 @@ function ItemFormModal({
   const [saving, setSaving] = useState(false);
   const [contractors, setContractors] = useState<ContractorDTO[]>([]);
   const [quotes, setQuotes] = useState<ProjectItemDTO[]>([]);
+  const [suppliers, setSuppliers] = useState<SupplierDTO[]>([]);
   // Archivo adjunto: se sube recién después de guardar el item (necesita
   // su id) — ver handleSubmit. `pendingFile` es lo elegido en esta sesión
   // de edición todavía sin subir; `removeAttachment` marca que se pidió
@@ -831,6 +832,36 @@ function ItemFormModal({
       .catch(() => setQuotes([]));
   }, [projectId]);
 
+  useEffect(() => {
+    if (!cfg.fields.some((f) => f.type === "supplier")) return;
+    fetch("/api/suppliers?status=activo")
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setSuppliers)
+      .catch(() => setSuppliers([]));
+  }, []);
+
+  // Campos con showIf (ej. "Proveedor" o "Rubro ejecutado" en Ejecución,
+  // que dependen de "Tipo de insumo"): si el campo actualmente cargado en
+  // `data` ya no aplica (cambió la condición que lo mostraba), se limpia
+  // solo — evita guardar datos de un campo que quedó oculto. Por ahora el
+  // único disparador es tipoInsumo; si en el futuro hay más, hay que sumar
+  // esa clave al array de dependencias.
+  useEffect(() => {
+    const hidden = cfg.fields.filter(
+      (f) => f.showIf && !f.showIf(data) && data[f.key] !== undefined && data[f.key] !== "" && data[f.key] !== null
+    );
+    if (hidden.length === 0) return;
+    setData((d) => {
+      const next = { ...d };
+      for (const f of hidden) {
+        delete next[f.key];
+        if (f.key.endsWith("Id")) delete next[f.key.replace(/Id$/, "") + "Nombre"];
+      }
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.tipoInsumo]);
+
   function setField(key: string, value: string) {
     setData((d) => ({ ...d, [key]: value }));
   }
@@ -851,6 +882,12 @@ function ItemFormModal({
       : "";
     const nameKey = key.replace(/Id$/, "") + "Nombre";
     setData((d) => ({ ...d, [key]: quoteId, [nameKey]: label }));
+  }
+
+  function setSupplierField(key: string, supplierId: string) {
+    const chosen = suppliers.find((s) => s.id === supplierId);
+    const nameKey = key.replace(/Id$/, "") + "Nombre";
+    setData((d) => ({ ...d, [key]: supplierId, [nameKey]: chosen?.name ?? "" }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -917,7 +954,7 @@ function ItemFormModal({
               </CFormSelect>
             </div>
           )}
-          {cfg.fields.map((f: ItemField) => (
+          {cfg.fields.filter((f) => !f.showIf || f.showIf(data)).map((f: ItemField) => (
             <div className="mb-3" key={f.key}>
               <CFormLabel>{f.label}</CFormLabel>
               {f.type === "textarea" ? (
@@ -927,6 +964,13 @@ function ItemFormModal({
                   <option value="">Seleccioná un contratista…</option>
                   {contractors.map((c) => (
                     <option key={c.id} value={c.id}>{c.name}{c.city ? ` — ${c.city}` : ""}</option>
+                  ))}
+                </CFormSelect>
+              ) : f.type === "supplier" ? (
+                <CFormSelect value={data[f.key] ?? ""} onChange={(e) => setSupplierField(f.key, e.target.value)} required={f.required}>
+                  <option value="">Seleccioná un proveedor…</option>
+                  {suppliers.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}{s.city ? ` — ${s.city}` : ""}</option>
                   ))}
                 </CFormSelect>
               ) : f.type === "quote" ? (
@@ -979,6 +1023,9 @@ function ItemFormModal({
           )}
           {cfg.fields.some((f) => f.type === "quote") && quotes.length === 0 && (
             <p className="form-hint">No hay cotizaciones cargadas todavía en esta obra.</p>
+          )}
+          {cfg.fields.some((f) => f.type === "supplier") && suppliers.length === 0 && (
+            <p className="form-hint">No hay proveedores activos todavía. <Link href="/proveedores">Cargá uno en el directorio</Link> primero.</p>
           )}
         </CModalBody>
         <CModalFooter>

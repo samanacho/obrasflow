@@ -19,10 +19,10 @@ import {
   CButton,
 } from "@coreui/react";
 import CIcon from "@coreui/icons-react";
-import { cilSpeedometer, cilPeople, cilFactory, cilMoon, cilSun, cilMenu, cilPlus } from "@coreui/icons";
+import { cilSpeedometer, cilPeople, cilFactory, cilTruck, cilMoon, cilSun, cilMenu, cilPlus } from "@coreui/icons";
 import { NAV_ITEMS } from "@/lib/navItems";
 
-const ICONS: Record<string, any> = { cilSpeedometer, cilPeople, cilFactory };
+const ICONS: Record<string, any> = { cilSpeedometer, cilPeople, cilFactory, cilTruck };
 
 export interface Crumb {
   label: string;

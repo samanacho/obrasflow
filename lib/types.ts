@@ -140,6 +140,38 @@ export interface ContractorInput {
   notes?: string | null;
 }
 
+// ── Proveedores (materiales de obra y/o servicios) ─────────────────────
+
+export type SupplierCategory = "materiales" | "servicios";
+
+export interface SupplierDTO {
+  id: string;
+  name: string;
+  ruc: string | null;
+  contactName: string | null;
+  phone: string | null;
+  email: string | null;
+  city: string | null;
+  department: string | null;
+  categories: SupplierCategory[];
+  status: ContractorStatus;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface SupplierInput {
+  name: string;
+  ruc?: string | null;
+  contactName?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  city?: string | null;
+  department?: string | null;
+  categories: SupplierCategory[];
+  status: ContractorStatus;
+  notes?: string | null;
+}
+
 // ── Fábrica de Postes ──────────────────────────────────────────────────
 
 export type PoleLotStatus = "en_curado" | "listo_para_ensayo" | "en_ensayo" | "aprobado" | "rechazado" | "despachado";

@@ -148,6 +148,36 @@ model Contractor {
   @@index([status])
 }
 
+enum SupplierCategory {
+  materiales
+  servicios
+}
+
+/// Directorio global de proveedores (materiales de obra y/o servicios) —
+/// distinto de Contractor: un contratista EJECUTA trabajo, un proveedor
+/// VENDE materiales o presta un servicio (alquiler de maquinaria, por
+/// ejemplo). Se usa como selector en la Ejecución de una obra cuando el
+/// movimiento es de tipo "Materiales" o "Maquinaria / Alquileres" — ver
+/// lib/itemKinds.ts.
+model Supplier {
+  id          String             @id @default(cuid())
+  name        String
+  ruc         String?
+  contactName String?
+  phone       String?
+  email       String?
+  city        String?
+  /// Ver lib/departments.ts.
+  department  String?
+  categories  SupplierCategory[]
+  status      ContractorStatus   @default(activo)
+  notes       String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([status])
+}
+
 /// Una entrada por cada obra trabajada junto al contratista, con su propia
 /// calificación 1-5 (el promedio se calcula en la app a partir de estas
 /// entradas, no se guarda como campo aparte).

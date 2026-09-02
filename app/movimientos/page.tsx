@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   CCard, CCardBody, CCardHeader, CFormInput, CFormSelect, CButton, CRow, CCol,
   CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell,
-  CBadge,
+  CBadge, CNav, CNavItem, CNavLink,
 } from "@coreui/react";
 import CIcon from "@coreui/icons-react";
 import { cilCloudDownload, cilDescription } from "@coreui/icons";
@@ -44,7 +44,7 @@ function exportCSV(rows: MovimientoDTO[]) {
   ];
   const csvRows = rows.map((m) => [
     itemDate(m), m.projectName, TYPE_LABEL[m.projectType], m.title, m.data?.categoria ?? "",
-    m.data?.contratistaNombre ?? "", Number(m.data?.monto ?? 0), m.data?.medioPago ?? "", m.status ?? "",
+    m.data?.contratistaNombre ?? m.data?.proveedorNombre ?? "", Number(m.data?.monto ?? 0), m.data?.medioPago ?? "", m.status ?? "",
     m.data?.procesadoPor ?? "", m.attachment?.filename ?? m.data?.comprobante ?? "", m.data?.notas ?? "",
   ]);
   const csv = [headers, ...csvRows]
@@ -59,7 +59,130 @@ function exportCSV(rows: MovimientoDTO[]) {
   URL.revokeObjectURL(url);
 }
 
+interface RubroAgregado {
+  rubro: string;
+  unidadMedida: string;
+  cantidadTotal: number;
+  vecesEjecutado: number;
+  precioActual: number | null;
+  ultimaFecha: string;
+  ultimaObraId: string;
+  ultimaObraNombre: string;
+}
+
+function RubrosEjecutadosView({ movimientos }: { movimientos: MovimientoDTO[] }) {
+  const [search, setSearch] = useState("");
+
+  const rubros = useMemo<RubroAgregado[]>(() => {
+    const groups = new Map<string, MovimientoDTO[]>();
+    movimientos
+      .filter((m) => m.data?.tipoInsumo === "Mano de obra")
+      .filter((m) => String(m.data?.rubroEjecutado ?? "").trim() !== "")
+      .forEach((m) => {
+        const key = String(m.data.rubroEjecutado).trim();
+        const arr = groups.get(key) ?? [];
+        arr.push(m);
+        groups.set(key, arr);
+      });
+
+    const result: RubroAgregado[] = [];
+    groups.forEach((items, rubro) => {
+      const sorted = items
+        .slice()
+        .sort((a, b) => {
+          const da = (a.data?.fecha || a.createdAt).slice(0, 10);
+          const db = (b.data?.fecha || b.createdAt).slice(0, 10);
+          return db.localeCompare(da);
+        });
+      const latest = sorted[0];
+      const cantidadTotal = items.reduce((sum, m) => sum + Number(m.data?.cantidadEjecutada ?? 0), 0);
+      const cantidadEjecutadaLatest = Number(latest.data?.cantidadEjecutada ?? 0);
+      const montoLatest = Number(latest.data?.monto ?? 0);
+      const precioActual =
+        Number.isFinite(cantidadEjecutadaLatest) && cantidadEjecutadaLatest > 0
+          ? montoLatest / cantidadEjecutadaLatest
+          : null;
+      result.push({
+        rubro,
+        unidadMedida: latest.data?.unidadMedida || "—",
+        cantidadTotal,
+        vecesEjecutado: items.length,
+        precioActual,
+        ultimaFecha: itemDate(latest),
+        ultimaObraId: latest.projectId,
+        ultimaObraNombre: latest.projectName,
+      });
+    });
+
+    return result.sort((a, b) => b.cantidadTotal - a.cantidadTotal);
+  }, [movimientos]);
+
+  const visible = rubros.filter((r) => !search || r.rubro.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <CCard>
+      <CCardHeader className="module-panel-head">
+        <div>
+          <span className="fw-semibold fs-5">Rubros ejecutados</span>
+          <p className="module-desc mb-0">
+            Cantidad total ejecutada, veces trabajado y precio actual por unidad de cada rubro de mano de obra,
+            en todas las obras — para saber con qué experiencia contamos y a qué precio estamos trabajando hoy.
+          </p>
+        </div>
+      </CCardHeader>
+      <CCardBody>
+        {rubros.length === 0 ? (
+          <p className="empty-col">Todavía no hay movimientos de mano de obra con rubro ejecutado cargado.</p>
+        ) : (
+          <>
+            <CRow className="g-2 mb-3">
+              <CCol md={4}>
+                <CFormInput placeholder="Buscar rubro…" value={search} onChange={(e) => setSearch(e.target.value)} />
+              </CCol>
+            </CRow>
+
+            {visible.length === 0 && <p className="empty-col">Ningún rubro coincide con esta búsqueda.</p>}
+            {visible.length > 0 && (
+              <div className="table-wrap">
+                <CTable hover responsive>
+                  <CTableHead>
+                    <CTableRow>
+                      <CTableHeaderCell>Rubro</CTableHeaderCell>
+                      <CTableHeaderCell>Unidad de medida</CTableHeaderCell>
+                      <CTableHeaderCell>Cantidad total ejecutada</CTableHeaderCell>
+                      <CTableHeaderCell>Veces ejecutado</CTableHeaderCell>
+                      <CTableHeaderCell>Precio actual por unidad (Gs)</CTableHeaderCell>
+                      <CTableHeaderCell>Última vez</CTableHeaderCell>
+                      <CTableHeaderCell>Última obra</CTableHeaderCell>
+                    </CTableRow>
+                  </CTableHead>
+                  <CTableBody>
+                    {visible.map((r) => (
+                      <CTableRow key={r.rubro}>
+                        <CTableDataCell>{r.rubro}</CTableDataCell>
+                        <CTableDataCell>{r.unidadMedida}</CTableDataCell>
+                        <CTableDataCell className="mono">
+                          {Number.isInteger(r.cantidadTotal) ? r.cantidadTotal : r.cantidadTotal.toFixed(2)}
+                        </CTableDataCell>
+                        <CTableDataCell className="mono">{r.vecesEjecutado}</CTableDataCell>
+                        <CTableDataCell className="mono">{r.precioActual != null ? fmtMoney(r.precioActual) : "—"}</CTableDataCell>
+                        <CTableDataCell className="mono">{r.ultimaFecha}</CTableDataCell>
+                        <CTableDataCell><Link href={`/project/${r.ultimaObraId}`}>{r.ultimaObraNombre} ↗</Link></CTableDataCell>
+                      </CTableRow>
+                    ))}
+                  </CTableBody>
+                </CTable>
+              </div>
+            )}
+          </>
+        )}
+      </CCardBody>
+    </CCard>
+  );
+}
+
 export default function MovimientosPage() {
+  const [tab, setTab] = useState<"movimientos" | "rubros">("movimientos");
   const [movimientos, setMovimientos] = useState<MovimientoDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -115,8 +238,8 @@ export default function MovimientosPage() {
       if (!search) return true;
       const q = search.toLowerCase();
       return [
-        m.title, m.projectName, m.data?.categoria, m.data?.contratistaNombre,
-        m.data?.tipoInsumo, m.data?.frenteTrabajo, m.data?.tipoComprobante, m.data?.comprobante,
+        m.title, m.projectName, m.data?.categoria, m.data?.contratistaNombre, m.data?.proveedorNombre,
+        m.data?.tipoInsumo, m.data?.rubroEjecutado, m.data?.frenteTrabajo, m.data?.tipoComprobante, m.data?.comprobante,
         m.data?.procesadoPor, m.data?.notas,
       ].some((v) => String(v ?? "").toLowerCase().includes(q));
     })
@@ -142,6 +265,22 @@ export default function MovimientosPage() {
         Ejecución de la obra correspondiente.
       </p>
 
+      <CNav variant="underline" className="mb-4">
+        <CNavItem>
+          <CNavLink active={tab === "movimientos"} onClick={() => setTab("movimientos")} style={{ cursor: "pointer" }}>
+            Movimientos
+          </CNavLink>
+        </CNavItem>
+        <CNavItem>
+          <CNavLink active={tab === "rubros"} onClick={() => setTab("rubros")} style={{ cursor: "pointer" }}>
+            Rubros ejecutados
+          </CNavLink>
+        </CNavItem>
+      </CNav>
+
+      {tab === "rubros" && <RubrosEjecutadosView movimientos={movimientos} />}
+
+      {tab === "movimientos" && (
       <CCard>
         <CCardHeader className="module-panel-head">
           <div>
@@ -236,6 +375,10 @@ export default function MovimientosPage() {
                           <CTableDataCell>
                             {m.data?.contratistaId ? (
                               <Link href={`/contratistas/${m.data.contratistaId}`}>{m.data.contratistaNombre || "Ver contratista"} ↗</Link>
+                            ) : m.data?.proveedorNombre ? (
+                              m.data.proveedorNombre
+                            ) : m.data?.rubroEjecutado ? (
+                              <span className="text-body-secondary">Mano de obra: {m.data.rubroEjecutado}</span>
                             ) : "—"}
                           </CTableDataCell>
                           <CTableDataCell className="mono">{fmtMoney(Number(m.data?.monto ?? 0))}</CTableDataCell>
@@ -271,6 +414,7 @@ export default function MovimientosPage() {
           )}
         </CCardBody>
       </CCard>
+      )}
     </AppShell>
   );
 }

@@ -4,7 +4,7 @@
 
 import { MOVIMIENTO_TIPOS } from "./movimientos";
 
-export type FieldType = "text" | "textarea" | "number" | "date" | "contractor" | "quote" | "select" | "location" | "select-search" | "file";
+export type FieldType = "text" | "textarea" | "number" | "date" | "contractor" | "quote" | "supplier" | "select" | "location" | "select-search" | "file";
 
 export interface ItemField {
   key: string;
@@ -14,6 +14,8 @@ export interface ItemField {
   placeholder?: string;
   /** Para type "select": las únicas opciones válidas. Para "select-search": sugerencias de un datalist — el campo sigue siendo texto libre. */
   options?: string[];
+  /** Si está definido, el campo solo se muestra (y se pide) cuando esto devuelve true para el `data` actual del formulario — ej. campos de Ejecución que dependen de "Tipo de insumo". */
+  showIf?: (data: Record<string, any>) => boolean;
 }
 
 // Sugerencias del centro de costos / partida presupuestaria de Ejecución
@@ -36,6 +38,29 @@ export const COST_CENTER_SUGGESTIONS = [
   "Gastos generales",
   "Otro",
 ];
+
+// Sugerencias del rubro de mano de obra ejecutado — mismo criterio que
+// COST_CENTER_SUGGESTIONS (texto libre con datalist, no un catálogo
+// cerrado): alimenta el módulo "Rubros ejecutados" de /movimientos, que
+// agrupa por este mismo texto tal cual se cargó.
+export const RUBRO_EJECUTADO_SUGGESTIONS = [
+  "Excavación",
+  "Movimiento de suelos",
+  "Hormigón armado",
+  "Contrapiso",
+  "Mampostería",
+  "Revoque",
+  "Pintura",
+  "Instalación eléctrica",
+  "Instalación sanitaria",
+  "Techado",
+  "Colocación de pisos",
+  "Carpintería",
+];
+
+// Sugerencias de unidad de medida para el rubro ejecutado — mismo criterio
+// que COMMON_UNITS de lib/poleFields.ts (Fábrica de Postes).
+export const UNIDAD_MEDIDA_SUGGESTIONS = ["m²", "m³", "ml", "kg", "unidad", "hora", "jornal", "global"];
 
 export interface ItemKindConfig {
   key: string;
@@ -166,15 +191,45 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
       { key: "tipo", label: "Tipo de movimiento", type: "select", required: true, options: MOVIMIENTO_TIPOS.map((t) => t.value) },
       { key: "monto", label: "Monto (Gs.)", type: "number", required: true },
       { key: "fecha", label: "Fecha del movimiento", type: "date", required: true },
-      { key: "contratistaId", label: "Contratista (opcional)", type: "contractor" },
-      { key: "cotizacionId", label: "Cotización vinculada (opcional)", type: "quote" },
-      { key: "categoria", label: "Centro de costos / Partida", type: "select-search", options: COST_CENTER_SUGGESTIONS },
       {
         key: "tipoInsumo",
         label: "Tipo de insumo",
         type: "select",
         options: ["Materiales", "Mano de obra", "Maquinaria / Alquileres", "Gastos administrativos / Varios"],
       },
+      // Proveedor: para Materiales pregunta "qué proveedor es"; para
+      // Maquinaria/Alquileres, la empresa que alquila — mismo directorio
+      // (/proveedores), por eso una sola etiqueta que cubre los dos casos.
+      {
+        key: "proveedorId",
+        label: "Proveedor / Empresa (opcional)",
+        type: "supplier",
+        showIf: (d) => d.tipoInsumo === "Materiales" || d.tipoInsumo === "Maquinaria / Alquileres",
+      },
+      // Mano de obra: en vez de proveedor, se carga QUÉ rubro se ejecutó,
+      // cuánto y en qué unidad — esto alimenta el módulo "Rubros
+      // ejecutados" de /movimientos (agrupa por rubroEjecutado).
+      {
+        key: "rubroEjecutado",
+        label: "Rubro ejecutado",
+        type: "select-search",
+        options: RUBRO_EJECUTADO_SUGGESTIONS,
+        showIf: (d) => d.tipoInsumo === "Mano de obra",
+      },
+      {
+        key: "cantidadEjecutada",
+        label: "Cantidad ejecutada",
+        type: "number",
+        showIf: (d) => d.tipoInsumo === "Mano de obra",
+      },
+      {
+        key: "unidadMedida",
+        label: "Unidad de medida",
+        type: "select-search",
+        options: UNIDAD_MEDIDA_SUGGESTIONS,
+        showIf: (d) => d.tipoInsumo === "Mano de obra",
+      },
+      { key: "categoria", label: "Centro de costos / Partida", type: "select-search", options: COST_CENTER_SUGGESTIONS },
       { key: "frenteTrabajo", label: "Frente de trabajo / Sector (opcional)", type: "text", placeholder: "Ej. Planta baja, fundaciones, sector norte" },
       { key: "medioPago", label: "Medio de pago", type: "select", options: ["Efectivo", "Transferencia", "Cheque", "Tarjeta", "Crédito"] },
       {
@@ -193,7 +248,10 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
       },
       { key: "notas", label: "Notas", type: "textarea" },
     ],
-    summary: (d) => [d.tipo, d.monto ? `Gs. ${Number(d.monto).toLocaleString("es-PY")}` : "", d.contratistaNombre].filter(Boolean).join(" · "),
+    summary: (d) =>
+      [d.tipo, d.monto ? `Gs. ${Number(d.monto).toLocaleString("es-PY")}` : "", d.contratistaNombre || d.proveedorNombre || d.rubroEjecutado]
+        .filter(Boolean)
+        .join(" · "),
   },
   // La clave interna sigue siendo "team" (sin migración, ProjectItem.kind
   // es String libre) aunque ahora representa el registro de maquinarias

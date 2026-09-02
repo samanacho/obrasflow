@@ -225,10 +225,10 @@ function EjecucionInner() {
 // ── Tab 1: Planilla de gastos ──────────────────────────────────────────
 
 function exportGastosCSV(items: ProjectItemDTO[], projectName: string) {
-  const headers = ["Fecha", "Tipo", "Descripción", "Categoría", "Monto (Gs.)", "Medio de pago", "Estado", "Contratista", "Comprobante", "Notas"];
+  const headers = ["Fecha", "Tipo", "Descripción", "Categoría", "Monto (Gs.)", "Medio de pago", "Estado", "Contratista/Proveedor", "Comprobante", "Notas"];
   const rows = items.map((i) => [
     itemDate(i), i.data?.tipo ?? "", i.title, i.data?.categoria ?? "", Number(i.data?.monto ?? 0),
-    i.data?.medioPago ?? "", i.status ?? "", i.data?.contratistaNombre ?? "", i.data?.comprobante ?? "", i.data?.notas ?? "",
+    i.data?.medioPago ?? "", i.status ?? "", i.data?.contratistaNombre ?? i.data?.proveedorNombre ?? "", i.data?.comprobante ?? "", i.data?.notas ?? "",
   ]);
   const csv = [headers, ...rows]
     .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
@@ -257,8 +257,10 @@ function PlanillaGastosView({ project, items }: { project: ProjectDTO; items: Pr
     .filter((i) => {
       if (!search) return true;
       const q = search.toLowerCase();
-      return [i.title, i.data?.notas, i.data?.categoria, i.data?.tipoInsumo, i.data?.frenteTrabajo, i.data?.tipoComprobante, i.data?.comprobante]
-        .some((v) => String(v ?? "").toLowerCase().includes(q));
+      return [
+        i.title, i.data?.notas, i.data?.categoria, i.data?.tipoInsumo, i.data?.frenteTrabajo, i.data?.tipoComprobante, i.data?.comprobante,
+        i.data?.contratistaNombre, i.data?.proveedorNombre, i.data?.rubroEjecutado,
+      ].some((v) => String(v ?? "").toLowerCase().includes(q));
     })
     .slice()
     .sort((a, b) => {
@@ -352,11 +354,15 @@ function PlanillaGastosView({ project, items }: { project: ProjectDTO; items: Pr
                     <CTableDataCell>{i.data?.tipo || "—"}</CTableDataCell>
                     <CTableDataCell>
                       {i.title}
-                      {i.data?.contratistaId && (
+                      {i.data?.contratistaId ? (
                         <div className="item-row-sub">
                           <Link href={`/contratistas/${i.data.contratistaId}`}>{i.data.contratistaNombre || "Ver contratista"} ↗</Link>
                         </div>
-                      )}
+                      ) : i.data?.proveedorNombre ? (
+                        <div className="item-row-sub">{i.data.proveedorNombre}</div>
+                      ) : i.data?.rubroEjecutado ? (
+                        <div className="item-row-sub">Mano de obra: {i.data.rubroEjecutado}</div>
+                      ) : null}
                     </CTableDataCell>
                     <CTableDataCell>{i.data?.categoria || "—"}</CTableDataCell>
                     <CTableDataCell className="mono">{fmtMoney(Number(i.data?.monto ?? 0))}</CTableDataCell>
