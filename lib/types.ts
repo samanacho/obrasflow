@@ -64,6 +64,12 @@ export interface ProjectItemDTO {
   updatedAt: string;
 }
 
+/** ProjectItemDTO (kind="change_order") + a qué obra pertenece — para el listado cruzado de /movimientos (GET /api/movimientos). */
+export interface MovimientoDTO extends ProjectItemDTO {
+  projectName: string;
+  projectType: ProjectType;
+}
+
 export interface ProjectItemInput {
   kind: string;
   title: string;

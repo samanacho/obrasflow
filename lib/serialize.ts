@@ -3,7 +3,7 @@ import type {
   PoleSpec, PoleLot, PoleQualityTest, RawMaterial, PoleRecipeItem, PoleLotMaterialConsumption, MaterialPurchase,
 } from "@prisma/client";
 import type {
-  ProjectDTO, ProjectItemDTO, ContractorDTO, ContractorHistoryDTO, AttachmentDTO,
+  ProjectDTO, ProjectItemDTO, ContractorDTO, ContractorHistoryDTO, AttachmentDTO, MovimientoDTO,
   PoleSpecDTO, PoleSpecDetailDTO, PoleLotDTO, PoleQualityTestDTO,
   RawMaterialDTO, PoleRecipeItemDTO, PoleLotMaterialConsumptionDTO, MaterialPurchaseDTO, PurchaseDocType,
 } from "./types";
@@ -48,6 +48,20 @@ export function serializeItem(
     attachment: i.attachments?.[0] ? serializeAttachmentMeta(i.attachments[0]) : null,
     createdAt: i.createdAt.toISOString(),
     updatedAt: i.updatedAt.toISOString(),
+  };
+}
+
+/** Para GET /api/movimientos (listado cruzado a todas las obras) — mismo ProjectItem, con el nombre/rubro de su obra ya resuelto. */
+export function serializeMovimiento(
+  i: ProjectItem & {
+    attachments?: Pick<Attachment, "id" | "filename" | "mimeType" | "size" | "createdAt">[];
+    project: { name: string; type: string };
+  }
+): MovimientoDTO {
+  return {
+    ...serializeItem(i),
+    projectName: i.project.name,
+    projectType: i.project.type as MovimientoDTO["projectType"],
   };
 }
 

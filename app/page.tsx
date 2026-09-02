@@ -446,6 +446,7 @@ function DashboardView({
             sub={totalBudget === 0 ? "sin obras cargadas" : totalBenefit >= 0 ? "ganancia sobre presupuesto" : "pérdida sobre presupuesto"}
             icon={cilBalanceScale}
             valueColor={totalBudget === 0 ? undefined : totalBenefit >= 0 ? "var(--ok)" : "var(--crit)"}
+            href="/movimientos"
           />
         </div>
         <div className="col"><Kpi label="Relevamientos abiertos" value={summary?.openRelevamientos ?? "—"} sub="pendientes o en proceso" icon={cilListRich} /></div>

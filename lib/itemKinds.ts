@@ -176,7 +176,7 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
         options: ["Materiales", "Mano de obra", "Maquinaria / Alquileres", "Gastos administrativos / Varios"],
       },
       { key: "frenteTrabajo", label: "Frente de trabajo / Sector (opcional)", type: "text", placeholder: "Ej. Planta baja, fundaciones, sector norte" },
-      { key: "medioPago", label: "Medio de pago", type: "select", options: ["Efectivo", "Transferencia", "Cheque", "Tarjeta"] },
+      { key: "medioPago", label: "Medio de pago", type: "select", options: ["Efectivo", "Transferencia", "Cheque", "Tarjeta", "Crédito"] },
       {
         key: "tipoComprobante",
         label: "Tipo de comprobante",
@@ -185,6 +185,12 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
       },
       { key: "comprobante", label: "N° de comprobante (timbrado y N° de factura)", type: "text" },
       { key: "comprobanteArchivo", label: "Archivo adjunto (foto o PDF del comprobante)", type: "file" },
+      {
+        key: "procesadoPor",
+        label: "Procesado por (opcional)",
+        type: "text",
+        placeholder: "Nombre de quien gestionó/cargó este movimiento",
+      },
       { key: "notas", label: "Notas", type: "textarea" },
     ],
     summary: (d) => [d.tipo, d.monto ? `Gs. ${Number(d.monto).toLocaleString("es-PY")}` : "", d.contratistaNombre].filter(Boolean).join(" · "),
