@@ -151,7 +151,11 @@ function ReparoBeneficios() {
                 {sortedSources.map((s) => (
                   <CTableRow key={s.id}>
                     <CTableDataCell><Link href={s.href}>{s.label} ↗</Link></CTableDataCell>
-                    <CTableDataCell><CBadge color={s.kind === "obra" ? "info" : "dark"}>{s.kind === "obra" ? "Obra" : "Ingreso"}</CBadge></CTableDataCell>
+                    <CTableDataCell>
+                      <CBadge color={s.kind === "obra" ? "info" : s.kind === "egreso" ? "danger" : "dark"}>
+                        {s.kind === "obra" ? "Obra" : s.kind === "egreso" ? "Egreso" : "Ingreso"}
+                      </CBadge>
+                    </CTableDataCell>
                     <CTableDataCell className="mono">{s.fecha ? fmtDate(s.fecha) : "—"}</CTableDataCell>
                     <CTableDataCell className="mono" style={{ color: amountColor(s.beneficio) }}>{fmtMoney(s.beneficio)}</CTableDataCell>
                     <CTableDataCell>
@@ -185,7 +189,7 @@ export default function PersonalPage() {
         <h1 className="of-page-title">👤 Personal</h1>
         <p className="module-desc mb-4">
           Todavía no maneja legajos, asistencia ni liquidaciones — está reservado a la espera de esa definición. Por
-          ahora, el reparto de beneficios de cada obra e ingreso.
+          ahora, el reparto de beneficios de cada obra e ingreso, neto de los egresos generales de la empresa.
         </p>
         <ReparoBeneficios />
       </PinGate>
