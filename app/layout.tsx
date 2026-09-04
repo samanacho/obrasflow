@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "@coreui/coreui/dist/css/coreui.min.css";
 import "./globals.css";
+import NumberInputWheelGuard from "@/components/NumberInputWheelGuard";
 
 export const metadata: Metadata = {
   title: "ObrasFlow",
@@ -19,7 +20,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <NumberInputWheelGuard />
+        {children}
+      </body>
     </html>
   );
 }
