@@ -31,7 +31,7 @@ const DhtmlxGanttChart = dynamic(() => import("@/components/DhtmlxGanttChart"), 
   ssr: false,
   loading: () => <p className="empty-col">Cargando cronograma…</p>,
 });
-import type { ProjectDTO, ProjectStatus, ProjectType, DashboardSummaryDTO, PoleLotDTO, PoleSpecDTO } from "@/lib/types";
+import type { ProjectDTO, ProjectStatus, ProjectType, DashboardSummaryDTO, PoleLotDTO, PoleSpecDTO, GeneralMovementDTO } from "@/lib/types";
 import { fechaFiscalizacionEstimada, capacityForDate, FACTORY_SCHEDULE_LABEL } from "@/lib/factoryCapacity";
 
 const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
@@ -92,6 +92,7 @@ function HomeInner() {
   const [summary, setSummary] = useState<DashboardSummaryDTO | null>(null);
   const [poleLots, setPoleLots] = useState<PoleLotDTO[]>([]);
   const [poleSpecs, setPoleSpecs] = useState<PoleSpecDTO[]>([]);
+  const [generalMovements, setGeneralMovements] = useState<GeneralMovementDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const initialTab = (searchParams.get("tab") as TabKey) || "dashboard";
@@ -109,7 +110,7 @@ function HomeInner() {
   const [confirmTarget, setConfirmTarget] = useState<ProjectDTO | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => { loadProjects(); loadSummary(); loadPostesSummary(); }, []);
+  useEffect(() => { loadProjects(); loadSummary(); loadPostesSummary(); loadGeneralMovements(); }, []);
 
   async function loadProjects() {
     setLoading(true);
@@ -142,6 +143,15 @@ function HomeInner() {
       setPoleSpecs(specsRes.ok ? await specsRes.json() : []);
     } catch {
       /* el dashboard funciona igual sin este resumen */
+    }
+  }
+
+  async function loadGeneralMovements() {
+    try {
+      const res = await fetch("/api/general-movements");
+      if (res.ok) setGeneralMovements(await res.json());
+    } catch {
+      /* el dashboard funciona igual sin este extra */
     }
   }
 
@@ -232,10 +242,16 @@ function HomeInner() {
     // "Beneficio" = presupuesto (lo contratado/adjudicado) menos ejecutado
     // (lo realmente gastado) — mismo criterio que ya usa "sobre presupuesto"
     // en Seguimiento rápido, solo que acá se lo enmarca explícitamente como
-    // ganancia (positivo) o pérdida (negativo) en vez de una alerta.
-    const totalBenefit = totalBudget - totalSpent;
-    return { byType, totalBudget, totalSpent, totalBenefit, avgProgress, execPct, active, finished };
-  }, [projects]);
+    // ganancia (positivo) o pérdida (negativo) en vez de una alerta. Se le
+    // suma el neto de los movimientos generales (caja de empresa sin obra
+    // puntual asociada): "ingreso" suma, "egreso" resta.
+    const generalNet = generalMovements.reduce(
+      (sum, m) => sum + (m.tipo === "ingreso" ? m.monto : -m.monto),
+      0
+    );
+    const totalBenefit = totalBudget - totalSpent + generalNet;
+    return { byType, totalBudget, totalSpent, totalBenefit, generalNet, avgProgress, execPct, active, finished };
+  }, [projects, generalMovements]);
 
   return (
     <AppShell
@@ -324,6 +340,7 @@ interface DashboardMetrics {
   totalBudget: number;
   totalSpent: number;
   totalBenefit: number;
+  generalNet: number;
   avgProgress: number;
   execPct: number;
   active: number;
@@ -340,7 +357,7 @@ function DashboardView({
   poleSpecs: PoleSpecDTO[];
   onNewProject: () => void;
 }) {
-  const { byType, totalBudget, totalSpent, totalBenefit, avgProgress, execPct, active, finished } = metrics;
+  const { byType, totalBudget, totalSpent, totalBenefit, generalNet, avgProgress, execPct, active, finished } = metrics;
   const sortedByProgress = [...projects].sort((a, b) => clampPct(b.progress) - clampPct(a.progress));
 
   const now = Date.now();
@@ -443,9 +460,9 @@ function DashboardView({
           <Kpi
             label="Costos vs. beneficios"
             value={`${totalBenefit < 0 ? "-" : ""}${fmtMoney(Math.abs(totalBenefit))}`}
-            sub={totalBudget === 0 ? "sin obras cargadas" : totalBenefit >= 0 ? "ganancia sobre presupuesto" : "pérdida sobre presupuesto"}
+            sub={totalBudget === 0 && generalNet === 0 ? "sin obras cargadas" : totalBenefit >= 0 ? "ganancia sobre presupuesto" : "pérdida sobre presupuesto"}
             icon={cilBalanceScale}
-            valueColor={totalBudget === 0 ? undefined : totalBenefit >= 0 ? "var(--ok)" : "var(--crit)"}
+            valueColor={totalBudget === 0 && generalNet === 0 ? undefined : totalBenefit >= 0 ? "var(--ok)" : "var(--crit)"}
             href="/movimientos"
           />
         </div>
@@ -494,7 +511,7 @@ function DashboardView({
       <CCard className="mb-4">
         <CCardHeader className="fw-semibold">Costos vs. beneficios por rubro</CCardHeader>
         <CCardBody>
-          {totalBudget === 0 ? (
+          {totalBudget === 0 && generalNet === 0 ? (
             <EmptyMsg />
           ) : (
             <div className="row g-3">
@@ -514,6 +531,17 @@ function DashboardView({
                     </div>
                   );
                 })}
+              {generalNet !== 0 && (
+                <div className="col-md-3 col-6">
+                  <div className="d-flex align-items-center gap-2 mb-1">
+                    <CBadge color="dark">General</CBadge>
+                    <span className="text-body-secondary small">sin obra</span>
+                  </div>
+                  <div className="fs-5 fw-bold mono" style={{ color: generalNet >= 0 ? "var(--ok)" : "var(--crit)" }}>
+                    {generalNet < 0 ? "-" : ""}{fmtMoney(Math.abs(generalNet))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CCardBody>

@@ -183,6 +183,36 @@ model Supplier {
   @@index([status])
 }
 
+enum GeneralMovementTipo {
+  ingreso
+  egreso
+}
+
+/// Movimientos de caja de la empresa que NO están ligados a ninguna obra
+/// puntual — ej. un ingreso por un servicio aparte, un gasto administrativo
+/// general, intereses bancarios. A diferencia de los movimientos de obra
+/// (ProjectItem kind="change_order", siempre cargados desde la ficha de la
+/// obra), estos se cargan y editan directamente desde /movimientos. Su neto
+/// (ingresos menos egresos) se suma al "Costos vs. beneficios" de Inicio —
+/// ver app/page.tsx.
+model GeneralMovement {
+  id           String              @id @default(cuid())
+  fecha        DateTime            @db.Date
+  tipo         GeneralMovementTipo
+  concepto     String
+  categoria    String?
+  monto        Decimal             @db.Decimal(14, 2)
+  medioPago    String?
+  /// Mismo vocabulario que los movimientos de obra: "Pendiente" | "Pagado" | "Conciliado".
+  estado       String?
+  procesadoPor String?
+  notas        String?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@index([fecha])
+}
+
 /// Una entrada por cada obra trabajada junto al contratista, con su propia
 /// calificación 1-5 (el promedio se calcula en la app a partir de estas
 /// entradas, no se guarda como campo aparte).

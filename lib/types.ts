@@ -73,6 +73,35 @@ export interface MovimientoDTO extends ProjectItemDTO {
   projectType: ProjectType;
 }
 
+export type GeneralMovementTipo = "ingreso" | "egreso";
+
+/** Movimiento de caja de la empresa sin obra asociada — ver GeneralMovement en prisma/schema.prisma. */
+export interface GeneralMovementDTO {
+  id: string;
+  fecha: string;
+  tipo: GeneralMovementTipo;
+  concepto: string;
+  categoria: string | null;
+  monto: number;
+  medioPago: string | null;
+  estado: string | null;
+  procesadoPor: string | null;
+  notas: string | null;
+  createdAt: string;
+}
+
+export interface GeneralMovementInput {
+  fecha: string;
+  tipo: GeneralMovementTipo;
+  concepto: string;
+  categoria?: string | null;
+  monto: number;
+  medioPago?: string | null;
+  estado?: string | null;
+  procesadoPor?: string | null;
+  notas?: string | null;
+}
+
 export interface ProjectItemInput {
   kind: string;
   title: string;
