@@ -77,6 +77,7 @@ interface LedgerRow {
   medioPago: string | null;
   estado: string | null;
   procesadoPor: string | null;
+  responsable: string | null; // solo general — quién consiguió el ingreso, ver GeneralMovement.responsable
   attachment: MovimientoDTO["attachment"] | null; // solo obra, general no tiene adjunto en esta primera versión
   comprobanteTexto: string | null; // m.data?.comprobante, solo obra
   notas: string | null;
@@ -108,6 +109,7 @@ function obraToRow(m: MovimientoDTO): LedgerRow {
     medioPago: m.data?.medioPago ?? null,
     estado: m.status ?? null,
     procesadoPor: m.data?.procesadoPor ?? null,
+    responsable: null,
     attachment: m.attachment ?? null,
     comprobanteTexto: m.data?.comprobante ?? null,
     notas: m.data?.notas ?? null,
@@ -134,6 +136,7 @@ function generalToRow(g: GeneralMovementDTO): LedgerRow {
     medioPago: g.medioPago,
     estado: g.estado,
     procesadoPor: g.procesadoPor,
+    responsable: g.responsable,
     attachment: null,
     comprobanteTexto: null,
     notas: g.notas,
@@ -144,7 +147,7 @@ function generalToRow(g: GeneralMovementDTO): LedgerRow {
 function exportCSV(rows: LedgerRow[]) {
   const headers = [
     "Fecha", "Obra", "Rubro", "Concepto", "Categoría", "Contratista/Proveedor",
-    "Monto (Gs.)", "Medio de pago", "Estado", "Procesado por", "Comprobante", "Notas",
+    "Monto (Gs.)", "Medio de pago", "Estado", "Procesado por", "Responsable", "Comprobante", "Notas",
   ];
   const csvRows = rows.map((r) => [
     r.fechaLabel,
@@ -157,6 +160,7 @@ function exportCSV(rows: LedgerRow[]) {
     r.medioPago ?? "",
     r.estado ?? "",
     r.procesadoPor ?? "",
+    r.responsable ?? "",
     r.attachment?.filename ?? r.comprobanteTexto ?? "",
     r.notas ?? "",
   ]);
@@ -303,16 +307,25 @@ const EMPTY_GENERAL_FORM: GeneralMovementInput = {
   medioPago: "",
   estado: "Pendiente",
   procesadoPor: "",
+  responsable: "",
   notas: "",
 };
+
+// Sugerencias fijas para "Responsable" — los dos socios van a aparecer casi
+// siempre, aunque cualquier ingreso lo puede conseguir otra persona (no es
+// un catálogo cerrado, el campo sigue siendo texto libre). Se completan con
+// los nombres ya cargados antes (ver existingResponsables más abajo).
+const RESPONSABLE_SUGGESTIONS_BASE = ["Ignacio Samaniego", "Hugo Rotela"];
 
 /** Alta/edición de un movimiento general (sin obra) — POST/PUT /api/general-movements. */
 function GeneralMovementFormModal({
   editing,
+  existingResponsables,
   onClose,
   onSaved,
 }: {
   editing: GeneralMovementDTO | null;
+  existingResponsables: string[];
   onClose: () => void;
   onSaved: (g: GeneralMovementDTO) => void;
 }) {
@@ -327,6 +340,7 @@ function GeneralMovementFormModal({
           medioPago: editing.medioPago ?? "",
           estado: editing.estado ?? "Pendiente",
           procesadoPor: editing.procesadoPor ?? "",
+          responsable: editing.responsable ?? "",
           notas: editing.notas ?? "",
         }
       : EMPTY_GENERAL_FORM
@@ -334,11 +348,17 @@ function GeneralMovementFormModal({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const responsableSuggestions = Array.from(new Set([...RESPONSABLE_SUGGESTIONS_BASE, ...existingResponsables])).sort();
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.fecha) { setError("La fecha es obligatoria."); return; }
     if (!form.concepto.trim()) { setError("El concepto es obligatorio."); return; }
     if (!(Number(form.monto) > 0)) { setError("El monto tiene que ser mayor a cero."); return; }
+    if (form.tipo === "ingreso" && !(form.responsable ?? "").trim()) {
+      setError("El responsable es obligatorio para un ingreso — es quien consiguió ese ingreso, para el reparto de beneficios de Personal.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -434,14 +454,32 @@ function GeneralMovementFormModal({
               </CFormSelect>
             </CCol>
           </CRow>
-          <div className="mb-3">
-            <CFormLabel>Procesado por</CFormLabel>
-            <CFormInput
-              value={form.procesadoPor ?? ""}
-              onChange={(e) => setForm({ ...form, procesadoPor: e.target.value })}
-              placeholder="Nombre de quien gestionó/cargó este movimiento"
-            />
-          </div>
+          <CRow className="mb-3 g-2">
+            <CCol md={6}>
+              <CFormLabel>Procesado por</CFormLabel>
+              <CFormInput
+                value={form.procesadoPor ?? ""}
+                onChange={(e) => setForm({ ...form, procesadoPor: e.target.value })}
+                placeholder="Nombre de quien gestionó/cargó este movimiento"
+              />
+            </CCol>
+            <CCol md={6}>
+              <CFormLabel>Responsable{form.tipo === "ingreso" && <span className="text-danger"> *</span>}</CFormLabel>
+              <CFormInput
+                list="responsable-general-suggestions"
+                value={form.responsable ?? ""}
+                onChange={(e) => setForm({ ...form, responsable: e.target.value })}
+                required={form.tipo === "ingreso"}
+                placeholder="Quién consiguió este ingreso"
+              />
+              <datalist id="responsable-general-suggestions">
+                {responsableSuggestions.map((r) => <option key={r} value={r} />)}
+              </datalist>
+              {form.tipo === "ingreso" && (
+                <p className="form-hint mb-0 mt-1">Se usa para el reparto de beneficios de Personal — distinto de &quot;Procesado por&quot;.</p>
+              )}
+            </CCol>
+          </CRow>
           <div className="mb-1">
             <CFormLabel>Notas</CFormLabel>
             <CFormTextarea rows={3} value={form.notas ?? ""} onChange={(e) => setForm({ ...form, notas: e.target.value })} />
@@ -507,6 +545,10 @@ export default function MovimientosPage() {
     () => Array.from(new Set(rows.map((r) => r.estado).filter(Boolean))) as string[],
     [rows]
   );
+  const existingResponsables = useMemo(
+    () => Array.from(new Set(generalMovements.map((g) => g.responsable).filter(Boolean))) as string[],
+    [generalMovements]
+  );
 
   // Total de volumen (obra + general), sin restar por ingreso/egreso — la
   // ganancia neta de la empresa se calcula en Inicio, no acá.
@@ -525,7 +567,7 @@ export default function MovimientosPage() {
     .filter((r) => {
       if (!search) return true;
       const q = search.toLowerCase();
-      return [r.concepto, r.obraNombre, r.categoria, r.contratistaProveedorLabel, r.procesadoPor, r.comprobanteTexto, r.notas]
+      return [r.concepto, r.obraNombre, r.categoria, r.contratistaProveedorLabel, r.procesadoPor, r.responsable, r.comprobanteTexto, r.notas]
         .some((v) => String(v ?? "").toLowerCase().includes(q));
     })
     .slice()
@@ -672,6 +714,7 @@ export default function MovimientosPage() {
                         <CTableHeaderCell>Medio de pago</CTableHeaderCell>
                         <CTableHeaderCell>Estado</CTableHeaderCell>
                         <CTableHeaderCell>Procesado por</CTableHeaderCell>
+                        <CTableHeaderCell>Responsable</CTableHeaderCell>
                         <CTableHeaderCell>Comprobante</CTableHeaderCell>
                         <CTableHeaderCell>Acciones</CTableHeaderCell>
                       </CTableRow>
@@ -712,6 +755,7 @@ export default function MovimientosPage() {
                           <CTableDataCell>{row.medioPago || "—"}</CTableDataCell>
                           <CTableDataCell>{row.estado && <span className={"status-chip status-generic status-" + row.estado.toLowerCase().replace(/\s+/g, "_")}>{row.estado}</span>}</CTableDataCell>
                           <CTableDataCell>{row.procesadoPor || "—"}</CTableDataCell>
+                          <CTableDataCell>{row.responsable || "—"}</CTableDataCell>
                           <CTableDataCell>
                             {row.source === "obra" ? (
                               row.attachment ? (
@@ -772,6 +816,7 @@ export default function MovimientosPage() {
       {showGeneralForm && (
         <GeneralMovementFormModal
           editing={editingGeneral}
+          existingResponsables={existingResponsables}
           onClose={() => { setShowGeneralForm(false); setEditingGeneral(null); }}
           onSaved={handleGeneralSaved}
         />

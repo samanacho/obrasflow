@@ -113,6 +113,7 @@ export function serializeGeneralMovement(m: GeneralMovement): GeneralMovementDTO
     medioPago: m.medioPago,
     estado: m.estado,
     procesadoPor: m.procesadoPor,
+    responsable: m.responsable,
     notas: m.notas,
     createdAt: m.createdAt.toISOString(),
   };

@@ -31,6 +31,11 @@ export async function PUT(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "El monto tiene que ser mayor a cero." }, { status: 400 });
     }
 
+    const responsable = body.responsable ? String(body.responsable).trim() || null : null;
+    if (tipo === "ingreso" && !responsable) {
+      return NextResponse.json({ error: "El responsable es obligatorio para un ingreso." }, { status: 400 });
+    }
+
     const updated = await prisma.generalMovement.update({
       where: { id: params.id },
       data: {
@@ -42,6 +47,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
         medioPago: body.medioPago ? String(body.medioPago) : null,
         estado: body.estado ? String(body.estado) : null,
         procesadoPor: body.procesadoPor ? String(body.procesadoPor) : null,
+        responsable,
         notas: body.notas ? String(body.notas) : null,
       },
     });

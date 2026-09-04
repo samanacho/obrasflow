@@ -86,6 +86,8 @@ export interface GeneralMovementDTO {
   medioPago: string | null;
   estado: string | null;
   procesadoPor: string | null;
+  /** Quién consiguió este ingreso (distinto de procesadoPor) — obligatorio cuando tipo="ingreso". Alimenta /personal. */
+  responsable: string | null;
   notas: string | null;
   createdAt: string;
 }
@@ -99,6 +101,7 @@ export interface GeneralMovementInput {
   medioPago?: string | null;
   estado?: string | null;
   procesadoPor?: string | null;
+  responsable?: string | null;
   notas?: string | null;
 }
 

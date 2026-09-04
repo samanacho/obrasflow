@@ -208,6 +208,11 @@ model GeneralMovement {
   /// Mismo vocabulario que los movimientos de obra: "Pendiente" | "Pagado" | "Conciliado".
   estado       String?
   procesadoPor String?
+  /// Quién CONSIGUIÓ este ingreso (no quién lo cargó/procesó — ver
+  /// procesadoPor) — obligatorio cuando tipo="ingreso", se usa para el
+  /// reparto de beneficios de /personal (ver lib/profitShare.ts). Sin uso
+  /// real para tipo="egreso".
+  responsable  String?
   notas        String?
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
