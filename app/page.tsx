@@ -14,7 +14,7 @@ import { CChartDoughnut, CChartBar } from "@coreui/react-chartjs";
 import CIcon from "@coreui/icons-react";
 import {
   cilPlus, cilArrowLeft, cilArrowRight, cilCloudDownload, cilPencil, cilTrash,
-  cilPeople, cilSpeedometer, cilFlagAlt, cilCalculator, cilListRich, cilViewColumn, cilLightbulb, cilBalanceScale,
+  cilPeople, cilSpeedometer, cilFlagAlt, cilCalculator, cilListRich, cilViewColumn, cilLightbulb, cilBalanceScale, cilExternalLink,
 } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
 import PlotlyGauge from "@/components/PlotlyGauge";
@@ -319,7 +319,13 @@ function HomeInner() {
   );
 }
 
-function Kpi({ label, value, sub, icon, href, valueColor }: { label: string; value: string | number; sub: string; icon?: any; href?: string; valueColor?: string }) {
+function Kpi({
+  label, value, sub, icon, href, valueColor, external,
+}: {
+  label: string; value: string | number; sub: string; icon?: any; href?: string; valueColor?: string;
+  /** Si href apunta afuera de la app (ej. un sitio externo) — abre en pestaña nueva en vez de navegar con next/link. */
+  external?: boolean;
+}) {
   const body = (
     <CCard className="h-100 kpi-card">
       <CCardBody>
@@ -332,7 +338,15 @@ function Kpi({ label, value, sub, icon, href, valueColor }: { label: string; val
       </CCardBody>
     </CCard>
   );
-  return href ? <Link href={href} className="text-decoration-none text-reset d-block h-100">{body}</Link> : body;
+  if (!href) return body;
+  if (external) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className="text-decoration-none text-reset d-block h-100">
+        {body}
+      </a>
+    );
+  }
+  return <Link href={href} className="text-decoration-none text-reset d-block h-100">{body}</Link>;
 }
 
 interface DashboardMetrics {
@@ -466,8 +480,17 @@ function DashboardView({
             href="/movimientos"
           />
         </div>
-        <div className="col"><Kpi label="Relevamientos abiertos" value={summary?.openRelevamientos ?? "—"} sub="pendientes o en proceso" icon={cilListRich} /></div>
         <div className="col"><Kpi label="Cotizaciones pendientes" value={summary?.pendingCotizaciones ?? "—"} sub="esperando decisión" icon={cilFlagAlt} /></div>
+        <div className="col">
+          <Kpi
+            label="Licitaciones"
+            value="DNCP ↗"
+            sub="Buscador de licitaciones públicas"
+            icon={cilExternalLink}
+            href="https://www.contrataciones.gov.py/buscador/licitaciones.html"
+            external
+          />
+        </div>
       </div>
 
       <div className="row g-3 mb-4">
