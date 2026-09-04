@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  CCard, CCardBody, CCardHeader, CFormInput, CFormSelect, CButton, CRow, CCol,
+  CCard, CCardBody, CCardHeader, CFormInput, CFormSelect, CFormSwitch, CButton, CRow, CCol,
   CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell,
   CBadge, CNav, CNavItem, CNavLink,
   CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter, CForm, CFormLabel, CFormTextarea, CAlert,
@@ -12,11 +12,12 @@ import CIcon from "@coreui/icons-react";
 import { cilCloudDownload, cilDescription, cilPlus, cilPencil, cilTrash } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import ItemFormModal from "@/components/ItemFormModal";
 import Toast from "@/components/Toast";
 import { useToast } from "@/lib/useToast";
 import { MOVIMIENTO_TIPOS } from "@/lib/movimientos";
 import { COST_CENTER_SUGGESTIONS } from "@/lib/itemKinds";
-import type { MovimientoDTO, ProjectType, GeneralMovementDTO, GeneralMovementInput, GeneralMovementTipo } from "@/lib/types";
+import type { MovimientoDTO, ProjectItemDTO, ProjectType, GeneralMovementDTO, GeneralMovementInput, GeneralMovementTipo } from "@/lib/types";
 
 /**
  * Ejecución cruzada a TODAS las obras — a diferencia de /ejecucion (que
@@ -24,11 +25,17 @@ import type { MovimientoDTO, ProjectType, GeneralMovementDTO, GeneralMovementInp
  * empresa: todos los movimientos de todas las obras y rubros juntos, para
  * poder auditar/buscar sin tener que entrar obra por obra. Se llega acá
  * haciendo clic en la card "Costos vs. beneficios" de Inicio. Los
- * movimientos de obra siguen siendo de solo lectura acá (se cargan/editan
- * desde la ficha de la obra correspondiente); los movimientos generales
- * (sin obra — ver GeneralMovement en prisma/schema.prisma) sí se cargan,
- * editan y eliminan desde esta misma pantalla.
+ * movimientos de obra son de solo lectura acá por defecto (se cargan/
+ * editan desde la Ejecución de la obra correspondiente) — hay un toggle
+ * "Editar movimientos de obra" para habilitarlo temporalmente también
+ * desde acá (pedido puntual, para arreglar algo sin tener que ir a la
+ * ficha de la obra; queda guardado en localStorage hasta que se
+ * desactive). Los movimientos generales (sin obra — ver GeneralMovement en
+ * prisma/schema.prisma) siempre se cargan, editan y eliminan desde esta
+ * misma pantalla.
  */
+
+const OBRA_EDIT_STORAGE_KEY = "obrasflow-movimientos-obra-edit";
 
 const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
 const TYPE_COLOR: Record<ProjectType, string> = { civil: "info", electrico: "warning", vial: "secondary", otro: "dark" };
@@ -514,6 +521,19 @@ export default function MovimientosPage() {
   const [editingGeneral, setEditingGeneral] = useState<GeneralMovementDTO | null>(null);
   const [confirmGeneralTarget, setConfirmGeneralTarget] = useState<GeneralMovementDTO | null>(null);
   const [deletingGeneral, setDeletingGeneral] = useState(false);
+
+  // Toggle temporal para editar/eliminar movimientos de OBRA directo desde
+  // acá (por defecto solo se puede desde la Ejecución de la obra) — pedido
+  // puntual del usuario, con la aclaración de que lo va a desactivar él
+  // mismo cuando termine. Se guarda en localStorage (no en el servidor:
+  // es una preferencia de este navegador, no una config de toda la app)
+  // para que sobreviva a un refresh mientras lo está usando.
+  const [obraEditEnabled, setObraEditEnabled] = useState(false);
+  const [showObraForm, setShowObraForm] = useState(false);
+  const [editingObraItem, setEditingObraItem] = useState<MovimientoDTO | null>(null);
+  const [confirmObraTarget, setConfirmObraTarget] = useState<MovimientoDTO | null>(null);
+  const [deletingObra, setDeletingObra] = useState(false);
+
   const { toast, showToast } = useToast();
 
   useEffect(() => {
@@ -527,6 +547,26 @@ export default function MovimientosPage() {
       .catch(() => setLoadError("No se pudieron cargar los movimientos."))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    try {
+      setObraEditEnabled(localStorage.getItem(OBRA_EDIT_STORAGE_KEY) === "1");
+    } catch {
+      /* si localStorage no está disponible, se queda desactivado — es lo más seguro por defecto */
+    }
+  }, []);
+
+  function toggleObraEdit() {
+    setObraEditEnabled((cur) => {
+      const next = !cur;
+      try {
+        localStorage.setItem(OBRA_EDIT_STORAGE_KEY, next ? "1" : "0");
+      } catch {
+        /* sin persistencia, igual funciona para esta sesión de la página */
+      }
+      return next;
+    });
+  }
 
   // Movimientos de obra + movimientos generales, normalizados a una sola forma — ver LedgerRow.
   const rows: LedgerRow[] = useMemo(
@@ -604,13 +644,53 @@ export default function MovimientosPage() {
     }
   }
 
+  // ItemFormModal devuelve un ProjectItemDTO (sin projectName/projectType,
+  // que son un agregado propio de /api/movimientos) — se completan acá con
+  // los que ya tenía editingObraItem, que no cambian al editar. El PUT
+  // genérico de ProjectItem que usa este modal (app/api/items/[itemId]/
+  // route.ts) ya recalcula el Ejecutado de la obra solo, no hace falta
+  // nada aparte acá.
+  function handleObraSaved(saved: ProjectItemDTO) {
+    setShowObraForm(false);
+    const full: MovimientoDTO = {
+      ...saved,
+      projectName: editingObraItem?.projectName ?? "",
+      projectType: editingObraItem?.projectType ?? "civil",
+    };
+    setMovimientos((cur) => cur.map((m) => (m.id === full.id ? full : m)));
+    setEditingObraItem(null);
+  }
+
+  async function deleteObraItem(item: MovimientoDTO) {
+    setDeletingObra(true);
+    const prev = movimientos;
+    setMovimientos((cur) => cur.filter((x) => x.id !== item.id));
+    try {
+      const res = await fetch(`/api/items/${item.id}`, { method: "DELETE" });
+      if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
+      setConfirmObraTarget(null);
+    } catch {
+      setMovimientos(prev);
+      showToast("No se pudo eliminar el movimiento de obra.");
+    } finally {
+      setDeletingObra(false);
+    }
+  }
+
+  // Sugerencias de "Nombre del rubro" para el modal de edición de un
+  // movimiento de obra — solo los ya usados en ESA MISMA obra (mismo
+  // criterio que la ficha de la obra), no en todas.
+  const existingRubrosForObraEdit = editingObraItem
+    ? Array.from(new Set(movimientos.filter((m) => m.projectId === editingObraItem.projectId).map((m) => m.title.trim()))).sort()
+    : [];
+
   return (
     <AppShell crumbs={[{ label: "Movimientos" }]}>
       <h1 className="of-page-title">📒 Movimientos</h1>
       <p className="module-desc mb-4">
         Todos los movimientos de todas las obras y rubros, en un solo lugar. Los movimientos de obra se cargan y
-        editan desde la Ejecución de la obra correspondiente; los movimientos generales (sin obra) se cargan,
-        editan y eliminan acá mismo.
+        editan normalmente desde la Ejecución de la obra correspondiente (podés habilitarlo temporalmente acá abajo);
+        los movimientos generales (sin obra) se cargan, editan y eliminan siempre acá mismo.
       </p>
 
       <CNav variant="underline" className="mb-4">
@@ -645,6 +725,24 @@ export default function MovimientosPage() {
           </div>
         </CCardHeader>
         <CCardBody>
+          <div
+            className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 p-2 rounded"
+            style={{
+              border: "1px solid var(--line)",
+              background: obraEditEnabled ? "color-mix(in srgb, var(--crit) 10%, transparent)" : "var(--paper)",
+            }}
+          >
+            <CFormSwitch
+              label={obraEditEnabled ? "🔓 Edición de movimientos de obra habilitada" : "🔒 Habilitar edición de movimientos de obra"}
+              checked={obraEditEnabled}
+              onChange={toggleObraEdit}
+            />
+            {obraEditEnabled && (
+              <span className="text-body-secondary small">
+                Es temporal — acordate de desactivarlo cuando termines. Editar/eliminar acá tiene el mismo efecto que hacerlo desde la Ejecución de la obra.
+              </span>
+            )}
+          </div>
           {loading && <p className="state-message">Cargando movimientos…</p>}
           {!loading && loadError && <p className="state-message form-error">{loadError}</p>}
           {!loading && !loadError && rows.length === 0 && <p className="empty-col">Todavía no hay movimientos cargados.</p>}
@@ -800,6 +898,28 @@ export default function MovimientosPage() {
                                 </CButton>
                               </div>
                             )}
+                            {row.source === "obra" && obraEditEnabled && (
+                              <div className="d-flex gap-1">
+                                <CButton
+                                  size="sm"
+                                  color="secondary"
+                                  variant="outline"
+                                  title="Editar"
+                                  onClick={() => { setEditingObraItem(row.raw as MovimientoDTO); setShowObraForm(true); }}
+                                >
+                                  <CIcon icon={cilPencil} size="sm" />
+                                </CButton>
+                                <CButton
+                                  size="sm"
+                                  color="danger"
+                                  variant="outline"
+                                  title="Eliminar"
+                                  onClick={() => setConfirmObraTarget(row.raw as MovimientoDTO)}
+                                >
+                                  <CIcon icon={cilTrash} size="sm" />
+                                </CButton>
+                              </div>
+                            )}
                           </CTableDataCell>
                         </CTableRow>
                       ))}
@@ -828,6 +948,26 @@ export default function MovimientosPage() {
         busy={deletingGeneral}
         onConfirm={() => confirmGeneralTarget && deleteGeneral(confirmGeneralTarget)}
         onCancel={() => setConfirmGeneralTarget(null)}
+      />
+
+      {showObraForm && editingObraItem && (
+        <ItemFormModal
+          projectId={editingObraItem.projectId}
+          kind="change_order"
+          existing={editingObraItem}
+          existingRubros={existingRubrosForObraEdit}
+          showToast={showToast}
+          onClose={() => { setShowObraForm(false); setEditingObraItem(null); }}
+          onSaved={handleObraSaved}
+        />
+      )}
+      <ConfirmDialog
+        open={confirmObraTarget !== null}
+        title="Eliminar movimiento de obra"
+        message={`¿Eliminar "${confirmObraTarget?.title}" de ${confirmObraTarget?.projectName}? Esta acción no se puede deshacer.`}
+        busy={deletingObra}
+        onConfirm={() => confirmObraTarget && deleteObraItem(confirmObraTarget)}
+        onCancel={() => setConfirmObraTarget(null)}
       />
       <Toast message={toast} />
     </AppShell>
