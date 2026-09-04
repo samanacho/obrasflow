@@ -102,6 +102,41 @@ export interface GeneralMovementInput {
   notas?: string | null;
 }
 
+export type ToolStatus = "disponible" | "en_uso" | "en_reparacion" | "de_baja";
+
+/** Herramienta/equipo del inventario de la empresa — ver Tool en prisma/schema.prisma. */
+export interface ToolDTO {
+  id: string;
+  nombre: string;
+  categoria: string | null;
+  marcaModelo: string | null;
+  cantidad: number;
+  estado: ToolStatus;
+  costoUnitarioGs: number | null;
+  proveedorId: string | null;
+  /** Resuelto en el serializer a partir de la relación — evita otro fetch en el frontend. */
+  proveedorNombre: string | null;
+  fechaAdquisicion: string | null;
+  responsable: string | null;
+  notas: string | null;
+  /** Presente si se generó un GeneralMovement (egreso) automático por el costo cargado. */
+  generalMovementId: string | null;
+  createdAt: string;
+}
+
+export interface ToolInput {
+  nombre: string;
+  categoria?: string | null;
+  marcaModelo?: string | null;
+  cantidad: number;
+  estado: ToolStatus;
+  costoUnitarioGs?: number | null;
+  proveedorId?: string | null;
+  fechaAdquisicion?: string | null;
+  responsable?: string | null;
+  notas?: string | null;
+}
+
 export interface ProjectItemInput {
   kind: string;
   title: string;

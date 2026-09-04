@@ -13,4 +13,5 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "contratistas", label: "Contratistas", href: "/contratistas", icon: "cilPeople" },
   { key: "proveedores", label: "Proveedores", href: "/proveedores", icon: "cilTruck" },
   { key: "postes", label: "Fábrica de Postes", href: "/postes", icon: "cilFactory" },
+  { key: "inventario", label: "Inventario", href: "/inventario", icon: "cilSettings" },
 ];

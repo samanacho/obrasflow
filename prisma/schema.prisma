@@ -180,6 +180,8 @@ model Supplier {
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
 
+  tools Tool[]
+
   @@index([status])
 }
 
@@ -210,7 +212,49 @@ model GeneralMovement {
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
 
+  /// Presente cuando este movimiento fue generado automáticamente por la
+  /// adquisición de una herramienta (ver Tool.generalMovement) — al borrar
+  /// el movimiento desde /movimientos, la herramienta simplemente pierde el
+  /// enlace (no se borra ella).
+  tool Tool?
+
   @@index([fecha])
+}
+
+enum ToolStatus {
+  disponible
+  en_uso
+  en_reparacion
+  de_baja
+}
+
+/// Inventario de herramientas y equipos de la empresa — directorio global,
+/// no ligado a ninguna obra puntual (como Proveedores/Contratistas). Si se
+/// carga con costoUnitarioGs, se genera/sincroniza automáticamente un
+/// GeneralMovement (egreso, monto = costoUnitarioGs * cantidad) enlazado
+/// vía generalMovementId — ver app/api/tools/route.ts y [id]/route.ts.
+model Tool {
+  id                String           @id @default(cuid())
+  nombre            String
+  /// Texto libre con sugerencias (no un catálogo cerrado) — ver TOOL_CATEGORY_SUGGESTIONS en el frontend.
+  categoria         String?
+  marcaModelo       String?
+  cantidad          Int              @default(1)
+  estado            ToolStatus       @default(disponible)
+  costoUnitarioGs   Decimal?         @db.Decimal(14, 2)
+  proveedorId       String?
+  proveedor         Supplier?        @relation(fields: [proveedorId], references: [id], onDelete: SetNull)
+  fechaAdquisicion  DateTime?        @db.Date
+  /// Quién la tiene o dónde está guardada — texto libre.
+  responsable       String?
+  notas             String?
+  /// Movimiento general (egreso) generado automáticamente por esta adquisición — null si no se cargó costo.
+  generalMovementId String?          @unique
+  generalMovement   GeneralMovement? @relation(fields: [generalMovementId], references: [id], onDelete: SetNull)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([estado])
 }
 
 /// Una entrada por cada obra trabajada junto al contratista, con su propia

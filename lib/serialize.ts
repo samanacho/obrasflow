@@ -1,10 +1,10 @@
 import type {
-  Project, ProjectItem, Contractor, ContractorHistoryEntry, Attachment, Supplier, GeneralMovement,
+  Project, ProjectItem, Contractor, ContractorHistoryEntry, Attachment, Supplier, GeneralMovement, Tool,
   PoleSpec, PoleLot, PoleQualityTest, RawMaterial, PoleRecipeItem, PoleLotMaterialConsumption, MaterialPurchase,
 } from "@prisma/client";
 import type {
   ProjectDTO, ProjectItemDTO, ContractorDTO, ContractorHistoryDTO, AttachmentDTO, MovimientoDTO, SupplierDTO,
-  GeneralMovementDTO, GeneralMovementTipo,
+  GeneralMovementDTO, GeneralMovementTipo, ToolDTO, ToolStatus,
   PoleSpecDTO, PoleSpecDetailDTO, PoleLotDTO, PoleQualityTestDTO,
   RawMaterialDTO, PoleRecipeItemDTO, PoleLotMaterialConsumptionDTO, MaterialPurchaseDTO, PurchaseDocType,
 } from "./types";
@@ -115,6 +115,25 @@ export function serializeGeneralMovement(m: GeneralMovement): GeneralMovementDTO
     procesadoPor: m.procesadoPor,
     notas: m.notas,
     createdAt: m.createdAt.toISOString(),
+  };
+}
+
+export function serializeTool(t: Tool & { proveedor?: { name: string } | null }): ToolDTO {
+  return {
+    id: t.id,
+    nombre: t.nombre,
+    categoria: t.categoria,
+    marcaModelo: t.marcaModelo,
+    cantidad: t.cantidad,
+    estado: t.estado as ToolStatus,
+    costoUnitarioGs: t.costoUnitarioGs !== null ? Number(t.costoUnitarioGs) : null,
+    proveedorId: t.proveedorId,
+    proveedorNombre: t.proveedor?.name ?? null,
+    fechaAdquisicion: t.fechaAdquisicion ? t.fechaAdquisicion.toISOString().slice(0, 10) : null,
+    responsable: t.responsable,
+    notas: t.notas,
+    generalMovementId: t.generalMovementId,
+    createdAt: t.createdAt.toISOString(),
   };
 }
 
