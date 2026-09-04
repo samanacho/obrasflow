@@ -19,10 +19,10 @@ import {
   CButton,
 } from "@coreui/react";
 import CIcon from "@coreui/icons-react";
-import { cilSpeedometer, cilPeople, cilFactory, cilTruck, cilSettings, cilMoon, cilSun, cilMenu, cilPlus } from "@coreui/icons";
+import { cilSpeedometer, cilPeople, cilFactory, cilTruck, cilSettings, cilBadge, cilMoon, cilSun, cilMenu, cilPlus } from "@coreui/icons";
 import { NAV_ITEMS } from "@/lib/navItems";
 
-const ICONS: Record<string, any> = { cilSpeedometer, cilPeople, cilFactory, cilTruck, cilSettings };
+const ICONS: Record<string, any> = { cilSpeedometer, cilPeople, cilFactory, cilTruck, cilSettings, cilBadge };
 
 export interface Crumb {
   label: string;
@@ -69,7 +69,14 @@ export default function AppShell({
             <CNavItem key={item.key} active={pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href))}>
               <Link href={item.href} className="nav-link">
                 <CIcon customClassName="nav-icon" icon={ICONS[item.icon]} />
-                {item.label}
+                {item.highlightFirstLetter ? (
+                  <>
+                    <span className="nav-label-highlight">{item.label[0]}</span>
+                    {item.label.slice(1)}
+                  </>
+                ) : (
+                  item.label
+                )}
               </Link>
             </CNavItem>
           ))}

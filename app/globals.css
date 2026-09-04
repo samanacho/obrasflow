@@ -177,6 +177,8 @@ h1,h2,h3,.display{font-family:'Barlow Condensed',system-ui,sans-serif;font-weigh
 .of-shell .sidebar .nav-link.active,
 .of-shell .sidebar .nav-item.active .nav-link{color:var(--accent-ink);background:color-mix(in srgb, var(--accent) 12%, transparent);font-weight:600;}
 .of-shell .nav-icon{color:inherit;opacity:.85;}
+/* Pedido puntual: resaltar la primera letra de un ítem del menú (ver "highlightFirstLetter" en lib/navItems.ts). */
+.nav-label-highlight{font-weight:700;color:var(--accent-ink);}
 .of-page-title{margin:4px 0 18px;font-size:1.9rem;}
 
 header.top{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px;border-bottom:2px solid var(--ink);padding-bottom:14px;}
