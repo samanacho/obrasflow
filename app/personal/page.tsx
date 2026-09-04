@@ -12,7 +12,7 @@ import AppShell from "@/components/AppShell";
 export default function PersonalPage() {
   return (
     <AppShell crumbs={[{ label: "Personal" }]}>
-      <h1 className="of-page-title">🪪 Personal</h1>
+      <h1 className="of-page-title">👤 Personal</h1>
       <p className="module-desc mb-4">
         Este módulo todavía no tiene funcionalidad — está reservado a la espera de la definición de qué tiene que
         manejar (legajos, asistencia, liquidaciones de jornales, etc.).
