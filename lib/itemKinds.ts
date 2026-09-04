@@ -195,16 +195,26 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
         key: "tipoInsumo",
         label: "Tipo de insumo",
         type: "select",
-        options: ["Materiales", "Mano de obra", "Maquinaria / Alquileres", "Gastos administrativos / Varios"],
+        options: [
+          "Materiales",
+          "Mano de obra",
+          "Maquinaria / Alquileres",
+          "Servicios varios",
+          "Subcontrato",
+          "Gastos administrativos / Varios",
+        ],
       },
       // Proveedor: para Materiales pregunta "qué proveedor es"; para
-      // Maquinaria/Alquileres, la empresa que alquila — mismo directorio
-      // (/proveedores), por eso una sola etiqueta que cubre los dos casos.
+      // Maquinaria/Alquileres, la empresa que alquila; para Servicios
+      // varios, el proveedor de servicios — mismo directorio (/proveedores,
+      // que ya tiene la categoría "servicios" para este caso), por eso una
+      // sola etiqueta que cubre los tres.
       {
         key: "proveedorId",
         label: "Proveedor / Empresa (opcional)",
         type: "supplier",
-        showIf: (d) => d.tipoInsumo === "Materiales" || d.tipoInsumo === "Maquinaria / Alquileres",
+        showIf: (d) =>
+          d.tipoInsumo === "Materiales" || d.tipoInsumo === "Maquinaria / Alquileres" || d.tipoInsumo === "Servicios varios",
       },
       // Mano de obra: en vez de proveedor, se carga QUÉ rubro se ejecutó,
       // cuánto y en qué unidad — esto alimenta el módulo "Rubros
