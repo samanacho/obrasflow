@@ -60,6 +60,14 @@ function ReparoBeneficios() {
 
   const sortedSources = useMemo(() => summary.sources.slice().sort((a, b) => b.beneficio - a.beneficio), [summary]);
 
+  // "SAMRO" = Samaniego + Rotela: la suma de lo que le corresponde a ambos
+  // socios juntos (el 85% restante repartido entero, sin el 15% del
+  // responsable).
+  const samroTotal = useMemo(
+    () => PARTNERS.reduce((sum, p) => sum + (summary.socioTotales.get(p.nombre) ?? 0), 0),
+    [summary]
+  );
+
   if (loading) return <p className="state-message">Cargando reparto de beneficios…</p>;
   if (loadError) return <p className="state-message form-error">No se pudo cargar la información para el reparto.</p>;
   if (sortedSources.length === 0) return <p className="empty-col">Todavía no hay obras ni ingresos generales cargados.</p>;
@@ -67,7 +75,7 @@ function ReparoBeneficios() {
   return (
     <>
       <CRow className="g-3 mb-4">
-        <CCol md={4}>
+        <CCol md={6} xl={3}>
           <CCard className="h-100">
             <CCardBody>
               <div className="text-uppercase text-body-secondary small mb-1">Beneficio total</div>
@@ -79,7 +87,7 @@ function ReparoBeneficios() {
         {PARTNERS.map((p) => {
           const monto = summary.socioTotales.get(p.nombre) ?? 0;
           return (
-            <CCol md={4} key={p.nombre}>
+            <CCol md={6} xl={3} key={p.nombre}>
               <CCard className="h-100">
                 <CCardBody>
                   <div className="text-uppercase text-body-secondary small mb-1">{p.nombre}</div>
@@ -90,6 +98,15 @@ function ReparoBeneficios() {
             </CCol>
           );
         })}
+        <CCol md={6} xl={3}>
+          <CCard className="h-100">
+            <CCardBody>
+              <div className="text-uppercase text-body-secondary small mb-1">Samro</div>
+              <div className="fs-3 fw-bold mono" style={{ color: amountColor(samroTotal) }}>{fmtMoney(samroTotal)}</div>
+              <div className="text-body-secondary small">Ignacio + Hugo (85% restante)</div>
+            </CCardBody>
+          </CCard>
+        </CCol>
       </CRow>
 
       <CCard className="mb-4">
