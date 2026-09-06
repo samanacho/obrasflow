@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import {
   CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
@@ -89,13 +89,37 @@ export default function NewProjectWizard({
   const [form, setForm] = useState<ProjectInput>(EMPTY_FORM);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [otherProjects, setOtherProjects] = useState<ProjectDTO[]>([]);
 
   useEffect(() => {
     if (!visible) return;
     setStep(1);
     setError(null);
     setForm(editingProject ? toForm(editingProject) : initialType ? { ...EMPTY_FORM, type: initialType } : EMPTY_FORM);
+    // Para autocompletar Ciudad y Responsable en base a lo ya cargado en
+    // otras obras (mismo criterio que Proveedores/Contratistas).
+    fetch("/api/projects").then((r) => (r.ok ? r.json() : [])).then(setOtherProjects).catch(() => {});
   }, [visible, editingProject, initialType]);
+
+  // Autocompletado de Ciudad + Departamento a partir de lo ya cargado: no
+  // hay una tabla "oficial" ciudad→departamento acá adentro (mismo criterio
+  // que en Proveedores/Contratistas) — se arma con lo que quedó en las
+  // obras ya guardadas.
+  const cityDepartmentMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of otherProjects) {
+      if (p.city && p.department) map.set(p.city.trim().toLowerCase(), p.department);
+    }
+    return map;
+  }, [otherProjects]);
+  const knownCities = useMemo(
+    () => Array.from(new Set(otherProjects.filter((p) => p.city).map((p) => (p.city as string).trim()))).sort(),
+    [otherProjects]
+  );
+  const knownManagers = useMemo(
+    () => Array.from(new Set(otherProjects.filter((p) => p.manager).map((p) => p.manager.trim()))).sort(),
+    [otherProjects]
+  );
 
   function setSectorField(key: string, value: string | string[]) {
     setForm((f) => ({ ...f, sectorData: { ...(f.sectorData ?? {}), [key]: value } }));
@@ -179,7 +203,15 @@ export default function NewProjectWizard({
 
         {error && <CAlert color="danger">{error}</CAlert>}
 
-        {step === 1 && <StepGeneral form={form} setForm={setForm} />}
+        {step === 1 && (
+          <StepGeneral
+            form={form}
+            setForm={setForm}
+            knownCities={knownCities}
+            cityDepartmentMap={cityDepartmentMap}
+            knownManagers={knownManagers}
+          />
+        )}
         {step === 2 && <StepSector sector={form.sector ?? null} onSelect={selectSector} />}
         {step === 3 && <StepSectorDetails fields={sectorFields} form={form} setSectorField={setSectorField} />}
       </CModalBody>
@@ -204,7 +236,15 @@ export default function NewProjectWizard({
   );
 }
 
-function StepGeneral({ form, setForm }: { form: ProjectInput; setForm: (f: ProjectInput) => void }) {
+function StepGeneral({
+  form, setForm, knownCities, cityDepartmentMap, knownManagers,
+}: {
+  form: ProjectInput;
+  setForm: (f: ProjectInput) => void;
+  knownCities: string[];
+  cityDepartmentMap: Map<string, string>;
+  knownManagers: string[];
+}) {
   return (
     <>
       <div className="mb-3">
@@ -250,12 +290,33 @@ function StepGeneral({ form, setForm }: { form: ProjectInput; setForm: (f: Proje
       )}
       <div className="mb-3">
         <CFormLabel>Responsable</CFormLabel>
-        <CFormInput required placeholder="Ej. Ana Torres" value={form.manager} onChange={(e) => setForm({ ...form, manager: e.target.value })} />
+        <CFormInput
+          required
+          list="wizard-known-managers"
+          placeholder="Ej. Ana Torres"
+          value={form.manager}
+          onChange={(e) => setForm({ ...form, manager: e.target.value })}
+        />
+        <datalist id="wizard-known-managers">
+          {knownManagers.map((m) => <option key={m} value={m} />)}
+        </datalist>
       </div>
       <CRow className="mb-3 g-2">
         <CCol>
           <CFormLabel>Ciudad (opcional)</CFormLabel>
-          <CFormInput placeholder="Ej. Encarnación" value={form.city ?? ""} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+          <CFormInput
+            list="wizard-known-cities"
+            placeholder="Ej. Encarnación"
+            value={form.city ?? ""}
+            onChange={(e) => {
+              const city = e.target.value;
+              const matched = cityDepartmentMap.get(city.trim().toLowerCase());
+              setForm({ ...form, city, department: matched ?? form.department });
+            }}
+          />
+          <datalist id="wizard-known-cities">
+            {knownCities.map((c) => <option key={c} value={c} />)}
+          </datalist>
         </CCol>
         <CCol>
           <CFormLabel>Departamento (opcional)</CFormLabel>
