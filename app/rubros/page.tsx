@@ -2,17 +2,34 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CCard, CCardBody, CBadge, CButton } from "@coreui/react";
+import { CCard, CCardBody, CBadge, CButton, CInputGroup, CInputGroupText, CFormInput } from "@coreui/react";
 import CIcon from "@coreui/icons-react";
-import { cilPlus } from "@coreui/icons";
+import { cilPlus, cilSearch } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
 import NewProjectWizard from "@/components/NewProjectWizard";
-import type { ProjectDTO, ProjectType } from "@/lib/types";
+import type { ProjectDTO, ProjectType, ProjectStatus } from "@/lib/types";
 
 const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
 const TYPE_ICON: Record<ProjectType, string> = { civil: "🏢", electrico: "⚡", vial: "🛣️", otro: "🔧" };
 const TYPE_COLOR: Record<ProjectType, string> = { civil: "info", electrico: "warning", vial: "secondary", otro: "dark" };
 const TYPES: ProjectType[] = ["civil", "electrico", "vial", "otro"];
+const STATUS_LABEL: Record<ProjectStatus, string> = {
+  planificado: "Planificado",
+  en_curso: "En curso",
+  pausado: "Pausado",
+  finalizado: "Finalizado",
+};
+const STATUS_COLOR: Record<ProjectStatus, string> = {
+  planificado: "info",
+  en_curso: "warning",
+  pausado: "secondary",
+  finalizado: "success",
+};
+
+/** Para "otro" muestra el rubro que escribió el usuario en vez de la palabra genérica. */
+function typeLabel(p: { type: ProjectType; customType?: string | null }): string {
+  return p.type === "otro" && p.customType ? p.customType : TYPE_LABEL[p.type];
+}
 
 function fmtMoney(n: number) {
   return "Gs. " + Number(n || 0).toLocaleString("es-PY");
@@ -36,6 +53,7 @@ export default function RubrosPage() {
   const [projects, setProjects] = useState<ProjectDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [search, setSearch] = useState("");
 
   function load() {
     setLoading(true);
@@ -73,6 +91,15 @@ export default function RubrosPage() {
     return acc;
   }, [projects]);
 
+  const searchResults = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return [];
+    return projects
+      .filter((p) => `${p.name} ${p.reference ?? ""} ${p.manager} ${p.city ?? ""}`.toLowerCase().includes(q))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [projects, search]);
+  const searching = search.trim().length > 0;
+
   return (
     <AppShell
       crumbs={[{ label: "Obras por rubro" }]}
@@ -85,15 +112,60 @@ export default function RubrosPage() {
       <h1 className="of-page-title">📂 Obras por rubro</h1>
       <p className="module-desc mb-4">
         Toda la cartera de proyectos, agrupada por rubro. Entrá a un rubro para ver sus obras
-        proyectadas, en curso y terminadas.
+        proyectadas, en curso y terminadas, o buscá una obra puntual por nombre si no te acordás en cuál está.
       </p>
+
+      <div className="row mb-4">
+        <div className="col-md-6">
+          <CInputGroup>
+            <CInputGroupText><CIcon icon={cilSearch} /></CInputGroupText>
+            <CFormInput
+              placeholder="Buscar obra por nombre, referencia, responsable o ciudad…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </CInputGroup>
+        </div>
+      </div>
 
       {loading && <p className="state-message">Cargando…</p>}
       {!loading && projects.length === 0 && (
         <p className="empty-col">Todavía no hay proyectos cargados.</p>
       )}
 
-      {!loading && (
+      {!loading && projects.length > 0 && searching && (
+        <>
+          {searchResults.length === 0 ? (
+            <p className="empty-col">No se encontraron obras para “{search.trim()}”.</p>
+          ) : (
+            <div className="d-flex flex-column gap-2">
+              {searchResults.map((p) => (
+                <Link key={p.id} href={`/project/${p.id}`} className="text-decoration-none text-reset">
+                  <CCard className="kpi-card">
+                    <CCardBody className="d-flex justify-content-between align-items-center flex-wrap gap-2 py-2">
+                      <div className="d-flex align-items-center gap-2">
+                        <span className="rubro-card-icon">{TYPE_ICON[p.type]}</span>
+                        <div>
+                          <div className="fw-semibold">{p.name}</div>
+                          <div className="text-body-secondary small">
+                            {p.manager}{p.city ? ` · ${p.city}` : ""}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="d-flex align-items-center gap-2">
+                        <CBadge color={TYPE_COLOR[p.type]}>{typeLabel(p)}</CBadge>
+                        <CBadge color={STATUS_COLOR[p.status]}>{STATUS_LABEL[p.status]}</CBadge>
+                      </div>
+                    </CCardBody>
+                  </CCard>
+                </Link>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {!loading && projects.length > 0 && !searching && (
         <div className="row g-3">
           {TYPES.map((t) => {
             const b = byType[t];
