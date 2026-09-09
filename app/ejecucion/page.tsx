@@ -249,7 +249,6 @@ function PlanillaGastosView({ project, items }: { project: ProjectDTO; items: Pr
 
   const sumByTipo = (tipo: string) => items.filter((i) => i.data?.tipo === tipo).reduce((acc, i) => acc + Number(i.data?.monto ?? 0), 0);
   const adelantado = sumByTipo("Adelanto");
-  const impactoOC = sumByTipo("Orden de cambio");
   const saldoDisponible = project.budget - project.spent;
 
   const visibleItems = items
@@ -296,10 +295,6 @@ function PlanillaGastosView({ project, items }: { project: ProjectDTO; items: Pr
             <div className="quote-budget-item">
               <span className="qb-label">Adelantado</span>
               <span className="qb-value mono">{fmtMoney(adelantado)}</span>
-            </div>
-            <div className="quote-budget-item">
-              <span className="qb-label">Impacto de órdenes de cambio</span>
-              <span className="qb-value mono">{fmtMoney(impactoOC)}</span>
             </div>
             <div className="quote-budget-item">
               <span className="qb-label">Saldo disponible</span>

@@ -471,7 +471,6 @@ function ModuleView({
   const sumByTipo = (tipo: string) =>
     items.filter((i) => i.data?.tipo === tipo).reduce((acc, i) => acc + Number(i.data?.monto ?? 0), 0);
   const adelantado = isMovimientos ? sumByTipo("Adelanto") : 0;
-  const impactoOC = isMovimientos ? sumByTipo("Orden de cambio") : 0;
   const saldoDisponible = project.budget - project.spent;
   const ejecucionPct = project.budget > 0 ? Math.min(100, (project.spent / project.budget) * 100) : 0;
 
@@ -688,10 +687,6 @@ function ModuleView({
             <div className="quote-budget-item">
               <span className="qb-label">Adelantado</span>
               <span className="qb-value mono">{fmtMoney(adelantado)}</span>
-            </div>
-            <div className="quote-budget-item">
-              <span className="qb-label">Impacto de órdenes de cambio (no afecta el Ejecutado)</span>
-              <span className="qb-value mono">{fmtMoney(impactoOC)}</span>
             </div>
             <div className="quote-budget-item">
               <span className="qb-label">Saldo disponible</span>
