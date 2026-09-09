@@ -924,7 +924,15 @@ function ItemRow({
         </div>
       )}
       <div className="item-row-sub">
-        {cfg.summary(item.data)}{cfg.summary(item.data) ? " · " : ""}{isMovimientos ? itemDate(item) : fmtDateTime(item.createdAt)}
+        {isMovimientos ? (
+          <>{cfg.summary(item.data)}{cfg.summary(item.data) ? " · " : ""}{itemDate(item)}</>
+        ) : (
+          <>
+            {item.data?.fecha && <span className="item-row-date">{itemDate(item)}</span>}
+            {item.data?.fecha && cfg.summary(item.data) ? " · " : ""}
+            {cfg.summary(item.data)}
+          </>
+        )}
       </div>
       {isMovimientos && item.data?.tipoInsumo === "Mano de obra" && item.data?.cantidadEjecutada && (
         <div className="item-row-sub">Cantidad ejecutada: {item.data.cantidadEjecutada} {item.data.unidadMedida || ""}</div>
@@ -954,10 +962,20 @@ function ItemRow({
           <img src={item.data.url} alt={item.title} className="item-receipt-thumb" />
         </a>
       )}
-      {!cfg.readOnly && (
+      {(!cfg.readOnly || !isMovimientos) && (
         <div className="item-row-actions">
-          <CButton size="sm" color="secondary" variant="outline" onClick={onEdit}><CIcon icon={cilPencil} size="sm" /></CButton>
-          <CButton size="sm" color="danger" variant="outline" onClick={onDelete}><CIcon icon={cilTrash} size="sm" /></CButton>
+          <div className="item-row-actions-buttons">
+            {!cfg.readOnly && (
+              <>
+                <CButton size="sm" color="secondary" variant="outline" onClick={onEdit}><CIcon icon={cilPencil} size="sm" /></CButton>
+                <CButton size="sm" color="danger" variant="outline" onClick={onDelete}><CIcon icon={cilTrash} size="sm" /></CButton>
+              </>
+            )}
+          </div>
+          {/* Distinta de la fecha de arriba (item-row-date, cargada a mano) —
+              esta es cuándo se guardó el registro en el sistema. Separarlas
+              evita confundir una con la otra (pedido puntual del usuario). */}
+          {!isMovimientos && <span className="item-row-loaded-at">Fecha de carga: {fmtDateTime(item.createdAt)}</span>}
         </div>
       )}
     </CListGroupItem>

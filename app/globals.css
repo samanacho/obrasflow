@@ -368,8 +368,14 @@ a{color:inherit;}
 .item-row-main{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px;}
 .item-title{font-weight:600;}
 .item-row-sub{font-size:.8rem;color:var(--ink-soft);}
+/* Fecha cargada a mano (ej. la del Parte Diario) — resaltada para no
+   confundirla con "Fecha de carga" (item-row-loaded-at), que es cuándo
+   se guardó el registro en el sistema, no la fecha que describe. */
+.item-row-date{font-weight:700;color:var(--accent-ink);}
 .item-row-notes{font-size:.82rem;color:var(--ink);margin-top:6px;white-space:pre-wrap;}
-.item-row-actions{display:flex;gap:6px;margin-top:10px;}
+.item-row-actions{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:10px;}
+.item-row-actions-buttons{display:flex;gap:6px;}
+.item-row-loaded-at{font-size:.72rem;color:var(--ink-soft);}
 .status-generic{background:var(--vial-soft);color:var(--vial);}
 .status-abierta,.status-pendiente{background:var(--warn-soft);color:var(--warn);}
 .status-respondida,.status-en_revisión,.status-en_revision{background:var(--civil-soft);color:var(--civil);}

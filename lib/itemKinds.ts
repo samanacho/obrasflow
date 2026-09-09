@@ -167,7 +167,8 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
       { key: "personal", label: "Personal en sitio (opcional)", type: "text" },
       { key: "notas", label: "Detalle", type: "textarea" },
     ],
-    summary: (d) => [d.tipo, d.fecha, d.clima].filter(Boolean).join(" · "),
+    // La fecha se muestra aparte, resaltada (ver ItemRow en app/project/[id]/page.tsx) — no se repite acá.
+    summary: (d) => [d.tipo, d.clima].filter(Boolean).join(" · "),
   },
   // La clave interna sigue siendo "change_order" (así no se pierde lo ya
   // cargado en producción bajo ese kind) aunque ahora representa el
@@ -324,7 +325,8 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
     statusOptions: ["Pendiente", "Cumplido"],
     defaultStatus: "Pendiente",
     fields: [{ key: "fecha", label: "Fecha", type: "date", required: true }],
-    summary: (d) => d.fecha || "",
+    // La fecha se muestra aparte, resaltada — es el único campo del hito.
+    summary: () => "",
   },
   document: {
     key: "document",
@@ -354,7 +356,8 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
       { key: "fecha", label: "Fecha", type: "date" },
       { key: "notas", label: "Comentario / contexto de la foto", type: "textarea" },
     ],
-    summary: (d) => [d.etapa, d.fecha].filter(Boolean).join(" · "),
+    // La fecha se muestra aparte, resaltada — no se repite acá.
+    summary: (d) => d.etapa || "",
   },
   budget_line: {
     key: "budget_line",
