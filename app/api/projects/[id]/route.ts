@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { serializeProject } from "@/lib/serialize";
 import { parseProjectInput, ValidationError } from "@/lib/validate";
+import { resolveSitioId } from "@/lib/sitios";
 
 export const dynamic = "force-dynamic";
 
@@ -10,8 +11,10 @@ interface Params {
   params: { id: string };
 }
 
+const SITIO_INCLUDE = { sitio: { select: { nombre: true, responsable: true } } } as const;
+
 export async function GET(_req: NextRequest, { params }: Params) {
-  const project = await prisma.project.findUnique({ where: { id: params.id } });
+  const project = await prisma.project.findUnique({ where: { id: params.id }, include: SITIO_INCLUDE });
   if (!project) return NextResponse.json({ error: "Proyecto no encontrado." }, { status: 404 });
   return NextResponse.json(serializeProject(project));
 }
@@ -20,11 +23,13 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function PUT(req: NextRequest, { params }: Params) {
   try {
     const body = await req.json();
-    const data = parseProjectInput(body);
+    const { sitioNombre, ...data } = parseProjectInput(body);
+    const sitioId = await resolveSitioId(sitioNombre ?? null, data.manager);
     const updated = await prisma.project.update({
       where: { id: params.id },
       data: {
         ...data,
+        sitioId,
         // El Ejecutado se recalcula solo a partir de Movimientos (ver
         // lib/spent.ts) — nunca se pisa desde el formulario general de
         // edición, aunque el payload lo siga incluyendo sin cambios.
@@ -33,6 +38,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
         end: new Date(data.end),
         sectorData: data.sectorData === null ? Prisma.JsonNull : data.sectorData,
       },
+      include: SITIO_INCLUDE,
     });
     return NextResponse.json(serializeProject(updated));
   } catch (err) {
@@ -69,8 +75,15 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       }
       data.budget = budget;
     }
+    // Asignar/desasignar Sitio sin pasar por el formulario completo (usado
+    // por la ficha del Sitio para agregar/quitar frentes).
+    if (typeof body.sitioNombre === "string" || body.sitioNombre === null) {
+      const current = await prisma.project.findUnique({ where: { id: params.id }, select: { manager: true } });
+      if (!current) return NextResponse.json({ error: "Proyecto no encontrado." }, { status: 404 });
+      data.sitioId = await resolveSitioId(body.sitioNombre as string | null, current.manager);
+    }
 
-    const updated = await prisma.project.update({ where: { id: params.id }, data });
+    const updated = await prisma.project.update({ where: { id: params.id }, data, include: SITIO_INCLUDE });
     return NextResponse.json(serializeProject(updated));
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {

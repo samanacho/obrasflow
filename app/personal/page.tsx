@@ -152,8 +152,8 @@ function ReparoBeneficios() {
                   <CTableRow key={s.id}>
                     <CTableDataCell><Link href={s.href}>{s.label} ↗</Link></CTableDataCell>
                     <CTableDataCell>
-                      <CBadge color={s.kind === "obra" ? "info" : s.kind === "egreso" ? "danger" : "dark"}>
-                        {s.kind === "obra" ? "Obra" : s.kind === "egreso" ? "Egreso" : "Ingreso"}
+                      <CBadge color={s.kind === "obra" ? "info" : s.kind === "sitio" ? "primary" : s.kind === "egreso" ? "danger" : "dark"}>
+                        {s.kind === "obra" ? "Obra" : s.kind === "sitio" ? "Sitio" : s.kind === "egreso" ? "Egreso" : "Ingreso"}
                       </CBadge>
                     </CTableDataCell>
                     <CTableDataCell className="mono">{s.fecha ? fmtDate(s.fecha) : "—"}</CTableDataCell>

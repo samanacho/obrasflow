@@ -1,20 +1,23 @@
 import type {
-  Project, ProjectItem, Contractor, ContractorHistoryEntry, Attachment, Supplier, GeneralMovement, Tool,
+  Project, ProjectItem, Contractor, ContractorHistoryEntry, Attachment, Supplier, GeneralMovement, Tool, Sitio,
   PoleSpec, PoleLot, PoleQualityTest, RawMaterial, PoleRecipeItem, PoleLotMaterialConsumption, MaterialPurchase,
 } from "@prisma/client";
 import type {
   ProjectDTO, ProjectItemDTO, ContractorDTO, ContractorHistoryDTO, AttachmentDTO, MovimientoDTO, SupplierDTO,
-  GeneralMovementDTO, GeneralMovementTipo, ToolDTO, ToolStatus,
+  GeneralMovementDTO, GeneralMovementTipo, ToolDTO, ToolStatus, SitioDTO,
   PoleSpecDTO, PoleSpecDetailDTO, PoleLotDTO, PoleQualityTestDTO,
   RawMaterialDTO, PoleRecipeItemDTO, PoleLotMaterialConsumptionDTO, MaterialPurchaseDTO, PurchaseDocType,
 } from "./types";
 
 /** Convierte el registro de Prisma (Decimal, Date) a la forma plana que consume el frontend. */
-export function serializeProject(p: Project): ProjectDTO {
+export function serializeProject(p: Project & { sitio?: { nombre: string; responsable: string } | null }): ProjectDTO {
   return {
     id: p.id,
     name: p.name,
     reference: p.reference,
+    sitioId: p.sitioId,
+    sitioNombre: p.sitio?.nombre ?? null,
+    sitioResponsable: p.sitio?.responsable ?? null,
     type: p.type as ProjectDTO["type"],
     customType: p.customType,
     status: p.status as ProjectDTO["status"],
@@ -57,13 +60,30 @@ export function serializeItem(
 export function serializeMovimiento(
   i: ProjectItem & {
     attachments?: Pick<Attachment, "id" | "filename" | "mimeType" | "size" | "createdAt">[];
-    project: { name: string; type: string };
+    project: { name: string; type: string; sitioId: string | null; sitio?: { nombre: string } | null };
   }
 ): MovimientoDTO {
   return {
     ...serializeItem(i),
     projectName: i.project.name,
     projectType: i.project.type as MovimientoDTO["projectType"],
+    sitioId: i.project.sitioId,
+    sitioNombre: i.project.sitio?.nombre ?? null,
+  };
+}
+
+/** budget/spent son la suma en vivo de los frentes — nunca se guardan en el Sitio (ver comentario en prisma/schema.prisma). */
+export function serializeSitio(s: Sitio & { projects: Project[] }): SitioDTO {
+  const frentes = s.projects.map((p) => serializeProject({ ...p, sitio: { nombre: s.nombre, responsable: s.responsable } }));
+  return {
+    id: s.id,
+    nombre: s.nombre,
+    responsable: s.responsable,
+    notas: s.notas,
+    frentes,
+    budget: frentes.reduce((sum, p) => sum + p.budget, 0),
+    spent: frentes.reduce((sum, p) => sum + p.spent, 0),
+    createdAt: s.createdAt.toISOString(),
   };
 }
 

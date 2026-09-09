@@ -38,6 +38,7 @@ const STATUS_ORDER: ProjectStatus[] = ["planificado", "en_curso", "pausado", "fi
 const EMPTY_FORM: ProjectInput = {
   name: "",
   reference: "",
+  sitioNombre: "",
   type: "civil",
   customType: "",
   status: "planificado",
@@ -58,6 +59,7 @@ function toForm(project: ProjectDTO): ProjectInput {
   return {
     name: project.name,
     reference: project.reference ?? "",
+    sitioNombre: project.sitioNombre ?? "",
     type: project.type,
     customType: project.customType ?? "",
     status: project.status,
@@ -118,6 +120,10 @@ export default function NewProjectWizard({
   );
   const knownManagers = useMemo(
     () => Array.from(new Set(otherProjects.filter((p) => p.manager).map((p) => p.manager.trim()))).sort(),
+    [otherProjects]
+  );
+  const knownSitios = useMemo(
+    () => Array.from(new Set(otherProjects.filter((p) => p.sitioNombre).map((p) => (p.sitioNombre as string).trim()))).sort(),
     [otherProjects]
   );
 
@@ -210,6 +216,7 @@ export default function NewProjectWizard({
             knownCities={knownCities}
             cityDepartmentMap={cityDepartmentMap}
             knownManagers={knownManagers}
+            knownSitios={knownSitios}
           />
         )}
         {step === 2 && <StepSector sector={form.sector ?? null} onSelect={selectSector} />}
@@ -237,13 +244,14 @@ export default function NewProjectWizard({
 }
 
 function StepGeneral({
-  form, setForm, knownCities, cityDepartmentMap, knownManagers,
+  form, setForm, knownCities, cityDepartmentMap, knownManagers, knownSitios,
 }: {
   form: ProjectInput;
   setForm: (f: ProjectInput) => void;
   knownCities: string[];
   cityDepartmentMap: Map<string, string>;
   knownManagers: string[];
+  knownSitios: string[];
 }) {
   return (
     <>
@@ -259,6 +267,21 @@ function StepGeneral({
           onChange={(e) => setForm({ ...form, reference: e.target.value })}
         />
         <div className="form-hint mb-0">Para distinguir obras que de otro modo se ven idénticas (mismo tipo, ciudad, responsable y hasta presupuesto).</div>
+      </div>
+      <div className="mb-3">
+        <CFormLabel>Sitio (opcional)</CFormLabel>
+        <CFormInput
+          list="wizard-known-sitios"
+          placeholder="Ej. Congreso, Cnel. Oviedo…"
+          value={form.sitioNombre ?? ""}
+          onChange={(e) => setForm({ ...form, sitioNombre: e.target.value })}
+        />
+        <datalist id="wizard-known-sitios">
+          {knownSitios.map((s) => <option key={s} value={s} />)}
+        </datalist>
+        <div className="form-hint mb-0">
+          Si esta obra es un frente (civil, eléctrico…) de un mismo lugar junto con otra obra, escribí el mismo nombre de sitio en las dos — así se ven agrupadas y su beneficio se reparte junto en Personal. Dejalo vacío si esta obra es un sitio en sí misma.
+        </div>
       </div>
       <CRow className="mb-3 g-2">
         <CCol>

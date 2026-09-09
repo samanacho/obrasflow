@@ -221,6 +221,11 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
         <div>
           <h1 className="of-page-title mb-2">{project.name}</h1>
           {project.reference && <p className="module-desc mb-2">REF: {project.reference}</p>}
+          {project.sitioId && (
+            <p className="module-desc mb-2">
+              Sitio: <Link href={`/sitios/${project.sitioId}`}>{project.sitioNombre} ↗</Link>
+            </p>
+          )}
           <div className="project-hero-meta">
             <CBadge color={TYPE_COLOR[project.type]}>{project.type === "otro" && project.customType ? project.customType : TYPE_LABEL[project.type]}</CBadge>
             <CBadge color={STATUS_COLOR[project.status]}>{project.status.replace("_", " ")}</CBadge>

@@ -104,9 +104,12 @@ export default function RubrosPage() {
     <AppShell
       crumbs={[{ label: "Obras por rubro" }]}
       headerActions={
-        <CButton color="primary" size="sm" onClick={() => setModalOpen(true)}>
-          <CIcon icon={cilPlus} className="me-1" /> Nueva obra
-        </CButton>
+        <div className="d-flex gap-2">
+          <Link href="/sitios" className="btn btn-outline-secondary btn-sm">📍 Sitios</Link>
+          <CButton color="primary" size="sm" onClick={() => setModalOpen(true)}>
+            <CIcon icon={cilPlus} className="me-1" /> Nueva obra
+          </CButton>
+        </div>
       }
     >
       <h1 className="of-page-title">📂 Obras por rubro</h1>

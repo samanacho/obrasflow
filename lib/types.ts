@@ -8,6 +8,11 @@ export interface ProjectDTO {
   name: string;
   /** Referencia corta para distinguir obras que se ven idénticas en las tarjetas (mismo tipo/ciudad/responsable/presupuesto). */
   reference: string | null;
+  /** Sitio al que pertenece esta obra como frente — null si es un sitio en sí misma (la inmensa mayoría). Ver lib/types.ts SitioDTO. */
+  sitioId: string | null;
+  sitioNombre: string | null;
+  /** Responsable del Sitio (no de esta obra puntual) — solo tiene sentido junto con sitioId. Lo usa lib/profitShare.ts para repartir por sitio en vez de por obra cuando corresponde. */
+  sitioResponsable: string | null;
   type: ProjectType;
   customType: string | null;
   status: ProjectStatus;
@@ -30,6 +35,8 @@ export interface ProjectDTO {
 export interface ProjectInput {
   name: string;
   reference?: string | null;
+  /** Nombre del Sitio al que pertenece esta obra (texto libre, con sugerencias de sitios ya cargados) — el servidor busca un Sitio existente con ese nombre o crea uno nuevo. Vacío/null = sin sitio. */
+  sitioNombre?: string | null;
   type: ProjectType;
   customType?: string | null;
   status: ProjectStatus;
@@ -71,6 +78,28 @@ export interface ProjectItemDTO {
 export interface MovimientoDTO extends ProjectItemDTO {
   projectName: string;
   projectType: ProjectType;
+  /** Sitio de la obra dueña de este movimiento — null si esa obra no pertenece a ningún Sitio. */
+  sitioId: string | null;
+  sitioNombre: string | null;
+}
+
+/** Agrupa varias obras (frentes) que son en realidad un mismo sitio físico — ver model Sitio en prisma/schema.prisma. Sin presupuesto/ejecutado propios: se calculan siempre en vivo sumando los de sus frentes. */
+export interface SitioDTO {
+  id: string;
+  nombre: string;
+  responsable: string;
+  notas: string | null;
+  frentes: ProjectDTO[];
+  /** Suma en vivo de presupuesto/ejecutado de los frentes — nunca un valor guardado aparte. */
+  budget: number;
+  spent: number;
+  createdAt: string;
+}
+
+export interface SitioInput {
+  nombre: string;
+  responsable: string;
+  notas?: string | null;
 }
 
 export type GeneralMovementTipo = "ingreso" | "egreso";

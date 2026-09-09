@@ -74,6 +74,8 @@ interface LedgerRow {
   obraId: string | null;
   obraNombre: string | null;
   obraTipo: ProjectType | null;
+  sitioId: string | null; // solo obra — Sitio de esa obra, si pertenece a uno (ver lib/profitShare.ts)
+  sitioNombre: string | null;
   concepto: string;
   categoria: string | null;
   contratistaProveedorLabel: string | null; // solo obra; null para general
@@ -106,6 +108,8 @@ function obraToRow(m: MovimientoDTO): LedgerRow {
     obraId: m.projectId,
     obraNombre: m.projectName,
     obraTipo: m.projectType,
+    sitioId: m.sitioId,
+    sitioNombre: m.sitioNombre,
     concepto: m.title,
     categoria: m.data?.categoria ?? null,
     contratistaProveedorLabel,
@@ -133,6 +137,8 @@ function generalToRow(g: GeneralMovementDTO): LedgerRow {
     obraId: null,
     obraNombre: null,
     obraTipo: null,
+    sitioId: null,
+    sitioNombre: null,
     concepto: g.concepto,
     categoria: g.categoria,
     contratistaProveedorLabel: null,
@@ -510,6 +516,7 @@ export default function MovimientosPage() {
 
   const [search, setSearch] = useState("");
   const [filterObra, setFilterObra] = useState("");
+  const [filterSitio, setFilterSitio] = useState("");
   const [filterRubro, setFilterRubro] = useState<ProjectType | "">("");
   const [filterTipo, setFilterTipo] = useState("");
   const [filterEstado, setFilterEstado] = useState("");
@@ -581,6 +588,12 @@ export default function MovimientosPage() {
     rows.forEach((r) => { if (r.obraId && r.obraNombre) map.set(r.obraId, r.obraNombre); });
     return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
   }, [rows]);
+  // Sitios presentes en los movimientos de obra — igual criterio que obraOptions.
+  const sitioOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    rows.forEach((r) => { if (r.sitioId && r.sitioNombre) map.set(r.sitioId, r.sitioNombre); });
+    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [rows]);
   const estadoOptions = useMemo(
     () => Array.from(new Set(rows.map((r) => r.estado).filter(Boolean))) as string[],
     [rows]
@@ -596,6 +609,7 @@ export default function MovimientosPage() {
 
   const visible = rows
     .filter((r) => !filterObra || r.obraId === filterObra)
+    .filter((r) => !filterSitio || r.sitioId === filterSitio)
     .filter((r) => !filterRubro || r.obraTipo === filterRubro)
     .filter((r) => !filterTipo || r.movTipoObra === filterTipo)
     .filter((r) => !filterEstado || r.estado === filterEstado)
@@ -617,9 +631,9 @@ export default function MovimientosPage() {
       return sortBy === "fecha_asc" ? a.fecha.localeCompare(b.fecha) : b.fecha.localeCompare(a.fecha);
     });
 
-  const filtersActive = Boolean(search || filterObra || filterRubro || filterTipo || filterEstado || dateFrom || dateTo);
+  const filtersActive = Boolean(search || filterObra || filterSitio || filterRubro || filterTipo || filterEstado || dateFrom || dateTo);
   function clearFilters() {
-    setSearch(""); setFilterObra(""); setFilterRubro(""); setFilterTipo(""); setFilterEstado(""); setDateFrom(""); setDateTo("");
+    setSearch(""); setFilterObra(""); setFilterSitio(""); setFilterRubro(""); setFilterTipo(""); setFilterEstado(""); setDateFrom(""); setDateTo("");
   }
 
   function handleGeneralSaved(saved: GeneralMovementDTO) {
@@ -656,6 +670,8 @@ export default function MovimientosPage() {
       ...saved,
       projectName: editingObraItem?.projectName ?? "",
       projectType: editingObraItem?.projectType ?? "civil",
+      sitioId: editingObraItem?.sitioId ?? null,
+      sitioNombre: editingObraItem?.sitioNombre ?? null,
     };
     setMovimientos((cur) => cur.map((m) => (m.id === full.id ? full : m)));
     setEditingObraItem(null);
@@ -759,6 +775,14 @@ export default function MovimientosPage() {
                     {obraOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
                   </CFormSelect>
                 </CCol>
+                {sitioOptions.length > 0 && (
+                  <CCol md={2}>
+                    <CFormSelect value={filterSitio} onChange={(e) => setFilterSitio(e.target.value)}>
+                      <option value="">Todos los sitios</option>
+                      {sitioOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+                    </CFormSelect>
+                  </CCol>
+                )}
                 <CCol md={2}>
                   <CFormSelect value={filterRubro} onChange={(e) => setFilterRubro(e.target.value as ProjectType | "")}>
                     <option value="">Todos los rubros</option>

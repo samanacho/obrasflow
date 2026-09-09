@@ -31,6 +31,29 @@ enum ProjectSector {
   publico
 }
 
+/// Agrupa varias obras (Project) que son en realidad frentes de un mismo
+/// sitio físico — ej. la parte civil y la parte eléctrica de "Congreso".
+/// A propósito NO tiene presupuesto/ejecutado propios: siempre se calculan
+/// en vivo sumando los de sus obras (ver lib/profitShare.ts y
+/// app/api/sitios/[id]/route.ts), así la plata nunca se cuenta dos veces.
+/// Asignar/desasignar una obra a un Sitio no le toca el presupuesto, el
+/// historial ni los movimientos — es puramente organizativo. Preparado
+/// para un futuro nivel "Contrato/Licitación" arriba de Sitio si hace
+/// falta agrupar varios sitios que comparten la misma licitación — no
+/// modelado todavía porque hoy no hay un segundo caso real que lo pida.
+model Sitio {
+  id          String   @id @default(cuid())
+  nombre      String
+  /// Quién consiguió el sitio completo — el 15% de Personal se calcula acá
+  /// (no por cada frente) cuando la obra pertenece a un Sitio.
+  responsable String
+  notas       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  projects Project[]
+}
+
 model Project {
   id          String         @id @default(cuid())
   name        String
@@ -39,6 +62,11 @@ model Project {
   /// presupuesto) — ej. "Sucursal Norte", "Lote 3", "Fase 2". Puramente
   /// identificatoria, no afecta ningún cálculo.
   reference   String?
+  /// Sitio al que pertenece esta obra como frente (civil/eléctrico/etc.) de
+  /// un mismo lugar — null en la inmensa mayoría de las obras, que son un
+  /// sitio en sí mismas. Ver model Sitio.
+  sitioId     String?
+  sitio       Sitio?         @relation(fields: [sitioId], references: [id], onDelete: SetNull)
   type        ProjectType
   /// Rubro escrito a mano cuando `type` es "otro" — null para el resto.
   customType  String?
@@ -72,6 +100,7 @@ model Project {
   items ProjectItem[]
 
   @@index([status])
+  @@index([sitioId])
   @@index([type])
 }
 

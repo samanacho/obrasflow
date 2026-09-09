@@ -16,6 +16,13 @@ import type { ProjectDTO, GeneralMovementDTO } from "./types";
  * del 85% que se reparten los socios: el 15% de cada responsable se calcula
  * únicamente sobre lo que esa persona consiguió, sin verse afectado por
  * gastos generales de la empresa.
+ *
+ * Las obras que pertenecen a un mismo Sitio (ver model Sitio en
+ * prisma/schema.prisma — la parte civil y la eléctrica de un mismo lugar)
+ * NO reparten cada una por separado: se suman en una única fuente "sitio"
+ * con el responsable del Sitio (no el manager de cada obra individual), a
+ * pedido del usuario. Las obras sin Sitio asignado siguen repartiendo
+ * exactamente como antes, una por una.
  */
 export const RESPONSABLE_PCT = 0.15;
 export const PARTNERS = [
@@ -27,8 +34,11 @@ export const SIN_RESPONSABLE_LABEL = "Sin responsable asignado";
 
 /**
  * Una "fuente" de beneficio (o costo) a repartir:
- *  - "obra": el beneficio de un proyecto entero (budget - spent), atribuido
- *    a su Responsable (Project.manager — "quien consiguió la obra").
+ *  - "obra": el beneficio de un proyecto SIN Sitio asignado (budget -
+ *    spent), atribuido a su Responsable (Project.manager).
+ *  - "sitio": la suma del beneficio de todos los frentes (obras) de un
+ *    mismo Sitio, atribuida al responsable DEL SITIO (no al manager de
+ *    cada frente) — ver comentario arriba.
  *  - "ingreso": el monto completo de un GeneralMovement con tipo="ingreso"
  *    (un ingreso sin obra asociada), atribuido a su campo `responsable`.
  *  - "egreso": el monto completo, en negativo, de un GeneralMovement con
@@ -41,10 +51,10 @@ export const SIN_RESPONSABLE_LABEL = "Sin responsable asignado";
  */
 export interface BeneficioSource {
   id: string;
-  kind: "obra" | "ingreso" | "egreso";
+  kind: "obra" | "sitio" | "ingreso" | "egreso";
   label: string;
   href: string;
-  fecha: string | null; // solo "ingreso"/"egreso" — las obras no tienen una fecha puntual de beneficio
+  fecha: string | null; // solo "ingreso"/"egreso" — las obras y sitios no tienen una fecha puntual de beneficio
   beneficio: number;
   responsable: string | null; // null = todavía sin cargar (o no aplica, en "egreso")
 }
@@ -56,7 +66,8 @@ export interface BeneficioSourceSplit extends BeneficioSource {
 }
 
 export function buildBeneficioSources(projects: ProjectDTO[], generalMovements: GeneralMovementDTO[]): BeneficioSource[] {
-  const obraSources: BeneficioSource[] = projects.map((p) => ({
+  const sueltas = projects.filter((p) => !p.sitioId);
+  const obraSources: BeneficioSource[] = sueltas.map((p) => ({
     id: `obra-${p.id}`,
     kind: "obra",
     label: p.name,
@@ -65,6 +76,23 @@ export function buildBeneficioSources(projects: ProjectDTO[], generalMovements: 
     beneficio: p.budget - p.spent,
     responsable: p.manager?.trim() || null,
   }));
+
+  const porSitio = new Map<string, ProjectDTO[]>();
+  for (const p of projects) {
+    if (!p.sitioId) continue;
+    if (!porSitio.has(p.sitioId)) porSitio.set(p.sitioId, []);
+    porSitio.get(p.sitioId)!.push(p);
+  }
+  const sitioSources: BeneficioSource[] = Array.from(porSitio.entries()).map(([sitioId, frentes]) => ({
+    id: `sitio-${sitioId}`,
+    kind: "sitio",
+    label: frentes[0].sitioNombre ?? "Sitio",
+    href: `/sitios/${sitioId}`,
+    fecha: null,
+    beneficio: frentes.reduce((sum, p) => sum + (p.budget - p.spent), 0),
+    responsable: frentes[0].sitioResponsable?.trim() || null,
+  }));
+
   const ingresoSources: BeneficioSource[] = generalMovements
     .filter((m) => m.tipo === "ingreso")
     .map((m) => ({
@@ -87,7 +115,7 @@ export function buildBeneficioSources(projects: ProjectDTO[], generalMovements: 
       beneficio: -m.monto,
       responsable: m.responsable?.trim() || null,
     }));
-  return [...obraSources, ...ingresoSources, ...egresoSources];
+  return [...obraSources, ...sitioSources, ...ingresoSources, ...egresoSources];
 }
 
 export function splitSource(source: BeneficioSource): BeneficioSourceSplit {

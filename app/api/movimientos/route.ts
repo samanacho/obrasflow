@@ -18,7 +18,7 @@ export async function GET(_req: NextRequest) {
   const items = await prisma.projectItem.findMany({
     where: { kind: "change_order" },
     include: {
-      project: { select: { name: true, type: true } },
+      project: { select: { name: true, type: true, sitioId: true, sitio: { select: { nombre: true } } } },
       attachments: { select: ATTACHMENT_META_SELECT, orderBy: { createdAt: "desc" }, take: 1 },
     },
     orderBy: { createdAt: "desc" },
