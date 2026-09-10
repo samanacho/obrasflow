@@ -975,7 +975,19 @@ function ItemRow({
           {/* Distinta de la fecha de arriba (item-row-date, cargada a mano) —
               esta es cuándo se guardó el registro en el sistema. Separarlas
               evita confundir una con la otra (pedido puntual del usuario). */}
-          {!isMovimientos && <span className="item-row-loaded-at">Fecha de carga: {fmtDateTime(item.createdAt)}</span>}
+          {!isMovimientos && (
+            <div className="item-row-meta-dates">
+              <span className="item-row-loaded-at">Fecha de carga: {fmtDateTime(item.createdAt)}</span>
+              {/* updatedAt === createdAt hasta el primer PUT (Prisma @updatedAt
+                  los sella con el mismo instante al crear) — así que esto solo
+                  aparece si alguien lo editó de verdad. Todavía no sabemos
+                  quién: eso queda para cuando el sistema tenga usuarios con
+                  identificación y permisos propios. */}
+              {item.updatedAt !== item.createdAt && (
+                <span className="item-row-edited-at">Última edición: {fmtDateTime(item.updatedAt)}</span>
+              )}
+            </div>
+          )}
         </div>
       )}
     </CListGroupItem>
