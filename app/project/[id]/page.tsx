@@ -74,6 +74,14 @@ function itemDate(item: ProjectItemDTO): string {
   const [y, m, d] = raw.split("-");
   return y && m && d ? `${d}/${m}/${y}` : raw;
 }
+const WEEKDAY_LABEL = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+/** Día de la semana de item.data.fecha (la fecha cargada a mano, no la de creación) — construye el Date con los componentes en local para no correrse de día por huso horario. */
+function itemWeekday(item: ProjectItemDTO): string {
+  const raw = (item.data?.fecha ?? "").slice(0, 10);
+  const [y, m, d] = raw.split("-").map(Number);
+  if (!y || !m || !d) return "";
+  return WEEKDAY_LABEL[new Date(y, m - 1, d).getDay()];
+}
 /** "YYYY-MM" -> "ago 2026". */
 function monthLabel(ym: string): string {
   const [y, m] = ym.split("-");
@@ -928,7 +936,7 @@ function ItemRow({
           <>{cfg.summary(item.data)}{cfg.summary(item.data) ? " · " : ""}{itemDate(item)}</>
         ) : (
           <>
-            {item.data?.fecha && <span className="item-row-date">{itemDate(item)}</span>}
+            {item.data?.fecha && <span className="item-row-date">{itemDate(item)} ({itemWeekday(item)})</span>}
             {item.data?.fecha && cfg.summary(item.data) ? " · " : ""}
             {cfg.summary(item.data)}
           </>
