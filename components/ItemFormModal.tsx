@@ -34,13 +34,15 @@ function parseCoords(raw: any): { lat: number; lng: number } | null {
  * toggle "Editar movimientos de obra" ahí).
  */
 export default function ItemFormModal({
-  projectId, kind, existing, initialTitle, existingRubros, showToast, onClose, onSaved,
+  projectId, kind, existing, initialTitle, initialData, existingRubros, showToast, onClose, onSaved,
 }: {
   projectId: string;
   kind: string;
   existing: ProjectItemDTO | null;
   /** Con qué título prellenar el campo al crear un ítem nuevo (ver "Agregar insumo a este rubro" en RubroFicha). */
   initialTitle?: string | null;
+  /** Con qué datos prellenar `data` al crear un ítem nuevo (ignorado si `existing` no es null) — lo usa /registro-rapido para pasar monto/fecha/medioPago/notas ya cargados desde una captura rápida. */
+  initialData?: Record<string, any>;
   /** Nombres de rubro ya cargados en esta obra (solo Ejecución) — sugerencias del campo "Nombre del rubro" para que agrupar insumos del mismo rubro sea elegir de una lista, no repetir el nombre a mano. */
   existingRubros?: string[];
   showToast: (m: string) => void;
@@ -54,7 +56,10 @@ export default function ItemFormModal({
   // cargada — es lo primero que se pide y no tiene sentido hacer que el
   // usuario la escriba a mano cada vez que solo quiere dejar algo del día.
   const [data, setData] = useState<Record<string, any>>(
-    existing?.data ?? (kind === "daily_log" ? { fecha: new Date().toISOString().slice(0, 10) } : {})
+    existing?.data ?? {
+      ...(kind === "daily_log" ? { fecha: new Date().toISOString().slice(0, 10) } : {}),
+      ...initialData,
+    }
   );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);

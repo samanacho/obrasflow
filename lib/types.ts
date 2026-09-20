@@ -121,6 +121,24 @@ export interface GeneralMovementDTO {
   createdAt: string;
 }
 
+/** Captura rápida de un pago en el momento — ver model QuickExpense en prisma/schema.prisma y /registro-rapido. */
+export interface QuickExpenseDTO {
+  id: string;
+  fecha: string;
+  monto: number;
+  medioPago: string;
+  nota: string | null;
+  resuelto: boolean;
+  createdAt: string;
+}
+
+export interface QuickExpenseInput {
+  fecha: string;
+  monto: number;
+  medioPago: string;
+  nota?: string | null;
+}
+
 export interface GeneralMovementInput {
   fecha: string;
   tipo: GeneralMovementTipo;

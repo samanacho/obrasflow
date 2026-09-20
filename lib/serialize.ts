@@ -1,10 +1,10 @@
 import type {
-  Project, ProjectItem, Contractor, ContractorHistoryEntry, Attachment, Supplier, GeneralMovement, Tool, Sitio,
+  Project, ProjectItem, Contractor, ContractorHistoryEntry, Attachment, Supplier, GeneralMovement, Tool, Sitio, QuickExpense,
   PoleSpec, PoleLot, PoleQualityTest, RawMaterial, PoleRecipeItem, PoleLotMaterialConsumption, MaterialPurchase,
 } from "@prisma/client";
 import type {
   ProjectDTO, ProjectItemDTO, ContractorDTO, ContractorHistoryDTO, AttachmentDTO, MovimientoDTO, SupplierDTO,
-  GeneralMovementDTO, GeneralMovementTipo, ToolDTO, ToolStatus, SitioDTO,
+  GeneralMovementDTO, GeneralMovementTipo, ToolDTO, ToolStatus, SitioDTO, QuickExpenseDTO,
   PoleSpecDTO, PoleSpecDetailDTO, PoleLotDTO, PoleQualityTestDTO,
   RawMaterialDTO, PoleRecipeItemDTO, PoleLotMaterialConsumptionDTO, MaterialPurchaseDTO, PurchaseDocType,
 } from "./types";
@@ -136,6 +136,18 @@ export function serializeGeneralMovement(m: GeneralMovement): GeneralMovementDTO
     responsable: m.responsable,
     notas: m.notas,
     createdAt: m.createdAt.toISOString(),
+  };
+}
+
+export function serializeQuickExpense(q: QuickExpense): QuickExpenseDTO {
+  return {
+    id: q.id,
+    fecha: q.fecha.toISOString().slice(0, 10),
+    monto: Number(q.monto),
+    medioPago: q.medioPago,
+    nota: q.nota,
+    resuelto: q.resuelto,
+    createdAt: q.createdAt.toISOString(),
   };
 }
 

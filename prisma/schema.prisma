@@ -255,6 +255,27 @@ model GeneralMovement {
   @@index([fecha])
 }
 
+/// Captura rápida de un pago (efectivo/transferencia) en el momento en que
+/// sucede, sin tener que elegir todavía a qué obra/rubro pertenece — pedido
+/// puntual del usuario: no le da el tiempo de cargar el movimiento
+/// completo al momento, y después le cuesta contrastar lo que carga tarde
+/// contra lo que realmente pagó. `resuelto` pasa a true recién cuando ese
+/// pago ya se clasificó como un movimiento de obra o un GeneralMovement
+/// real (ver /registro-rapido) — hasta entonces monto/medioPago/fecha acá
+/// son la fuente de verdad de lo que efectivamente ocurrió.
+model QuickExpense {
+  id        String   @id @default(cuid())
+  fecha     DateTime @db.Date
+  monto     Decimal  @db.Decimal(14, 2)
+  medioPago String
+  nota      String?
+  resuelto  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([resuelto])
+}
+
 enum ToolStatus {
   disponible
   en_uso
