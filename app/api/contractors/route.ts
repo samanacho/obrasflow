@@ -18,9 +18,9 @@ export async function GET(req: NextRequest) {
 
   const contractors = await prisma.contractor.findMany({
     where: {
-      ...(rubro ? { rubros: { has: rubro as any } } : {}),
+      ...(rubro && RUBROS.includes(rubro) ? { rubros: { has: rubro as any } } : {}),
       ...(ciudad ? { city: { contains: ciudad, mode: "insensitive" } } : {}),
-      ...(status ? { status: status as any } : {}),
+      ...(status && STATUSES.includes(status) ? { status: status as any } : {}),
       ...(q
         ? {
             OR: [

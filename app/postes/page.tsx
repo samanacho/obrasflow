@@ -16,6 +16,7 @@ import AppShell from "@/components/AppShell";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import Toast from "@/components/Toast";
 import { useToast } from "@/lib/useToast";
+import { useIsDarkTheme } from "@/lib/useIsDarkTheme";
 import { LOT_STATUS_ORDER, LOT_STATUS_LABEL, LOT_STATUS_COLOR, COMMON_UNITS, PURCHASE_DOC_TYPE_ORDER, PURCHASE_DOC_TYPE_LABEL } from "@/lib/poleFields";
 import { fmtGs } from "@/lib/currency";
 import type { PoleSpecDTO, PoleSpecInput, PoleLotDTO, PoleLotInput, PoleLotStatus, RawMaterialDTO, RawMaterialInput, MaterialPurchaseDTO, MaterialPurchaseInput } from "@/lib/types";
@@ -135,7 +136,7 @@ function ResumenView({ specs, lots }: { specs: PoleSpecDTO[]; lots: PoleLotDTO[]
   const costoMaterialConsumido = lots.reduce((sum, l) => sum + l.costoMaterialTotalGs, 0);
 
   const porEstado = LOT_STATUS_ORDER.map((e) => ({ estado: e, count: lots.filter((l) => l.estado === e).length })).filter((x) => x.count > 0);
-  const isDark = typeof document !== "undefined" && document.documentElement.getAttribute("data-coreui-theme") === "dark";
+  const isDark = useIsDarkTheme();
   const tickColor = isDark ? "#a39e93" : "#75726a";
   const chartColors = isDark
     ? ["#b3ac9e", "#8ca9c2", "#d3af6e", "#8fb491", "#c98980", "#b3a4cc"]

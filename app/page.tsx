@@ -22,6 +22,7 @@ import NewProjectWizard from "@/components/NewProjectWizard";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import Toast from "@/components/Toast";
 import { useToast } from "@/lib/useToast";
+import { useIsDarkTheme } from "@/lib/useIsDarkTheme";
 
 const ThreeSkyline = dynamic(() => import("@/components/ThreeSkyline"), {
   ssr: false,
@@ -394,7 +395,7 @@ function DashboardView({
     .filter((x) => x.daysLeft <= 7)
     .sort((a, b) => a.fecha.getTime() - b.fecha.getTime());
 
-  const isDark = typeof document !== "undefined" && document.documentElement.getAttribute("data-coreui-theme") === "dark";
+  const isDark = useIsDarkTheme();
   const gridColor = isDark ? "rgba(255,255,255,.08)" : "rgba(0,0,0,.06)";
   const tickColor = isDark ? "#a39e93" : "#75726a"; // --ink-soft de app/globals.css en cada tema
 

@@ -18,6 +18,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import ItemFormModal from "@/components/ItemFormModal";
 import Toast from "@/components/Toast";
 import { useToast } from "@/lib/useToast";
+import { useIsDarkTheme } from "@/lib/useIsDarkTheme";
 import type { ProjectDTO, ProjectItemDTO } from "@/lib/types";
 import { ITEM_KINDS, ITEM_KIND_ORDER, ItemKindConfig } from "@/lib/itemKinds";
 import { PUBLIC_FIELDS, PRIVATE_FIELDS } from "@/lib/sectorFields";
@@ -485,7 +486,14 @@ function ModuleView({
     items.filter((i) => i.data?.tipo === tipo).reduce((acc, i) => acc + Number(i.data?.monto ?? 0), 0);
   const adelantado = isMovimientos ? sumByTipo("Adelanto") : 0;
   const saldoDisponible = project.budget - project.spent;
-  const ejecucionPct = project.budget > 0 ? Math.min(100, (project.spent / project.budget) * 100) : 0;
+  // Real (para el texto, puede pasar de 100% si hay sobre-ejecución — mismo
+  // criterio que la tabla de app/ejecucion/page.tsx) vs. recortado a 100
+  // (solo para el ancho de la barra visual, que no puede desbordar su
+  // contenedor). Antes se usaba el mismo valor recortado para las dos
+  // cosas y el texto nunca pasaba de "100%" aunque se hubiera gastado
+  // mucho más del presupuesto.
+  const ejecucionPctReal = project.budget > 0 ? (project.spent / project.budget) * 100 : 0;
+  const ejecucionPct = Math.min(100, ejecucionPctReal);
 
   // Gasto por categoría (todos los movimientos con "categoria" cargada,
   // sin importar el tipo — es una clasificación transversal).
@@ -497,7 +505,7 @@ function ModuleView({
     });
   }
   const categoriaLabels = Object.keys(categoriaSums);
-  const isDark = typeof document !== "undefined" && document.documentElement.getAttribute("data-coreui-theme") === "dark";
+  const isDark = useIsDarkTheme();
   const chartColors = isDark ? CHART_COLORS_DARK : CHART_COLORS_LIGHT;
   const tickColor = isDark ? "#a39e93" : "#75726a";
   const gridColor = isDark ? "rgba(255,255,255,.08)" : "rgba(0,0,0,.06)";
@@ -713,7 +721,7 @@ function ModuleView({
             <div className="bar-track">
               <div className="bar-fill" style={{ width: `${ejecucionPct}%`, background: project.spent > project.budget ? "var(--crit)" : "var(--ok)" }} />
             </div>
-            <span className="item-row-sub">{Math.round(ejecucionPct)}% del presupuesto ejecutado</span>
+            <span className="item-row-sub">{Math.round(ejecucionPctReal)}% del presupuesto ejecutado</span>
           </div>
         )}
 

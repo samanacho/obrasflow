@@ -15,8 +15,8 @@ export async function GET(req: NextRequest) {
   const q = sp.get("q");
   const suppliers = await prisma.supplier.findMany({
     where: {
-      ...(category ? { categories: { has: category as any } } : {}),
-      ...(status ? { status: status as any } : {}),
+      ...(category && CATEGORIES.includes(category) ? { categories: { has: category as any } } : {}),
+      ...(status && STATUSES.includes(status) ? { status: status as any } : {}),
       ...(q ? { OR: [{ name: { contains: q, mode: "insensitive" } }, { contactName: { contains: q, mode: "insensitive" } }] } : {}),
     },
     orderBy: { name: "asc" },

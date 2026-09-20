@@ -12,6 +12,7 @@ import CIcon from "@coreui/icons-react";
 import { cilCloudDownload, cilArrowLeft, cilDescription } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
 import { MOVIMIENTO_TIPOS } from "@/lib/movimientos";
+import { useIsDarkTheme } from "@/lib/useIsDarkTheme";
 import type { ProjectDTO, ProjectItemDTO, ProjectType, ProjectStatus } from "@/lib/types";
 
 /**
@@ -440,7 +441,11 @@ function ArchivosView({ items }: { items: ProjectItemDTO[] }) {
 // ── Tab 3: Resumen ──────────────────────────────────────────────────────
 
 function ResumenView({ project, items }: { project: ProjectDTO; items: ProjectItemDTO[] }) {
-  const ejecucionPct = project.budget > 0 ? Math.min(100, (project.spent / project.budget) * 100) : 0;
+  // Real (para el texto, puede pasar de 100% con sobre-ejecución — mismo
+  // criterio que la tabla de arriba, ver ResumenView más abajo) vs.
+  // recortado a 100 (solo para el ancho de la barra visual).
+  const ejecucionPctReal = project.budget > 0 ? (project.spent / project.budget) * 100 : 0;
+  const ejecucionPct = Math.min(100, ejecucionPctReal);
   const saldoDisponible = project.budget - project.spent;
 
   const categoriaSums: Record<string, number> = {};
@@ -462,7 +467,7 @@ function ResumenView({ project, items }: { project: ProjectDTO; items: ProjectIt
   let runningTotal = 0;
   const monthlyCumulative = monthKeys.map((m) => (runningTotal += monthlyTotals.get(m) ?? 0));
 
-  const isDark = typeof document !== "undefined" && document.documentElement.getAttribute("data-coreui-theme") === "dark";
+  const isDark = useIsDarkTheme();
   const chartColors = isDark ? CHART_COLORS_DARK : CHART_COLORS_LIGHT;
   const tickColor = isDark ? "#a39e93" : "#75726a";
   const gridColor = isDark ? "rgba(255,255,255,.08)" : "rgba(0,0,0,.06)";
@@ -485,7 +490,7 @@ function ResumenView({ project, items }: { project: ProjectDTO; items: ProjectIt
         <div className="col-md-3 col-6">
           <CCard className="h-100"><CCardBody>
             <div className="text-uppercase text-body-secondary small mb-1">% ejecutado</div>
-            <div className="fs-3 fw-bold mono">{Math.round(ejecucionPct)}%</div>
+            <div className={"fs-3 fw-bold mono" + (project.spent > project.budget ? " alert-text" : "")}>{Math.round(ejecucionPctReal)}%</div>
           </CCardBody></CCard>
         </div>
         <div className="col-md-3 col-6">
@@ -500,7 +505,7 @@ function ResumenView({ project, items }: { project: ProjectDTO; items: ProjectIt
         <div className="bar-track">
           <div className="bar-fill" style={{ width: `${ejecucionPct}%`, background: project.spent > project.budget ? "var(--crit)" : "var(--ok)" }} />
         </div>
-        <span className="item-row-sub">{Math.round(ejecucionPct)}% del presupuesto ejecutado</span>
+        <span className="item-row-sub">{Math.round(ejecucionPctReal)}% del presupuesto ejecutado</span>
       </div>
 
       {items.length === 0 && <p className="empty-col">Sin gastos cargados todavía para esta obra.</p>}

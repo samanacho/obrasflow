@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 
   const tools = await prisma.tool.findMany({
     where: {
-      ...(estado ? { estado: estado as any } : {}),
+      ...(estado && ESTADOS.includes(estado) ? { estado: estado as any } : {}),
       ...(categoria ? { categoria: { equals: categoria, mode: "insensitive" } } : {}),
       ...(q
         ? {

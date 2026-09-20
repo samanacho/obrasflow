@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   const lots = await prisma.poleLot.findMany({
     where: {
       ...(specId ? { specId } : {}),
-      ...(estado ? { estado: estado as any } : {}),
+      ...(estado && (LOT_STATUS_ORDER as string[]).includes(estado) ? { estado: estado as any } : {}),
     },
     include: LOT_INCLUDE,
     orderBy: { fechaColado: "desc" },
