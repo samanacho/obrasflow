@@ -173,12 +173,24 @@ h1,h2,h3,.display{font-family:'Barlow Condensed',system-ui,sans-serif;font-weigh
 .of-brand-text{font-family:'Barlow Condensed';font-weight:700;font-size:1.15rem;letter-spacing:.02em;}
 .sidebar-brand{color:var(--ink) !important;text-decoration:none;display:flex;align-items:center;}
 .of-shell .sidebar{--cui-sidebar-bg:var(--surface);--cui-sidebar-color:var(--ink);}
+/* En escritorio el menú queda fijo a la altura de la ventana. Sin esto se
+   estiraba al alto de toda la página, y CSidebar de CoreUI (que se oculta
+   solo cuando no entra entero en la ventana, ver isInViewport) lo escondía
+   en cualquier página larga — Inicio, Movimientos, la ficha de una obra —
+   sin forma de volver a abrirlo. De paso queda visible al hacer scroll. */
+@media (min-width: 992px){
+  .of-shell .sidebar{position:sticky;top:0;height:100vh;align-self:flex-start;overflow-y:auto;}
+}
 .of-shell .sidebar .nav-link{color:var(--ink-soft);}
 .of-shell .sidebar .nav-link.active,
 .of-shell .sidebar .nav-item.active .nav-link{color:var(--accent-ink);background:color-mix(in srgb, var(--accent) 12%, transparent);font-weight:600;}
 .of-shell .nav-icon{color:inherit;opacity:.85;}
 /* Pedido puntual: resaltar la primera letra de un ítem del menú (ver "highlightFirstLetter" en lib/navItems.ts). */
 .nav-label-highlight{font-weight:700;color:var(--accent-ink);}
+/* El link del menú es flex: sin este wrapper la letra resaltada y el resto
+   ("P" + "ersonal") quedaban como dos piezas separadas para lectores de
+   pantalla y para Ctrl+F. */
+.nav-label{display:inline;}
 .of-page-title{margin:4px 0 18px;font-size:1.9rem;}
 
 header.top{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px;border-bottom:2px solid var(--ink);padding-bottom:14px;}

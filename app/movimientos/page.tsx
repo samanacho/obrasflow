@@ -17,6 +17,7 @@ import Toast from "@/components/Toast";
 import { useToast } from "@/lib/useToast";
 import { MOVIMIENTO_TIPOS } from "@/lib/movimientos";
 import type { MovimientoDTO, ProjectItemDTO, ProjectType, GeneralMovementDTO, GeneralMovementTipo } from "@/lib/types";
+import { todayLocal } from "@/lib/dates";
 
 /**
  * Ejecución cruzada a TODAS las obras — a diferencia de /ejecucion (que
@@ -41,7 +42,9 @@ const TYPE_COLOR: Record<ProjectType, string> = { civil: "info", electrico: "war
 const TYPE_ORDER: ProjectType[] = ["civil", "electrico", "vial", "otro"];
 
 function fmtMoney(n: number) {
-  return "Gs. " + Number(n || 0).toLocaleString("es-PY");
+  // Guaraníes no tienen decimales — sin el redondeo, un precio por unidad
+  // calculado (monto / cantidad) salía como "Gs. 2.166.666,667".
+  return "Gs. " + Math.round(Number(n || 0)).toLocaleString("es-PY");
 }
 /** "YYYY-MM-DD" (o el createdAt como respaldo) -> "DD/MM/YYYY". */
 function itemDate(m: MovimientoDTO): string {
@@ -180,7 +183,7 @@ function exportCSV(rows: LedgerRow[]) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `movimientos-obrasflow-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `movimientos-obrasflow-${todayLocal()}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }

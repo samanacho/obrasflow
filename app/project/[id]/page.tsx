@@ -30,15 +30,19 @@ const STATUS_COLOR: Record<string, string> = { planificado: "info", en_curso: "w
 const SECTOR_LABEL: Record<string, string> = { privado: "Obra privada", publico: "Obra pública" };
 
 // Ejecución agrupada por rubro: cada movimiento tiene un "Tipo de insumo"
-// (lib/itemKinds.ts, campo tipoInsumo de change_order) — estas 4 son las
-// únicas opciones reales del select; todo lo que no tenga ninguna de estas
-// cuatro (campo vacío, o datos viejos de antes de que existiera el campo)
-// cae en "Sin clasificar" al armar la ficha de un rubro.
-const TIPO_INSUMO_ORDER = ["Materiales", "Mano de obra", "Maquinaria / Alquileres", "Gastos administrativos / Varios"];
+// (lib/itemKinds.ts, campo tipoInsumo de change_order). El orden sale de las
+// opciones del propio select — antes era una lista copiada a mano acá, y al
+// sumar "Servicios varios" y "Subcontrato" al formulario esos movimientos
+// quedaron cayendo en "Sin clasificar". Solo cae ahí lo que tenga el campo
+// vacío (datos viejos de antes de que existiera).
+const TIPO_INSUMO_ORDER: string[] =
+  ITEM_KINDS.change_order.fields.find((f) => f.key === "tipoInsumo")?.options ?? [];
 const TIPO_INSUMO_ICON: Record<string, string> = {
   "Materiales": "🧱",
   "Mano de obra": "👷",
   "Maquinaria / Alquileres": "🚜",
+  "Servicios varios": "🧹",
+  "Subcontrato": "🤝",
   "Gastos administrativos / Varios": "🗂️",
   "Sin clasificar": "❔",
 };
@@ -46,6 +50,8 @@ const TIPO_INSUMO_COLOR: Record<string, string> = {
   "Materiales": "info",
   "Mano de obra": "warning",
   "Maquinaria / Alquileres": "secondary",
+  "Servicios varios": "success",
+  "Subcontrato": "primary",
   "Gastos administrativos / Varios": "dark",
   "Sin clasificar": "light",
 };
@@ -493,7 +499,10 @@ function ModuleView({
   // cosas y el texto nunca pasaba de "100%" aunque se hubiera gastado
   // mucho más del presupuesto.
   const ejecucionPctReal = project.budget > 0 ? (project.spent / project.budget) * 100 : 0;
-  const ejecucionPct = Math.min(100, ejecucionPctReal);
+  // Sin presupuesto cargado pero con gastos: la barra va llena (en rojo) en
+  // vez de vacía, para que no parezca que no se gastó nada.
+  const sinPresupuestoConGastos = project.budget <= 0 && project.spent > 0;
+  const ejecucionPct = sinPresupuestoConGastos ? 100 : Math.min(100, ejecucionPctReal);
 
   // Gasto por categoría (todos los movimientos con "categoria" cargada,
   // sin importar el tipo — es una clasificación transversal).
@@ -721,7 +730,11 @@ function ModuleView({
             <div className="bar-track">
               <div className="bar-fill" style={{ width: `${ejecucionPct}%`, background: project.spent > project.budget ? "var(--crit)" : "var(--ok)" }} />
             </div>
-            <span className="item-row-sub">{Math.round(ejecucionPctReal)}% del presupuesto ejecutado</span>
+            <span className={"item-row-sub" + (sinPresupuestoConGastos ? " alert-text" : "")}>
+              {sinPresupuestoConGastos
+                ? "Sin presupuesto cargado — ya hay gastos registrados"
+                : `${Math.round(ejecucionPctReal)}% del presupuesto ejecutado`}
+            </span>
           </div>
         )}
 

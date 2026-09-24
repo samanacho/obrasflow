@@ -34,6 +34,7 @@ const DhtmlxGanttChart = dynamic(() => import("@/components/DhtmlxGanttChart"), 
 });
 import type { ProjectDTO, ProjectStatus, ProjectType, DashboardSummaryDTO, PoleLotDTO, PoleSpecDTO, GeneralMovementDTO } from "@/lib/types";
 import { fechaFiscalizacionEstimada, capacityForDate, FACTORY_SCHEDULE_LABEL } from "@/lib/factoryCapacity";
+import { todayLocal } from "@/lib/dates";
 
 const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
 const TYPE_COLOR: Record<ProjectType, string> = { civil: "info", electrico: "warning", vial: "secondary", otro: "dark" };
@@ -780,7 +781,7 @@ function exportCSV(projects: ProjectDTO[]) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `obrasflow-proyectos-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `obrasflow-proyectos-${todayLocal()}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }

@@ -8,6 +8,7 @@ import AppShell from "@/components/AppShell";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import ItemFormModal from "@/components/ItemFormModal";
 import GeneralMovementFormModal from "@/components/GeneralMovementFormModal";
+import { notifyQuickExpensesChanged, QUICK_EXPENSES_CHANGED } from "@/components/QuickExpenseButton";
 import Toast from "@/components/Toast";
 import { useToast } from "@/lib/useToast";
 import type { QuickExpenseDTO, ProjectDTO, ProjectItemDTO, GeneralMovementDTO } from "@/lib/types";
@@ -59,6 +60,15 @@ export default function RegistroRapidoPage() {
       .finally(() => setLoading(false));
   }
   useEffect(load, []);
+  // Si se anota una captura nueva con el botón del header estando parado acá,
+  // que aparezca en Pendientes sin tener que recargar.
+  useEffect(() => {
+    const onChange = () => {
+      fetch("/api/quick-expenses").then((r) => (r.ok ? r.json() : [])).then(setItems).catch(() => {});
+    };
+    window.addEventListener(QUICK_EXPENSES_CHANGED, onChange);
+    return () => window.removeEventListener(QUICK_EXPENSES_CHANGED, onChange);
+  }, []);
 
   const pendientes = useMemo(
     () => items.filter((i) => !i.resuelto).sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
@@ -78,6 +88,7 @@ export default function RegistroRapidoPage() {
         body: JSON.stringify({ resuelto: true }),
       });
       setItems((cur) => cur.map((i) => (i.id === id ? { ...i, resuelto: true } : i)));
+      notifyQuickExpensesChanged();
     } catch {
       showToast("Se cargó el movimiento, pero no se pudo marcar esta captura como resuelta — hacelo a mano si querés.");
     }
@@ -104,6 +115,7 @@ export default function RegistroRapidoPage() {
       if (!res.ok && res.status !== 204) throw new Error();
       setItems((cur) => cur.filter((i) => i.id !== item.id));
       setConfirmDelete(null);
+      notifyQuickExpensesChanged();
     } catch {
       showToast("No se pudo descartar el registro.");
     } finally {
@@ -213,6 +225,12 @@ export default function RegistroRapidoPage() {
           projectId={obraFormFor.projectId}
           kind="change_order"
           existing={null}
+          // La captura ya es un pago hecho (efectivo/transferencia), no algo a pagar.
+          initialStatus="Pagado"
+          contextLabel={(() => {
+            const p = projects.find((x) => x.id === obraFormFor.projectId);
+            return p ? `${p.name}${p.reference ? ` (${p.reference})` : ""}` : undefined;
+          })()}
           initialData={{
             monto: obraFormFor.quickExpense.monto,
             fecha: obraFormFor.quickExpense.fecha,
@@ -231,6 +249,7 @@ export default function RegistroRapidoPage() {
           existingResponsables={[]}
           initialData={{
             tipo: "egreso",
+            estado: "Pagado",
             fecha: generalFormFor.fecha,
             monto: generalFormFor.monto,
             medioPago: generalFormFor.medioPago,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { serializeSitio } from "@/lib/serialize";
+import { findSitioByNombre } from "@/lib/sitios";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,14 @@ export async function PUT(req: NextRequest, { params }: Params) {
     if (!nombre) return NextResponse.json({ error: "El nombre del sitio es obligatorio." }, { status: 400 });
     if (!responsable) return NextResponse.json({ error: "El responsable es obligatorio." }, { status: 400 });
     const notas = String(body.notas ?? "").trim() || null;
+
+    // Sin esto, renombrar un sitio con el nombre de otro dejaba dos sitios con
+    // el mismo nombre, y resolveSitioId (lib/sitios.ts) mandaría las obras
+    // nuevas a uno cualquiera de los dos.
+    const clash = await findSitioByNombre(nombre, params.id);
+    if (clash) {
+      return NextResponse.json({ error: `Ya existe otro sitio llamado "${clash.nombre}".` }, { status: 409 });
+    }
 
     const updated = await prisma.sitio.update({
       where: { id: params.id },

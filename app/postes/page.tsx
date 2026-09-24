@@ -20,6 +20,7 @@ import { useIsDarkTheme } from "@/lib/useIsDarkTheme";
 import { LOT_STATUS_ORDER, LOT_STATUS_LABEL, LOT_STATUS_COLOR, COMMON_UNITS, PURCHASE_DOC_TYPE_ORDER, PURCHASE_DOC_TYPE_LABEL } from "@/lib/poleFields";
 import { fmtGs } from "@/lib/currency";
 import type { PoleSpecDTO, PoleSpecInput, PoleLotDTO, PoleLotInput, PoleLotStatus, RawMaterialDTO, RawMaterialInput, MaterialPurchaseDTO, MaterialPurchaseInput } from "@/lib/types";
+import { todayLocal } from "@/lib/dates";
 
 const POSTES_TABS = [
   { key: "resumen", label: "Resumen" },
@@ -48,7 +49,7 @@ function emptyLot(specId = ""): PoleLotInput {
 }
 
 const EMPTY_PURCHASE: MaterialPurchaseInput = {
-  materialId: "", fecha: new Date().toISOString().slice(0, 10), cantidad: 0, costoUnitarioGs: 0,
+  materialId: "", fecha: todayLocal(), cantidad: 0, costoUnitarioGs: 0,
   proveedor: "", tipoDocumento: "factura", numeroDocumento: "", notas: "",
 };
 
@@ -596,7 +597,7 @@ function PurchasesView({
 
   function openModal() {
     setFormError(null);
-    setForm({ ...EMPTY_PURCHASE, materialId: materials.find((m) => m.activo)?.id ?? "", fecha: new Date().toISOString().slice(0, 10) });
+    setForm({ ...EMPTY_PURCHASE, materialId: materials.find((m) => m.activo)?.id ?? "", fecha: todayLocal() });
     setModalOpen(true);
   }
 

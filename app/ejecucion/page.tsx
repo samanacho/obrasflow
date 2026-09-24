@@ -14,6 +14,7 @@ import AppShell from "@/components/AppShell";
 import { MOVIMIENTO_TIPOS } from "@/lib/movimientos";
 import { useIsDarkTheme } from "@/lib/useIsDarkTheme";
 import type { ProjectDTO, ProjectItemDTO, ProjectType, ProjectStatus } from "@/lib/types";
+import { todayLocal } from "@/lib/dates";
 
 /**
  * Módulo global de Ejecución Presupuestaria — vista de solo lectura, cruzada
@@ -169,7 +170,9 @@ function EjecucionInner() {
                               <CTableDataCell><CBadge color={STATUS_COLOR[p.status]}>{STATUS_LABEL[p.status]}</CBadge></CTableDataCell>
                               <CTableDataCell className="mono">{fmtMoney(p.budget)}</CTableDataCell>
                               <CTableDataCell className="mono">{fmtMoney(p.spent)}</CTableDataCell>
-                              <CTableDataCell className={"mono" + (p.spent > p.budget ? " alert-text" : "")}>{pct}%</CTableDataCell>
+                              <CTableDataCell className={"mono" + (p.spent > p.budget ? " alert-text" : "")}>
+                                {p.budget <= 0 && p.spent > 0 ? "Sin ppto." : `${pct}%`}
+                              </CTableDataCell>
                             </CTableRow>
                           );
                         })}
@@ -238,7 +241,7 @@ function exportGastosCSV(items: ProjectItemDTO[], projectName: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `ejecucion-${projectName.toLowerCase().replace(/\s+/g, "-")}-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `ejecucion-${projectName.toLowerCase().replace(/\s+/g, "-")}-${todayLocal()}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -445,7 +448,9 @@ function ResumenView({ project, items }: { project: ProjectDTO; items: ProjectIt
   // criterio que la tabla de arriba, ver ResumenView más abajo) vs.
   // recortado a 100 (solo para el ancho de la barra visual).
   const ejecucionPctReal = project.budget > 0 ? (project.spent / project.budget) * 100 : 0;
-  const ejecucionPct = Math.min(100, ejecucionPctReal);
+  // Sin presupuesto cargado pero con gastos: barra llena en rojo y aviso, no "0%".
+  const sinPresupuestoConGastos = project.budget <= 0 && project.spent > 0;
+  const ejecucionPct = sinPresupuestoConGastos ? 100 : Math.min(100, ejecucionPctReal);
   const saldoDisponible = project.budget - project.spent;
 
   const categoriaSums: Record<string, number> = {};
@@ -490,7 +495,10 @@ function ResumenView({ project, items }: { project: ProjectDTO; items: ProjectIt
         <div className="col-md-3 col-6">
           <CCard className="h-100"><CCardBody>
             <div className="text-uppercase text-body-secondary small mb-1">% ejecutado</div>
-            <div className={"fs-3 fw-bold mono" + (project.spent > project.budget ? " alert-text" : "")}>{Math.round(ejecucionPctReal)}%</div>
+            <div className={"fs-3 fw-bold mono" + (project.spent > project.budget ? " alert-text" : "")}>
+              {sinPresupuestoConGastos ? "—" : `${Math.round(ejecucionPctReal)}%`}
+            </div>
+            {sinPresupuestoConGastos && <div className="small alert-text">Sin presupuesto cargado</div>}
           </CCardBody></CCard>
         </div>
         <div className="col-md-3 col-6">
@@ -505,7 +513,11 @@ function ResumenView({ project, items }: { project: ProjectDTO; items: ProjectIt
         <div className="bar-track">
           <div className="bar-fill" style={{ width: `${ejecucionPct}%`, background: project.spent > project.budget ? "var(--crit)" : "var(--ok)" }} />
         </div>
-        <span className="item-row-sub">{Math.round(ejecucionPctReal)}% del presupuesto ejecutado</span>
+        <span className={"item-row-sub" + (sinPresupuestoConGastos ? " alert-text" : "")}>
+          {sinPresupuestoConGastos
+            ? "Sin presupuesto cargado — ya hay gastos registrados"
+            : `${Math.round(ejecucionPctReal)}% del presupuesto ejecutado`}
+        </span>
       </div>
 
       {items.length === 0 && <p className="empty-col">Sin gastos cargados todavía para esta obra.</p>}

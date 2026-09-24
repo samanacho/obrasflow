@@ -18,6 +18,7 @@ import { LOT_STATUS_ORDER, LOT_STATUS_LABEL, LOT_STATUS_COLOR, TEST_TIPOS, TEST_
 import { fmtGs } from "@/lib/currency";
 import { fechaFiscalizacionEstimada } from "@/lib/factoryCapacity";
 import type { PoleLotDTO, PoleLotInput, PoleLotStatus, PoleSpecDTO, PoleQualityTestInput } from "@/lib/types";
+import { todayLocal } from "@/lib/dates";
 
 function fmtDate(d: string | null) {
   if (!d) return "—";
@@ -29,7 +30,7 @@ function fmtDateTime(iso: string) {
   return d.toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-const EMPTY_TEST: PoleQualityTestInput = { tipo: "", resultado: "Pendiente", fecha: new Date().toISOString().slice(0, 10), valorMedido: "", responsable: "", observaciones: "" };
+const EMPTY_TEST: PoleQualityTestInput = { tipo: "", resultado: "Pendiente", fecha: todayLocal(), valorMedido: "", responsable: "", observaciones: "" };
 
 export default function PoleLotDetail({ params }: { params: { id: string } }) {
   const { id } = params;
@@ -146,7 +147,7 @@ export default function PoleLotDetail({ params }: { params: { id: string } }) {
         throw new Error(body.error || `HTTP ${res.status}`);
       }
       setShowTestForm(false);
-      setTestForm(EMPTY_TEST);
+      setTestForm({ ...EMPTY_TEST, fecha: todayLocal() });
       load();
     } catch (err: any) {
       setTestError(err.message || "No se pudo guardar el ensayo.");
@@ -312,7 +313,7 @@ export default function PoleLotDetail({ params }: { params: { id: string } }) {
             <span className="fw-semibold fs-5">Ensayos de calidad</span>
             <p className="module-desc mb-0">Ruptura/flexión, verificación dimensional, curado — un registro por ensayo hecho sobre este lote.</p>
           </div>
-          <CButton color="primary" size="sm" onClick={() => { setTestError(null); setTestForm(EMPTY_TEST); setShowTestForm(true); }}>
+          <CButton color="primary" size="sm" onClick={() => { setTestError(null); setTestForm({ ...EMPTY_TEST, fecha: todayLocal() }); setShowTestForm(true); }}>
             <CIcon icon={cilPlus} className="me-1" /> Agregar ensayo
           </CButton>
         </CCardHeader>

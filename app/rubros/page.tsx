@@ -31,6 +31,11 @@ function typeLabel(p: { type: ProjectType; customType?: string | null }): string
   return p.type === "otro" && p.customType ? p.customType : TYPE_LABEL[p.type];
 }
 
+/** Minúsculas y sin tildes: "estacion" tiene que encontrar "ESTACIÓN" (en Paraguay es muy común escribir sin tildes). */
+function normalizeSearch(s: string): string {
+  return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
+
 function fmtMoney(n: number) {
   return "Gs. " + Number(n || 0).toLocaleString("es-PY");
 }
@@ -92,10 +97,10 @@ export default function RubrosPage() {
   }, [projects]);
 
   const searchResults = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = normalizeSearch(search.trim());
     if (!q) return [];
     return projects
-      .filter((p) => `${p.name} ${p.reference ?? ""} ${p.manager} ${p.city ?? ""}`.toLowerCase().includes(q))
+      .filter((p) => normalizeSearch(`${p.name} ${p.reference ?? ""} ${p.sitioNombre ?? ""} ${p.manager} ${p.city ?? ""}`).includes(q))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [projects, search]);
   const searching = search.trim().length > 0;
@@ -123,7 +128,7 @@ export default function RubrosPage() {
           <CInputGroup>
             <CInputGroupText><CIcon icon={cilSearch} /></CInputGroupText>
             <CFormInput
-              placeholder="Buscar obra por nombre, referencia, responsable o ciudad…"
+              placeholder="Buscar obra por nombre, referencia, sitio, responsable o ciudad…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -149,9 +154,12 @@ export default function RubrosPage() {
                       <div className="d-flex align-items-center gap-2">
                         <span className="rubro-card-icon">{TYPE_ICON[p.type]}</span>
                         <div>
-                          <div className="fw-semibold">{p.name}</div>
+                          <div className="fw-semibold">
+                            {p.name}
+                            {p.reference && <span className="text-body-secondary fw-normal"> · REF: {p.reference}</span>}
+                          </div>
                           <div className="text-body-secondary small">
-                            {p.manager}{p.city ? ` · ${p.city}` : ""}
+                            {p.manager}{p.city ? ` · ${p.city}` : ""}{p.sitioNombre ? ` · Sitio: ${p.sitioNombre}` : ""}
                           </div>
                         </div>
                       </div>

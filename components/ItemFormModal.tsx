@@ -10,6 +10,7 @@ import {
 import FileDropZone from "@/components/FileDropZone";
 import type { ProjectItemDTO, ContractorDTO, SupplierDTO } from "@/lib/types";
 import { ITEM_KINDS, ItemField } from "@/lib/itemKinds";
+import { todayLocal } from "@/lib/dates";
 
 const LocationPicker = dynamic(() => import("@/components/LocationPicker"), {
   ssr: false,
@@ -34,7 +35,7 @@ function parseCoords(raw: any): { lat: number; lng: number } | null {
  * toggle "Editar movimientos de obra" ahí).
  */
 export default function ItemFormModal({
-  projectId, kind, existing, initialTitle, initialData, existingRubros, showToast, onClose, onSaved,
+  projectId, kind, existing, initialTitle, initialData, initialStatus, contextLabel, existingRubros, showToast, onClose, onSaved,
 }: {
   projectId: string;
   kind: string;
@@ -43,6 +44,10 @@ export default function ItemFormModal({
   initialTitle?: string | null;
   /** Con qué datos prellenar `data` al crear un ítem nuevo (ignorado si `existing` no es null) — lo usa /registro-rapido para pasar monto/fecha/medioPago/notas ya cargados desde una captura rápida. */
   initialData?: Record<string, any>;
+  /** Estado inicial al crear (ignorado si `existing` no es null) — ej. "Pagado" cuando viene de una captura rápida, que ya es un pago hecho. */
+  initialStatus?: string;
+  /** Texto extra en el título del modal (ej. el nombre de la obra) cuando se abre fuera de la ficha de esa obra. */
+  contextLabel?: string;
   /** Nombres de rubro ya cargados en esta obra (solo Ejecución) — sugerencias del campo "Nombre del rubro" para que agrupar insumos del mismo rubro sea elegir de una lista, no repetir el nombre a mano. */
   existingRubros?: string[];
   showToast: (m: string) => void;
@@ -51,13 +56,13 @@ export default function ItemFormModal({
 }) {
   const cfg = ITEM_KINDS[kind];
   const [title, setTitle] = useState(existing?.title ?? initialTitle ?? "");
-  const [status, setStatus] = useState(existing?.status ?? cfg.defaultStatus ?? "");
+  const [status, setStatus] = useState(existing?.status ?? initialStatus ?? cfg.defaultStatus ?? "");
   // Parte Diario: un registro nuevo arranca con la fecha de hoy ya
   // cargada — es lo primero que se pide y no tiene sentido hacer que el
   // usuario la escriba a mano cada vez que solo quiere dejar algo del día.
   const [data, setData] = useState<Record<string, any>>(
     existing?.data ?? {
-      ...(kind === "daily_log" ? { fecha: new Date().toISOString().slice(0, 10) } : {}),
+      ...(kind === "daily_log" ? { fecha: todayLocal() } : {}),
       ...initialData,
     }
   );
@@ -194,7 +199,10 @@ export default function ItemFormModal({
   return (
     <CModal visible onClose={onClose} alignment="center" size="lg">
       <CModalHeader>
-        <CModalTitle>{existing ? "Editar" : "Nuevo"} {cfg.singular}</CModalTitle>
+        <CModalTitle>
+          {existing ? "Editar" : "Nuevo"} {cfg.singular}
+          {contextLabel && <span className="text-body-secondary fw-normal"> — {contextLabel}</span>}
+        </CModalTitle>
       </CModalHeader>
       <CForm onSubmit={handleSubmit}>
         <CModalBody>

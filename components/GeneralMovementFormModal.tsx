@@ -7,6 +7,7 @@ import {
 } from "@coreui/react";
 import { COST_CENTER_SUGGESTIONS } from "@/lib/itemKinds";
 import type { GeneralMovementDTO, GeneralMovementInput, GeneralMovementTipo } from "@/lib/types";
+import { todayLocal } from "@/lib/dates";
 
 // Extraído de app/movimientos/page.tsx (mismo criterio que components/
 // ItemFormModal.tsx) para poder reusarlo también desde /registro-rapido al
@@ -17,7 +18,7 @@ export const ESTADO_GENERAL_OPTIONS = ["Pendiente", "Pagado", "Conciliado"];
 export const RESPONSABLE_SUGGESTIONS_BASE = ["Ignacio Samaniego", "Hugo Rotela"];
 
 export const EMPTY_GENERAL_FORM: GeneralMovementInput = {
-  fecha: new Date().toISOString().slice(0, 10),
+  fecha: todayLocal(),
   tipo: "ingreso",
   concepto: "",
   categoria: "",
@@ -63,7 +64,9 @@ export default function GeneralMovementFormModal({
           responsable: editing.responsable ?? "",
           notas: editing.notas ?? "",
         }
-      : { ...EMPTY_GENERAL_FORM, ...initialData }
+      // La fecha se recalcula al abrir (EMPTY_GENERAL_FORM se evalúa una sola
+      // vez al cargar el módulo y quedaría vieja si la pestaña pasa la medianoche).
+      : { ...EMPTY_GENERAL_FORM, fecha: todayLocal(), ...initialData }
   );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);

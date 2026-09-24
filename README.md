@@ -163,7 +163,7 @@ Estos módulos comparten un solo modelo de datos (`ProjectItem`, ver `prisma/sch
 
 Sección **global** (no pertenece a ningún proyecto) para comparar contratistas de distintos rubros y ciudades antes de contratar. Cada ficha (`/contratistas/[id]`) tiene:
 
-- Rubros (civil/eléctrico/vial, uno o varios), ciudad/provincia, celular, email, contacto, RUC, estado activo/inactivo.
+- Rubros (civil/eléctrico/vial, uno o varios), ciudad/departamento, celular, email, contacto, RUC, estado activo/inactivo.
 - **Historial de obras**: una entrada por cada obra trabajada junto al contratista, opcionalmente vinculada a un proyecto existente, con su propia calificación 1-5 (tipo Uber) y comentario. La ficha muestra el promedio.
 
 CRUD completo: crear/editar/**eliminar** desde `/contratistas` (cada tarjeta) y eliminar también desde la propia ficha (`/contratistas/[id]`, botón en el header) — al eliminar un contratista se borra en cascada su historial de calificaciones (`onDelete: Cascade` en el schema).

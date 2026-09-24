@@ -25,6 +25,9 @@ import QuickExpenseButton from "@/components/QuickExpenseButton";
 
 const ICONS: Record<string, any> = { cilSpeedometer, cilPeople, cilFactory, cilTruck, cilSettings, cilBadge };
 
+/** Pantallas que no tienen ítem propio en el menú y pertenecen a "Proyectos". */
+const PROYECTOS_SUBPATHS = ["/rubros", "/project", "/sitios", "/movimientos", "/ejecucion", "/registro-rapido"];
+
 export interface Crumb {
   label: string;
   href?: string;
@@ -66,21 +69,31 @@ export default function AppShell({
           </CSidebarBrand>
         </CSidebarHeader>
         <CSidebarNav>
-          {NAV_ITEMS.map((item) => (
-            <CNavItem key={item.key} active={pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href))}>
-              <Link href={item.href} className="nav-link">
-                <CIcon customClassName="nav-icon" icon={ICONS[item.icon]} />
-                {item.highlightFirstLetter ? (
-                  <>
-                    <span className="nav-label-highlight">{item.label[0]}</span>
-                    {item.label.slice(1)}
-                  </>
-                ) : (
-                  item.label
-                )}
-              </Link>
-            </CNavItem>
-          ))}
+          {NAV_ITEMS.map((item) => {
+            // "Proyectos" (href "/") también cubre las pantallas de obras que
+            // cuelgan de ahí (rubros, sitios, fichas, movimientos, etc.).
+            const active =
+              item.href === "/"
+                ? pathname === "/" || PROYECTOS_SUBPATHS.some((p) => pathname.startsWith(p))
+                : pathname.startsWith(item.href);
+            return (
+              // CNavItem de CoreUI descarta la prop `active` si no recibe
+              // href/to, así que el estado activo se marca con la clase.
+              <CNavItem key={item.key} className={active ? "active" : undefined}>
+                <Link href={item.href} className={"nav-link" + (active ? " active" : "")} aria-current={active ? "page" : undefined}>
+                  <CIcon customClassName="nav-icon" icon={ICONS[item.icon]} />
+                  {item.highlightFirstLetter ? (
+                    <span className="nav-label">
+                      <span className="nav-label-highlight">{item.label[0]}</span>
+                      {item.label.slice(1)}
+                    </span>
+                  ) : (
+                    item.label
+                  )}
+                </Link>
+              </CNavItem>
+            );
+          })}
         </CSidebarNav>
         <CSidebarFooter className="border-top d-none d-lg-flex">
           <CSidebarToggler onClick={() => setSidebarVisible(!sidebarVisible)} />
@@ -90,7 +103,10 @@ export default function AppShell({
       <div className="of-content-wrap">
         <CHeader className="border-bottom of-header">
           <CContainer fluid className="d-flex align-items-center">
-            <CHeaderToggler className="d-lg-none" onClick={() => setSidebarVisible(!sidebarVisible)}>
+            {/* Visible también en escritorio: si el menú se oculta (con el
+                botón del pie del menú, o por error), tiene que haber una
+                forma de volver a abrirlo. */}
+            <CHeaderToggler onClick={() => setSidebarVisible(!sidebarVisible)} title={sidebarVisible ? "Ocultar menú" : "Mostrar menú"}>
               <CIcon icon={cilMenu} size="lg" />
             </CHeaderToggler>
             <CBreadcrumb className="mb-0 flex-grow-1">

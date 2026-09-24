@@ -10,6 +10,7 @@ import CIcon from "@coreui/icons-react";
 import { cilBolt } from "@coreui/icons";
 import { MEDIO_PAGO_OPTIONS } from "@/components/GeneralMovementFormModal";
 import type { QuickExpenseDTO } from "@/lib/types";
+import { todayLocal } from "@/lib/dates";
 
 /**
  * Botón siempre visible (en el header, ver AppShell) para anotar un pago en
@@ -19,29 +20,45 @@ import type { QuickExpenseDTO } from "@/lib/types";
  * con calma, en /registro-rapido — ahí es donde se convierte en un
  * movimiento real de obra o un gasto general.
  */
+/**
+ * Evento de ventana para que el contador del header y la bandeja de
+ * /registro-rapido se enteren cuando una captura se crea, se clasifica o se
+ * descarta en otro lado de la app (antes el contador quedaba desactualizado
+ * hasta recargar la página).
+ */
+export const QUICK_EXPENSES_CHANGED = "obrasflow:quick-expenses-changed";
+export function notifyQuickExpensesChanged() {
+  window.dispatchEvent(new Event(QUICK_EXPENSES_CHANGED));
+}
+
 export default function QuickExpenseButton() {
   const [pendingCount, setPendingCount] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
   const [monto, setMonto] = useState("");
   const [medioPago, setMedioPago] = useState("Efectivo");
   const [nota, setNota] = useState("");
-  const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10));
+  const [fecha, setFecha] = useState(() => todayLocal());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
 
   useEffect(() => {
-    fetch("/api/quick-expenses")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((items: QuickExpenseDTO[]) => setPendingCount(items.filter((i) => !i.resuelto).length))
-      .catch(() => {});
+    function refreshCount() {
+      fetch("/api/quick-expenses")
+        .then((r) => (r.ok ? r.json() : []))
+        .then((items: QuickExpenseDTO[]) => setPendingCount(items.filter((i) => !i.resuelto).length))
+        .catch(() => {});
+    }
+    refreshCount();
+    window.addEventListener(QUICK_EXPENSES_CHANGED, refreshCount);
+    return () => window.removeEventListener(QUICK_EXPENSES_CHANGED, refreshCount);
   }, []);
 
   function openModal() {
     setMonto("");
     setMedioPago("Efectivo");
     setNota("");
-    setFecha(new Date().toISOString().slice(0, 10));
+    setFecha(todayLocal());
     setError(null);
     setOpen(true);
   }
@@ -63,8 +80,8 @@ export default function QuickExpenseButton() {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || `HTTP ${res.status}`);
       }
-      setPendingCount((c) => (c ?? 0) + 1);
       setOpen(false);
+      notifyQuickExpensesChanged();
       setSavedFlash(true);
       setTimeout(() => setSavedFlash(false), 2000);
     } catch (err: any) {
