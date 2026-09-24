@@ -89,21 +89,27 @@ El script lee sus variables de `.env.local` (git lo ignora).
 - **El número:** tiene que ser una línea móvil (recomendado) que reciba SMS y
   llamadas, incluso internacionales, porque de ahí llega el código de Meta.
   **No** puede ser el WhatsApp personal de uno de los dueños (ellos le escriben
-  al agente desde sus números).
+  al agente desde sus números). La línea tiene que seguir activa (con saldo)
+  para no perder el número.
 - **Si ese número ya tiene WhatsApp** (común o Business): hay que **borrar esa
   cuenta** desde el teléfono (Ajustes > Cuenta > Eliminar mi cuenta) y esperar
   unos 3 minutos. Es irreversible: se pierden chats, grupos y backup (exportá lo
   que sirva antes). Usar la app y la API a la vez con el mismo número
   ("coexistencia") solo se puede a través de un proveedor pago o siendo Tech
   Provider de Meta: no lo recomendamos. Si la cuenta se sigue usando,
-  conseguí una SIM nueva para el agente.
-- **Tarjeta en Meta (antes del 30/09/2026):** desde el 01/10/2026 Meta cobra las
-  respuestas por mensaje (ver Costos). Hay un cupo gratis mensual, pero sin
-  tarjeta cargada Meta puede dejar de entregar respuestas. Cargar una tarjeta de
-  crédito Visa/Mastercard no genera cargos mientras se esté dentro del cupo.
+  conseguí una SIM nueva para el agente. **No borres nada todavía**: primero se
+  prueba todo con el número de prueba de Meta (pasos 1–5).
 - **Business portfolio:** usá el portfolio definitivo de la empresa en
   <https://business.facebook.com>. Un número borrado de una cuenta de la
   plataforma no se puede reutilizar en otra.
+- **Que no dependa de una sola persona:** activá la verificación en dos pasos
+  en las cuentas de Facebook de los dos dueños y sumá al segundo como
+  administrador del business portfolio, de la app de Meta (App roles) y de la
+  organización de Claude. Si la cuenta de uno se bloquea, el otro mantiene el
+  control del número.
+- **No activar "Vercel Authentication"** (Deployment Protection) sobre el
+  dominio de producción sin excluir `/api/whatsapp/webhook`, `/privacidad` y
+  `/terminos`: Meta dejaría de llegar al webhook.
 
 ### 1. Claude (Anthropic)
 
@@ -113,35 +119,54 @@ El script lee sus variables de `.env.local` (git lo ignora).
 2. **Settings > API keys > Create key** en ese workspace. Para producción
    conviene una key de *service account* (una key personal deja de funcionar si
    esa persona sale de la organización).
-3. **Billing:** la API es prepaga (sin saldo, el agente responde "está en
-   pausa, avisale al administrador"). Cargá crédito y fijá un **spend limit**
-   mensual en el workspace. Ver Costos para el monto.
+3. **Billing:** la API es prepaga. Cargá crédito, activá **Auto-reload** (por
+   ejemplo, recargar US$20 cuando el saldo baje de US$10) y fijá un **spend
+   limit** mensual en el workspace como techo. Si el saldo o el límite se
+   agotan, el agente contesta "está en pausa, avisale al administrador".
 
-### 2. Meta: app y número de prueba (gratis, sin tocar la SIM)
+### 2. Meta: app, número de prueba y token permanente
 
 1. <https://developers.facebook.com/apps> > **Create app** > caso de uso
    **"Connect with customers through WhatsApp"** > elegí el business portfolio.
 2. En **WhatsApp > API Setup** Meta crea un **número de prueba** y una WABA de
-   prueba, y te da un token temporal (dura pocas horas). Anotá el *Phone Number
-   ID* y el *WhatsApp Business Account ID* de prueba. El **App Secret** está en
-   App settings > Basic.
+   prueba. Anotá el *Phone Number ID* y el *WhatsApp Business Account ID* de
+   prueba. El **App Secret** está en App settings > Basic.
 3. En el campo **"To"** agregá los celulares de los 2 dueños como destinatarios
-   de prueba y confirmá el código que les llega.
+   de prueba: a cada uno le llega un código por WhatsApp que hay que cargar en
+   el panel (tengan el celular a mano).
+4. **Token permanente** (no uses el temporal de API Setup: vence en pocas horas
+   y a mitad de una prueba parece una falla):
+   <https://business.facebook.com/latest/settings> > Users > **System users** >
+   Add, rol **Admin** (así ve también la WABA del número real que se crea
+   después) > **Assign assets**: la app y la WABA, con control total >
+   **Generate token** con la app, vencimiento **Nunca** y los permisos
+   `business_management`, `whatsapp_business_management` y
+   `whatsapp_business_messaging`.
 
-### 3. Vercel: variables (apuntando al número de prueba)
+### 3. Pasar la app a Live
+
+App settings > **Basic**: nombre, correo de contacto, **Privacy Policy URL**
+`https://obrasflow-app.vercel.app/privacidad`, **Terms of Service URL**
+`https://obrasflow-app.vercel.app/terminos`, instrucciones de borrado de datos
+`https://obrasflow-app.vercel.app/privacidad#borrado-de-datos`, ícono y
+categoría. Después **App Mode: Live**. Como la app solo usa la WABA propia, no
+pasa por App Review. Se hace antes de probar porque, en modo desarrollo, Meta
+puede no mandar algunos webhooks.
+
+### 4. Vercel: variables (apuntando al número de prueba)
 
 Vercel > Project > Settings > Environment Variables (Production), después
-**Redeploy**:
+**Redeploy** del último deployment:
 
 | Variable | Qué es |
 |---|---|
 | `WHATSAPP_VERIFY_TOKEN` | El que generó `npm run wa -- secretos`; el mismo que en Meta. |
 | `WHATSAPP_APP_SECRET` | App Secret de la app de Meta (firma los webhooks). |
-| `WHATSAPP_ACCESS_TOKEN` | Token de acceso (primero el temporal; después el del System User). |
+| `WHATSAPP_ACCESS_TOKEN` | Token permanente del System User (paso 2.4). |
 | `WHATSAPP_PHONE_NUMBER_ID` | Phone Number ID (primero el de prueba; después el del número real). |
 | `WHATSAPP_ALLOWED_NUMBERS` | Quiénes pueden hablarle, con su nombre: `595981111111:Ignacio Samaniego,595982222222:Hugo Rotela` (con código de país; `+`, espacios, `00` o el `0` de larga distancia se limpian solos). |
 | `ANTHROPIC_API_KEY` | Clave de la API de Claude. |
-| `ANTHROPIC_MODEL` | Opcional. Default `claude-sonnet-5` (el más barato que cumple). Para máxima precisión: `claude-opus-5-5`. |
+| `ANTHROPIC_MODEL` | Recomendado dejarlo explícito. Default `claude-sonnet-5` (el más barato que cumple). Para máxima precisión: `claude-opus-5-5` (confirmá antes en platform.claude.com que esté disponible para la organización). |
 | `ANTHROPIC_EFFORT` | Opcional. `low` / `medium` (default) / `high`. |
 | `WHATSAPP_GRAPH_VERSION` | Opcional. Default `v25.0` (soportada hasta el 29/07/2028). |
 | `APP_BASE_URL` | Opcional. Para los links que manda el agente (por defecto, el dominio de producción de Vercel). |
@@ -150,69 +175,56 @@ Vercel > Project > Settings > Environment Variables (Production), después
 Para verificar el webhook en Meta alcanza con `WHATSAPP_VERIFY_TOKEN`; sin las
 demás, los mensajes responden 503 y no se procesan.
 
-### 4. Webhook y primera prueba
+### 5. Webhook y prueba con el número de prueba
 
 1. App Dashboard > **WhatsApp > Configuration > Webhook**: Callback URL
    `https://obrasflow-app.vercel.app/api/whatsapp/webhook`, el verify token,
-   **Verify and save**, y suscribí el campo **messages**.
+   **Verify and save**, y suscribí los campos **messages** y
+   **account_update** (este último solo queda en los logs).
 2. Copiá las mismas variables a `.env.local` en tu compu y corré
    `npm run wa -- revisar`. Tiene que dar ✅ en webhook, firma, token, número y
    suscripción. Si la app no está suscripta a la WABA: `npm run wa -- suscribir --si`.
 3. Un dueño le escribe al número de prueba: una consulta, una carga (tocando
-   **Confirmar**) y una foto de comprobante. Si no llega nada, pasá la app a
-   **Live** (paso 6) y volvé a probar: con la app en modo desarrollo Meta puede
-   no mandar algunos webhooks.
+   **Confirmar**) y una foto de comprobante.
 
-### 5. Token permanente (System User)
-
-<https://business.facebook.com/latest/settings> > Users > **System users** >
-Add (rol *Employee*) > **Assign assets**: la app (control total) y la WABA
-(control total; cuando exista, también la del número real) > **Generate
-token** con la app, vencimiento **Nunca** y los permisos
-`business_management`, `whatsapp_business_management` y
-`whatsapp_business_messaging`. Reemplazá `WHATSAPP_ACCESS_TOKEN` (Vercel +
-Redeploy y `.env.local`) y corré `npm run wa -- revisar`: tiene que decir
-"El token no vence".
-
-### 6. Pasar la app a Live
-
-App settings > **Basic**: nombre, correo de contacto, **Privacy Policy URL**
-`https://obrasflow-app.vercel.app/privacidad`, **Terms of Service URL**
-`https://obrasflow-app.vercel.app/terminos`, instrucciones de borrado de datos
-`https://obrasflow-app.vercel.app/privacidad#borrado-de-datos`, ícono y
-categoría. Después **App Mode: Live**. Como la app solo usa la WABA propia, no
-pasa por App Review.
-
-### 7. Número real
+### 6. Número real
 
 1. Liberá la SIM si tenía WhatsApp (paso 0).
 2. **WhatsApp Manager > Phone numbers > Add phone number** (o API Setup > Add
    phone number): nombre visible (el de la empresa o marca, coherente con su
    web o redes; no genérico ni con "oficial"), categoría y verificación por
    **SMS** (o **llamada** si el SMS no llega). Mientras Meta revisa el nombre,
-   el número funciona con capacidad "LIMITED".
-3. `npm run wa -- numeros` muestra el nuevo `WHATSAPP_PHONE_NUMBER_ID`:
+   el número funciona con capacidad "LIMITED": no hace falta esperar la
+   aprobación para registrarlo.
+3. **Tarjeta:** cargá una tarjeta de crédito Visa o Mastercard en la cuenta de
+   ese número (WhatsApp Manager > Configuración de pago) **antes del primer
+   mensaje real**. Desde el 01/10/2026 las respuestas se cobran pasado el cupo
+   gratis mensual, y sin tarjeta Meta puede dejar de entregarlas. Dentro del
+   cupo no genera cargos.
+4. `npm run wa -- numeros` muestra el nuevo `WHATSAPP_PHONE_NUMBER_ID`:
    cargalo en `.env.local`.
-4. **Registrar** (obligatorio: agregar el número en el panel NO lo registra):
+5. **Registrar** (obligatorio: agregar el número en el panel NO lo registra):
    `npm run wa -- registrar --pin <PIN de 6 dígitos> --si`. Meta permite **10
    intentos cada 72 h**; el script nunca reintenta solo. El PIN queda como
    verificación en dos pasos: guardalo (se necesita para mover o borrar el
    número).
-5. `npm run wa -- suscribir --si` si `revisar` dice que la app no está suscripta
+6. `npm run wa -- suscribir --si` si `revisar` dice que la app no está suscripta
    a la WABA real.
-6. Cargá la **tarjeta** en la cuenta de ese número (WhatsApp Manager > Configuración
-   de pago) si no lo hiciste antes.
 7. Vercel: `WHATSAPP_PHONE_NUMBER_ID` = el real, **Redeploy**, y
    `npm run wa -- revisar` con todo en ✅.
 8. Un dueño le escribe "hola" al número real (el agente nunca inicia la
-   conversación) y repite las pruebas del paso 4.
+   conversación) y repite las pruebas del paso 5.
 
-### 8. Operación
+### 7. Operación
 
 - Logs: Vercel > Project > Logs, buscando "WhatsApp". Ahí aparecen el consumo
   de la IA por mensaje, las respuestas que Meta no pudo entregar (con su causa)
   y los mensajes que llegan a otro número. En el plan Hobby se guardan 1 hora.
 - `npm run wa -- revisar` cuando algo no funcione.
+- Una vez por mes: consumo en platform.claude.com > Usage, mensajes en
+  WhatsApp Manager > Estadísticas, y el **tamaño de la base** en Vercel >
+  Storage (cada foto o PDF de comprobante se guarda en la base; en un plan
+  gratuito de Postgres el espacio es limitado).
 - Caídas de Meta: <https://metastatus.com/whatsapp-business-api>.
 - No desactivar la "contact book" del portfolio (Meta Business Suite > Business
   settings > Business info): hace que los dueños lleguen siempre con su número
@@ -252,6 +264,10 @@ pasa por App Review.
   cuentas nuevas reciben un crédito inicial chico para probar.
 - **Vercel:** el plan Hobby (gratis) es solo para uso personal no comercial; para
   una herramienta de empresa corresponde Pro (US$20/mes).
+- **Impuestos:** en Paraguay, los pagos con tarjeta a servicios digitales del
+  exterior (Anthropic, Vercel, Meta) llevan percepción de IVA (10%) y pueden
+  tener recargo bancario por moneda extranjera. Consultá con el contador si ese
+  IVA es crédito fiscal.
 
 ## Limitaciones conocidas / próximos pasos
 
