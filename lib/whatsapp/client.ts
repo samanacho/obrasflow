@@ -57,9 +57,13 @@ export async function sendConfirmButtons(cfg: WhatsAppConfig, to: string, body: 
   });
 }
 
-/** Marca el mensaje entrante como leído (tildes azules) — señal de que el agente lo recibió. */
-export async function markAsRead(cfg: WhatsAppConfig, waMessageId: string): Promise<void> {
-  await postMessage(cfg, { status: "read", message_id: waMessageId });
+/**
+ * Marca el mensaje entrante como leído (tildes azules) — señal de que el
+ * agente lo recibió. Con `typing`, además muestra "escribiendo…" hasta que
+ * respondemos (o 25 s): mismo request, no es un mensaje ni se cobra.
+ */
+export async function markAsRead(cfg: WhatsAppConfig, waMessageId: string, typing = false): Promise<void> {
+  await postMessage(cfg, { status: "read", message_id: waMessageId, ...(typing ? { typing_indicator: { type: "text" } } : {}) });
 }
 
 /**
@@ -72,15 +76,24 @@ export async function downloadMedia(
   waMediaId: string,
   maxBytes: number
 ): Promise<{ data: Buffer; mimeType: string } | { tooLarge: true; size: number }> {
-  const metaRes = await fetch(graphUrl(cfg, waMediaId), { headers: { Authorization: `Bearer ${cfg.accessToken}` } });
-  if (!metaRes.ok) throw new Error(`WhatsApp media meta ${metaRes.status}`);
-  const meta = (await metaRes.json()) as { url?: string; mime_type?: string; file_size?: number | string };
-  if (!meta.url) throw new Error("WhatsApp media sin url");
+  const getMeta = async () => {
+    const metaRes = await fetch(graphUrl(cfg, waMediaId), { headers: { Authorization: `Bearer ${cfg.accessToken}` } });
+    if (!metaRes.ok) throw new Error(`WhatsApp media meta ${metaRes.status}`);
+    const meta = (await metaRes.json()) as { url?: string; mime_type?: string; file_size?: number | string };
+    if (!meta.url) throw new Error("WhatsApp media sin url");
+    return meta as { url: string; mime_type?: string; file_size?: number | string };
+  };
+  let meta = await getMeta();
   // Meta documenta file_size a veces como número y a veces como string.
   const declared = Number(meta.file_size);
   if (Number.isFinite(declared) && declared > maxBytes) return { tooLarge: true, size: declared };
 
-  const binRes = await fetch(meta.url, { headers: { Authorization: `Bearer ${cfg.accessToken}` } });
+  let binRes = await fetch(meta.url, { headers: { Authorization: `Bearer ${cfg.accessToken}` } });
+  if (binRes.status === 404) {
+    // La URL dura 5 minutos: Meta indica pedir una nueva y reintentar.
+    meta = await getMeta();
+    binRes = await fetch(meta.url, { headers: { Authorization: `Bearer ${cfg.accessToken}` } });
+  }
   if (!binRes.ok) throw new Error(`WhatsApp media download ${binRes.status}`);
   const length = Number(binRes.headers.get("content-length"));
   if (Number.isFinite(length) && length > maxBytes) {

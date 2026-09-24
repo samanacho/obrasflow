@@ -10,14 +10,26 @@ import { listPendingActions, type AgentUser, type ProposalResult } from "./actio
 // herramientas (el tool runner del SDK maneja el ida y vuelta) -> texto de
 // respuesta + propuestas creadas en este turno.
 
-/** Modelo por defecto; se puede cambiar sin tocar código con ANTHROPIC_MODEL. */
-const MODEL = process.env.ANTHROPIC_MODEL?.trim() || "claude-opus-5";
 /**
- * Esfuerzo de razonamiento. En Claude Opus 5, "low"/"medium" rinden muy
- * bien y son la palanca principal de costo y demora — "medium" es un buen
- * punto para consultas y cargas por WhatsApp.
+ * Modelo por defecto: Claude Sonnet 5 — el más barato (40% del precio de
+ * Opus) que mantiene razonamiento adaptativo, effort y visión de alta
+ * resolución; y como cada registro pasa por el botón Confirmar, un error de
+ * lectura se ve antes de guardarse. Para máxima precisión:
+ * ANTHROPIC_MODEL=claude-opus-5-5 (sin tocar código).
+ */
+const MODEL = process.env.ANTHROPIC_MODEL?.trim() || "claude-sonnet-5";
+/**
+ * Esfuerzo de razonamiento: la palanca principal de costo y demora.
+ * "medium" es un buen punto para consultas y cargas por WhatsApp.
  */
 const EFFORT = (process.env.ANTHROPIC_EFFORT?.trim() || "medium") as "low" | "medium" | "high" | "xhigh" | "max";
+/**
+ * Respaldo del lado del servidor: solo los modelos con clasificadores de
+ * seguridad (Opus 5.x / Fable 5.x) lo documentan; a otros no se les manda.
+ */
+const SERVER_FALLBACK = /^claude-(opus-5|fable-5)/.test(MODEL);
+/** Haiku 4.5 rechaza thinking adaptativo y effort (400): se omiten. */
+const LEGACY_THINKING = /^claude-haiku-4-5/.test(MODEL);
 const HISTORY_MESSAGES = 20;
 const HISTORY_WINDOW_MS = 12 * 60 * 60 * 1000;
 /** Tope de idas y vueltas con herramientas por mensaje (evita loops caros). */
@@ -59,7 +71,7 @@ async function loadHistory(phone: string, current: { id: string; createdAt: Date
     .map((r) => {
       if (r.direction === "in") return { role: "user", content: r.text as string };
       const text = r.proposalId
-        ? `[Tarjeta automática del sistema, no escrita por vos: se le mandó al usuario la propuesta ${r.proposalId} con botones Confirmar/Cancelar]\n${r.text}`
+        ? `[Tarjeta automática del sistema: se le mandó al usuario la propuesta ${r.proposalId} con botones Confirmar/Cancelar. El resumen de la tarjeta lo arma el sistema, no vos]\n${r.text}`
         : (r.text as string);
       return { role: "assistant", content: text };
     });
@@ -116,18 +128,19 @@ export async function runAgentTurn(
 
   const abort = new AbortController();
   const timer = setTimeout(() => abort.abort(), timeoutMs);
+  // Consumo real del turno (todas las vueltas con herramientas), para ver en
+  // los logs de Vercel cuánto cuesta y si la caché está funcionando.
+  const usage = { calls: 0, input: 0, cacheRead: 0, cacheWrite: 0, output: 0 };
   try {
-    const final = await getClient().beta.messages.toolRunner(
+    const runner = getClient().beta.messages.toolRunner(
       {
         model: MODEL,
         max_tokens: 16000,
-        // Respaldo automático: si los clasificadores de seguridad de Opus 5
+        // Respaldo automático: si los clasificadores de seguridad de Opus 5.x
         // rechazan un pedido benigno, el API lo reintenta en el modelo que
         // Anthropic recomienda para esa categoría, en la misma llamada.
-        betas: ["server-side-fallback-2026-07-01"],
-        fallbacks: "default",
-        thinking: { type: "adaptive" },
-        output_config: { effort: EFFORT },
+        ...(SERVER_FALLBACK ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const } : {}),
+        ...(LEGACY_THINKING ? {} : { thinking: { type: "adaptive" as const }, output_config: { effort: EFFORT } }),
         // Caché: el system prompt fijo lleva su propio punto de corte, y el
         // automático cubre lo que crece dentro del turno (historial, foto/PDF,
         // resultados de herramientas): cada vuelta del runner lo relee de caché.
@@ -139,6 +152,14 @@ export async function runAgentTurn(
       },
       { signal: abort.signal }
     );
+    for await (const m of runner) {
+      usage.calls++;
+      usage.input += m.usage.input_tokens ?? 0;
+      usage.cacheRead += m.usage.cache_read_input_tokens ?? 0;
+      usage.cacheWrite += m.usage.cache_creation_input_tokens ?? 0;
+      usage.output += m.usage.output_tokens ?? 0;
+    }
+    const final = await runner.done();
 
     if (final.stop_reason === "refusal") {
       return { reply: "No puedo ayudarte con eso por acá. Si es algo de la obra, probá decírmelo de otra forma.", proposals: ctx.proposals };
@@ -164,5 +185,10 @@ export async function runAgentTurn(
     throw err;
   } finally {
     clearTimeout(timer);
+    if (usage.calls) {
+      console.log(
+        `WhatsApp agent: ${MODEL} · ${usage.calls} llamada(s) · entrada ${usage.input} (caché leída ${usage.cacheRead}, escrita ${usage.cacheWrite}) · salida ${usage.output} tokens`
+      );
+    }
   }
 }

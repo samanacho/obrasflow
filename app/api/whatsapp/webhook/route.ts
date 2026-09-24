@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
 import { waitUntil } from "@vercel/functions";
-import { getWhatsAppConfig } from "@/lib/whatsapp/config";
+import { getWhatsAppConfig, getVerifyToken } from "@/lib/whatsapp/config";
 import { verifyMetaSignature } from "@/lib/whatsapp/signature";
-import { parseWebhookPayload } from "@/lib/whatsapp/parse";
+import { parseWebhookPayload, logWebhookEvents } from "@/lib/whatsapp/parse";
 import { handleInbound } from "@/lib/whatsapp/handle";
 
 // Webhook de WhatsApp Cloud API (Meta). URL a configurar en Meta:
@@ -24,13 +24,13 @@ function safeEqual(a: string, b: string): boolean {
 
 /** Handshake de verificación: Meta llama con hub.mode/hub.verify_token/hub.challenge al guardar el webhook. */
 export async function GET(req: NextRequest) {
-  const cfg = getWhatsAppConfig();
-  if (!cfg) return new NextResponse("WhatsApp no configurado", { status: 503 });
+  const verifyToken = getVerifyToken();
+  if (!verifyToken) return new NextResponse("WhatsApp no configurado", { status: 503 });
   const sp = req.nextUrl.searchParams;
   const mode = sp.get("hub.mode");
   const token = sp.get("hub.verify_token") ?? "";
   const challenge = sp.get("hub.challenge") ?? "";
-  if (mode === "subscribe" && safeEqual(token, cfg.verifyToken)) {
+  if (mode === "subscribe" && safeEqual(token, verifyToken)) {
     return new NextResponse(challenge, { status: 200, headers: { "Content-Type": "text/plain" } });
   }
   return new NextResponse("Forbidden", { status: 403 });
@@ -57,6 +57,9 @@ export async function POST(req: NextRequest) {
     return new NextResponse("Bad JSON", { status: 400 });
   }
 
+  // Fallas de entrega (p. ej. sin medio de pago en Meta), mensajes a otro
+  // número, avisos de la cuenta: no se procesan, pero quedan en los logs.
+  logWebhookEvents(body, cfg.phoneNumberId);
   const messages = parseWebhookPayload(body, cfg.phoneNumberId);
   if (messages.length) {
     // En orden (una foto seguida de su texto tiene que procesarse en ese orden).

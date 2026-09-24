@@ -25,8 +25,18 @@ export function getWhatsAppConfig(): WhatsAppConfig | null {
     appSecret,
     accessToken,
     phoneNumberId,
-    graphVersion: process.env.WHATSAPP_GRAPH_VERSION?.trim() || "v23.0",
+    // v25.0: la de los ejemplos oficiales de WhatsApp; soportada hasta el 29/07/2028.
+    graphVersion: process.env.WHATSAPP_GRAPH_VERSION?.trim() || "v25.0",
   };
+}
+
+/**
+ * Solo el verify token: alcanza para el handshake GET del webhook, así el
+ * webhook se puede verificar en Meta antes de tener el token permanente y el
+ * Phone Number ID definitivos.
+ */
+export function getVerifyToken(): string | null {
+  return process.env.WHATSAPP_VERIFY_TOKEN?.trim() || null;
 }
 
 /**

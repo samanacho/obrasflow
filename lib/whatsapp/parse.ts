@@ -19,6 +19,51 @@ export type InboundMessage =
   | { kind: "button"; waMessageId: string; from: string; timestamp: number; buttonId: string; title: string }
   | { kind: "unsupported"; waMessageId: string; from: string; timestamp: number; type: string };
 
+/** Qué hacer ante los códigos de error de entrega más probables (docs de Meta: support/error-codes). */
+const DELIVERY_HINTS: Record<string, string> = {
+  "131042": "problema con el medio de pago de la cuenta de WhatsApp en Meta: revisá la tarjeta en WhatsApp Manager",
+  "131047": "pasaron más de 24 h desde el último mensaje del usuario",
+  "131056": "demasiados mensajes seguidos al mismo número",
+  "133010": "el número no está registrado en Cloud API (falta el /register con el PIN)",
+};
+
+/**
+ * Deja en los logs lo que el webhook trae además de mensajes y que el agente
+ * no procesa, para poder diagnosticar sin exponer datos:
+ * - mensajes dirigidos a OTRO phone_number_id (típico al pasar del número de
+ *   prueba al real sin actualizar WHATSAPP_PHONE_NUMBER_ID);
+ * - respuestas que Meta NO pudo entregar (statuses "failed");
+ * - avisos de la cuenta (restricciones, desconexión, etc.).
+ */
+export function logWebhookEvents(body: any, phoneNumberId?: string): void {
+  if (!body || body.object !== "whatsapp_business_account" || !Array.isArray(body.entry)) return;
+  for (const entry of body.entry) {
+    for (const change of entry?.changes ?? []) {
+      const value = change?.value ?? {};
+      if (change?.field !== "messages") {
+        const event = value?.event ?? value?.decision ?? "";
+        console.warn(`WhatsApp: evento de cuenta "${String(change?.field)}"${event ? ` (${String(event)})` : ""}`);
+        continue;
+      }
+      const to = value?.metadata?.phone_number_id ? String(value.metadata.phone_number_id) : "";
+      const count = Array.isArray(value?.messages) ? value.messages.length : 0;
+      if (phoneNumberId && to && to !== phoneNumberId && count) {
+        console.warn(
+          `WhatsApp: ${count} mensaje(s) para otro número (phone_number_id …${to.slice(-4)}), ignorados. Si es el número del agente, revisá WHATSAPP_PHONE_NUMBER_ID.`
+        );
+      }
+      for (const s of value?.statuses ?? []) {
+        if (s?.status !== "failed") continue;
+        for (const e of s?.errors?.length ? s.errors : [{}]) {
+          const code = String(e?.code ?? "?");
+          const hint = DELIVERY_HINTS[code];
+          console.warn(`WhatsApp: Meta no pudo entregar una respuesta (código ${code}: ${String(e?.title ?? "sin detalle")})${hint ? ` — ${hint}` : ""}`);
+        }
+      }
+    }
+  }
+}
+
 /** Tipos que no son un mensaje para contestar: reacciones (👍), avisos del sistema, etc. */
 const IGNORED_TYPES = new Set(["reaction", "system", "request_welcome", "ephemeral"]);
 
@@ -46,7 +91,8 @@ export function parseWebhookPayload(body: any, phoneNumberId?: string): InboundM
         if (!base.from) {
           // Usuarios con "nombre de usuario" de WhatsApp pueden llegar sin
           // teléfono (solo con su BSUID) — ver docs/WHATSAPP_AGENT.md.
-          console.warn("WhatsApp: mensaje sin número de teléfono (solo BSUID) ignorado");
+          const bsuid = String(m?.from_user_id ?? "");
+          console.warn(`WhatsApp: mensaje sin número de teléfono (solo BSUID ${bsuid ? `${bsuid.slice(0, 5)}…${bsuid.slice(-3)}` : "?"}) ignorado`);
           continue;
         }
         if (IGNORED_TYPES.has(String(m.type))) continue;

@@ -50,6 +50,29 @@ function cleanMime(m: string): string {
   return base === "image/jpg" ? "image/jpeg" : base;
 }
 
+/**
+ * Errores de la cuenta de la IA (no del mensaje): clave inválida, sin saldo,
+ * límite de gasto alcanzado. Reintentar no sirve: hay que avisarle al
+ * administrador, no pedirle al usuario que "pruebe de nuevo".
+ */
+function aiAccountProblem(err: unknown): string | null {
+  if (!(err instanceof Anthropic.APIError)) return null;
+  const body = ((err as { error?: { error?: { message?: string; details?: { error_code?: string } } } }).error?.error) ?? {};
+  const message = String(body.message ?? "");
+  if (err.status === 401 || err.status === 403) {
+    return "⚠️ El asistente no puede usar la IA: la clave de Anthropic no es válida o no tiene permisos. Avisale al administrador.";
+  }
+  if (
+    err.status === 402 ||
+    message.startsWith("You have reached your specified") ||
+    /credit balance/i.test(message) ||
+    body.details?.error_code === "enforced_spend_limit_reached"
+  ) {
+    return "⚠️ El asistente está en pausa: la cuenta de la IA se quedó sin saldo o llegó a su límite de gasto. Avisale al administrador.";
+  }
+  return null;
+}
+
 /** Cuenta páginas de un PDF sin dependencias. Si no las encuentra (PDF comprimido) devuelve 0 y no se bloquea. */
 function pdfPageCount(data: Buffer): number {
   return (data.toString("latin1").match(/\/Type\s*\/Page(?![a-zA-Z])/g) ?? []).length;
@@ -104,8 +127,10 @@ export async function handleInbound(cfg: WhatsAppConfig, msg: InboundMessage, de
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") return;
     throw err;
   }
-  markAsRead(cfg, msg.waMessageId).catch(() => {});
   const ageMs = msg.timestamp > 0 ? Date.now() - msg.timestamp * 1000 : 0;
+  // "escribiendo…" solo si el agente va a contestar ese mensaje con la IA.
+  const willThink = (msg.kind === "text" || msg.kind === "media") && ageMs <= STALE_TEXT_MS;
+  markAsRead(cfg, msg.waMessageId, willThink).catch(() => {});
 
   try {
     if (msg.kind === "button") {
@@ -263,22 +288,42 @@ async function agentTurn(
   try {
     turn = await runAgentTurn(user, content, inbound, timeoutMs);
   } catch (err) {
+    const accountProblem = aiAccountProblem(err);
+    if (accountProblem) {
+      console.error("WhatsApp agent: problema con la cuenta de Anthropic", (err as InstanceType<typeof Anthropic.APIError>).status, (err as InstanceType<typeof Anthropic.APIError>).requestID, (err as Error).message);
+      return reply(cfg, user, accountProblem);
+    }
     if (hasFile && err instanceof Anthropic.BadRequestError) {
-      console.error("WhatsApp agent: el API rechazó el archivo", err.message);
+      console.error("WhatsApp agent: el API rechazó el archivo", err.requestID, err.message);
       return reply(cfg, user, "No pude leer ese archivo 😕 Mandámelo como foto normal de WhatsApp o una captura de pantalla.");
     }
     throw err;
   }
 
-  if (turn.reply) await reply(cfg, user, turn.reply);
+  // Pudo haberse reemplazado alguna propuesta dentro del mismo turno.
+  const cards: { propuestaId: string; body: string }[] = [];
   for (const p of turn.proposals) {
-    // Pudo haberse reemplazado por otra propuesta dentro del mismo turno.
     const current = await prisma.whatsAppPendingAction.findUnique({ where: { id: p.propuestaId }, select: { status: true } });
-    if (current?.status !== "pendiente") continue;
-    const wamid = await sendConfirmButtons(cfg, user.phone, p.resumen, p.propuestaId);
+    if (current?.status === "pendiente") cards.push({ propuestaId: p.propuestaId, body: p.resumen });
+  }
+
+  // Desde el 1/10/2026 Meta cobra cada mensaje de respuesta: si la frase del
+  // agente entra en la tarjeta (tope de 1024 caracteres), va en el mismo mensaje.
+  let text = turn.reply;
+  if (text && cards.length) {
+    const combined = `${text}\n\n${cards[0].body}`;
+    if (Array.from(combined).length <= 1024) {
+      cards[0] = { ...cards[0], body: combined };
+      text = "";
+    }
+  }
+
+  if (text) await reply(cfg, user, text);
+  for (const c of cards) {
+    const wamid = await sendConfirmButtons(cfg, user.phone, c.body, c.propuestaId);
     // Queda en el historial vinculada a su propuesta (columna aparte, no texto:
     // así el modelo sabe qué reemplazar si el usuario corrige).
-    await saveOutgoing(user.phone, p.resumen, { proposalId: p.propuestaId, waMessageId: wamid });
+    await saveOutgoing(user.phone, c.body, { proposalId: c.propuestaId, waMessageId: wamid });
   }
 
   if (!turn.reply && turn.proposals.length === 0) {
