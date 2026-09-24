@@ -118,6 +118,8 @@ export interface GeneralMovementDTO {
   /** Quién consiguió este ingreso (distinto de procesadoPor) — obligatorio cuando tipo="ingreso". Alimenta /personal. */
   responsable: string | null;
   notas: string | null;
+  /** Foto/PDF del comprobante recibido por WhatsApp (GET /api/inbound-media/[id]), o null. */
+  comprobanteMediaId: string | null;
   createdAt: string;
 }
 
@@ -129,6 +131,8 @@ export interface QuickExpenseDTO {
   medioPago: string;
   nota: string | null;
   resuelto: boolean;
+  /** Foto/PDF del comprobante recibido por WhatsApp (GET /api/inbound-media/[id]), o null. */
+  comprobanteMediaId: string | null;
   createdAt: string;
 }
 
@@ -150,6 +154,8 @@ export interface GeneralMovementInput {
   procesadoPor?: string | null;
   responsable?: string | null;
   notas?: string | null;
+  /** Solo al crear: comprobante de WhatsApp a enlazar (ver Registro rápido). */
+  comprobanteMediaId?: string | null;
 }
 
 export type ToolStatus = "disponible" | "en_uso" | "en_reparacion" | "de_baja";

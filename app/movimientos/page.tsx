@@ -702,6 +702,11 @@ export default function MovimientosPage() {
                                   <span>{row.comprobanteTexto}</span>
                                 )
                               ) : "—"
+                            ) : (row.raw as GeneralMovementDTO).comprobanteMediaId ? (
+                              // Comprobante recibido por WhatsApp (movimiento general cargado por el agente).
+                              <a href={`/api/inbound-media/${(row.raw as GeneralMovementDTO).comprobanteMediaId}`} target="_blank" rel="noopener noreferrer">
+                                <CIcon icon={cilDescription} size="sm" className="me-1" />Ver
+                              </a>
                             ) : "—"}
                           </CTableDataCell>
                           <CTableDataCell>

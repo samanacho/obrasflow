@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
 import { MOVIMIENTO_TIPOS } from "./movimientos";
 
@@ -14,10 +15,11 @@ const EFFECT_BY_TIPO = new Map<string, string>(MOVIMIENTO_TIPOS.map((t) => [t.va
  * y app/api/items/[itemId]/route.ts (PUT/DELETE). Sin $transaction a
  * propósito: el resto de las rutas de la app tampoco las usa, y el riesgo
  * de una carrera entre dos escrituras simultáneas es despreciable para el
- * volumen de uso de esta app.
+ * volumen de uso de esta app. `db` permite correrlo dentro de una
+ * transacción cuando quien llama la necesita (ver lib/items.ts).
  */
-export async function recomputeProjectSpent(projectId: string): Promise<void> {
-  const items = await prisma.projectItem.findMany({ where: { projectId, kind: "change_order" } });
+export async function recomputeProjectSpent(projectId: string, db: Prisma.TransactionClient = prisma): Promise<void> {
+  const items = await db.projectItem.findMany({ where: { projectId, kind: "change_order" } });
   let spent = 0;
   for (const item of items) {
     const data = item.data as any;
@@ -27,5 +29,5 @@ export async function recomputeProjectSpent(projectId: string): Promise<void> {
     if (effect === "add") spent += monto;
     else if (effect === "subtract") spent -= monto;
   }
-  await prisma.project.update({ where: { id: projectId }, data: { spent: Math.max(0, spent) } });
+  await db.project.update({ where: { id: projectId }, data: { spent: Math.max(0, spent) } });
 }

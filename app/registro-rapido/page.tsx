@@ -94,7 +94,37 @@ export default function RegistroRapidoPage() {
     }
   }
 
-  function handleObraSaved(_saved: ProjectItemDTO) {
+  /**
+   * La captura pudo haberse clasificado mientras esta pantalla estaba abierta
+   * (por ejemplo, por WhatsApp): se revisa antes de abrir el formulario para
+   * no cargar el mismo pago dos veces.
+   */
+  async function stillPending(item: QuickExpenseDTO): Promise<boolean> {
+    try {
+      const fresh: QuickExpenseDTO[] = await fetch("/api/quick-expenses").then((r) => (r.ok ? r.json() : Promise.reject()));
+      const cur = fresh.find((i) => i.id === item.id);
+      if (cur && !cur.resuelto) return true;
+      setItems(fresh);
+      showToast(cur ? "Esta captura ya se clasificó (quizás por WhatsApp) — no hace falta cargarla de nuevo." : "Esta captura ya no existe.");
+      return false;
+    } catch {
+      return true; // sin conexión con el servidor, el guardado igual va a avisar si falla
+    }
+  }
+
+  function handleObraSaved(saved: ProjectItemDTO) {
+    // Si la captura llegó con comprobante por WhatsApp, pasa al movimiento nuevo
+    // — salvo que el usuario haya subido su propio archivo en el formulario.
+    const mediaId = obraFormFor?.quickExpense.comprobanteMediaId;
+    if (mediaId && !saved.attachment) {
+      fetch(`/api/items/${saved.id}/attachment-from-media`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mediaId }),
+      })
+        .then((r) => { if (!r.ok) throw new Error(); })
+        .catch(() => showToast("El movimiento se cargó, pero no se pudo adjuntar el comprobante — subilo desde la ficha de la obra."));
+    }
     if (obraFormFor) markResolved(obraFormFor.quickExpense.id);
     setObraFormFor(null);
     setObraPickerFor(null);
@@ -137,6 +167,11 @@ export default function RegistroRapidoPage() {
                 {daysAgo(item.createdAt)}
               </div>
               {item.nota && <div className="mt-1">{item.nota}</div>}
+              {item.comprobanteMediaId && (
+                <a href={`/api/inbound-media/${item.comprobanteMediaId}`} target="_blank" rel="noopener noreferrer" className="small d-inline-block mt-1">
+                  📎 Ver comprobante
+                </a>
+              )}
             </div>
             {item.resuelto && (
               <CBadge color="success"><CIcon icon={cilCheckCircle} size="sm" className="me-1" />Clasificado</CBadge>
@@ -156,7 +191,11 @@ export default function RegistroRapidoPage() {
                   <CButton
                     size="sm" color="primary"
                     disabled={!obraPickerValue}
-                    onClick={() => setObraFormFor({ quickExpense: item, projectId: obraPickerValue })}
+                    onClick={async () => {
+                      const projectId = obraPickerValue;
+                      if (await stillPending(item)) setObraFormFor({ quickExpense: item, projectId });
+                      else { setObraPickerFor(null); setObraPickerValue(""); }
+                    }}
                   >
                     Continuar
                   </CButton>
@@ -169,7 +208,7 @@ export default function RegistroRapidoPage() {
                   <CButton size="sm" color="primary" variant="outline" onClick={() => { setObraPickerFor(item.id); setObraPickerValue(""); }}>
                     Cargar en una obra
                   </CButton>
-                  <CButton size="sm" color="secondary" variant="outline" onClick={() => setGeneralFormFor(item)}>
+                  <CButton size="sm" color="secondary" variant="outline" onClick={async () => { if (await stillPending(item)) setGeneralFormFor(item); }}>
                     Cargar como gasto general
                   </CButton>
                   <CButton size="sm" color="danger" variant="ghost" onClick={() => setConfirmDelete(item)}>
@@ -254,6 +293,7 @@ export default function RegistroRapidoPage() {
             monto: generalFormFor.monto,
             medioPago: generalFormFor.medioPago,
             notas: generalFormFor.nota ?? "",
+            comprobanteMediaId: generalFormFor.comprobanteMediaId,
           }}
           onClose={() => setGeneralFormFor(null)}
           onSaved={handleGeneralSaved}

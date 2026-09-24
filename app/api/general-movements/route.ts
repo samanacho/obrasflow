@@ -47,6 +47,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "El responsable es obligatorio para un ingreso." }, { status: 400 });
     }
 
+    // Comprobante recibido por WhatsApp (ver InboundMedia): llega cuando se
+    // clasifica una captura de Registro rápido como gasto general.
+    let comprobanteMediaId: string | null = null;
+    if (body.comprobanteMediaId) {
+      const media = await prisma.inboundMedia.findUnique({ where: { id: String(body.comprobanteMediaId) }, select: { id: true } });
+      if (!media) return NextResponse.json({ error: "El comprobante adjunto no existe." }, { status: 400 });
+      comprobanteMediaId = media.id;
+    }
+
     const created = await prisma.generalMovement.create({
       data: {
         fecha: new Date(fecha),
@@ -59,6 +68,7 @@ export async function POST(req: NextRequest) {
         procesadoPor: body.procesadoPor ? String(body.procesadoPor) : null,
         responsable,
         notas: body.notas ? String(body.notas) : null,
+        comprobanteMediaId,
       },
     });
     return NextResponse.json(serializeGeneralMovement(created), { status: 201 });

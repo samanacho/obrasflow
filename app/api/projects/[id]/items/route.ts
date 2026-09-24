@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { serializeItem } from "@/lib/serialize";
 import { ITEM_KINDS } from "@/lib/itemKinds";
-import { recomputeProjectSpent } from "@/lib/spent";
+import { createProjectItem } from "@/lib/items";
 
 export const dynamic = "force-dynamic";
 
@@ -37,31 +37,15 @@ export async function POST(req: NextRequest, { params }: Params) {
     const title = String(body.title ?? "").trim();
     if (!title) return NextResponse.json({ error: "El título es obligatorio." }, { status: 400 });
 
-    const created = await prisma.projectItem.create({
-      data: {
-        projectId: params.id,
-        kind,
-        title,
-        status: body.status ? String(body.status) : config.defaultStatus ?? null,
-        data: (body.data as any) ?? {},
-      },
+    // Mismo camino que usa el agente de WhatsApp (lib/items.ts): crea el
+    // item, deja el evento en el feed de actividad y recalcula el Ejecutado.
+    const created = await createProjectItem({
+      projectId: params.id,
+      kind,
+      title,
+      status: body.status ? String(body.status) : null,
+      data: (body.data as any) ?? {},
     });
-
-    // Feed de actividad automático (excepto para el propio feed).
-    if (kind !== "activity") {
-      await prisma.projectItem.create({
-        data: {
-          projectId: params.id,
-          kind: "activity",
-          title: `${config.icon} Se agregó ${config.singular}: "${title}"`,
-          data: {},
-        },
-      });
-    }
-
-    // Movimientos: el Ejecutado de la ficha se recalcula solo a partir de
-    // estos items, así que hay que actualizarlo cada vez que se carga uno.
-    if (kind === "change_order") await recomputeProjectSpent(params.id);
 
     return NextResponse.json(serializeItem(created), { status: 201 });
   } catch (err) {

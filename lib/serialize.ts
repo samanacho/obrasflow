@@ -135,6 +135,7 @@ export function serializeGeneralMovement(m: GeneralMovement): GeneralMovementDTO
     procesadoPor: m.procesadoPor,
     responsable: m.responsable,
     notas: m.notas,
+    comprobanteMediaId: m.comprobanteMediaId,
     createdAt: m.createdAt.toISOString(),
   };
 }
@@ -147,6 +148,7 @@ export function serializeQuickExpense(q: QuickExpense): QuickExpenseDTO {
     medioPago: q.medioPago,
     nota: q.nota,
     resuelto: q.resuelto,
+    comprobanteMediaId: q.comprobanteMediaId,
     createdAt: q.createdAt.toISOString(),
   };
 }

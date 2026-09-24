@@ -227,24 +227,27 @@ enum GeneralMovementTipo {
 /// (ingresos menos egresos) se suma al "Costos vs. beneficios" de Inicio —
 /// ver app/page.tsx.
 model GeneralMovement {
-  id           String              @id @default(cuid())
-  fecha        DateTime            @db.Date
-  tipo         GeneralMovementTipo
-  concepto     String
-  categoria    String?
-  monto        Decimal             @db.Decimal(14, 2)
-  medioPago    String?
+  id                 String              @id @default(cuid())
+  fecha              DateTime            @db.Date
+  tipo               GeneralMovementTipo
+  concepto           String
+  categoria          String?
+  monto              Decimal             @db.Decimal(14, 2)
+  medioPago          String?
   /// Mismo vocabulario que los movimientos de obra: "Pendiente" | "Pagado" | "Conciliado".
-  estado       String?
-  procesadoPor String?
+  estado             String?
+  procesadoPor       String?
   /// Quién CONSIGUIÓ este ingreso (no quién lo cargó/procesó — ver
   /// procesadoPor) — obligatorio cuando tipo="ingreso", se usa para el
   /// reparto de beneficios de /personal (ver lib/profitShare.ts). Sin uso
   /// real para tipo="egreso".
-  responsable  String?
-  notas        String?
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
+  responsable        String?
+  notas              String?
+  /// Foto/PDF del comprobante recibido por WhatsApp (ver InboundMedia) — el
+  /// agente lo enlaza al registrar el movimiento. null en cargas manuales.
+  comprobanteMediaId String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
   /// Presente cuando este movimiento fue generado automáticamente por la
   /// adquisición de una herramienta (ver Tool.generalMovement) — al borrar
@@ -264,16 +267,95 @@ model GeneralMovement {
 /// real (ver /registro-rapido) — hasta entonces monto/medioPago/fecha acá
 /// son la fuente de verdad de lo que efectivamente ocurrió.
 model QuickExpense {
+  id                 String   @id @default(cuid())
+  fecha              DateTime @db.Date
+  monto              Decimal  @db.Decimal(14, 2)
+  medioPago          String
+  nota               String?
+  resuelto           Boolean  @default(false)
+  /// Foto/PDF del comprobante recibido por WhatsApp (ver InboundMedia).
+  comprobanteMediaId String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([resuelto])
+}
+
+// ---------------------------------------------------------------------------
+// Agente de WhatsApp (ver docs/WHATSAPP_AGENT.md y lib/agent/)
+// ---------------------------------------------------------------------------
+
+/// Historial de la conversación por número — el agente lee los últimos
+/// mensajes para tener contexto ("¿a qué obra?" -> "la de Congreso").
+/// `waMessageId` es único: WhatsApp puede reenviar el mismo webhook, y un
+/// mensaje repetido nunca debe procesarse dos veces (podría proponer dos
+/// veces el mismo gasto).
+model WhatsAppMessage {
+  id          String   @id @default(cuid())
+  phone       String
+  /// "in" (del usuario) | "out" (del agente)
+  direction   String
+  waMessageId String?  @unique
+  text        String?
+  /// InboundMedia adjunta al mensaje entrante, si trajo foto/PDF.
+  mediaId     String?
+  /// Solo en las tarjetas salientes con botones Confirmar/Cancelar: la
+  /// propuesta que muestran. Lo escribe el sistema, nunca el modelo.
+  proposalId  String?
+  createdAt   DateTime @default(now())
+
+  @@index([phone, createdAt])
+}
+
+/// Turno en curso por número: los mensajes de una misma persona se procesan
+/// de a uno (una foto y el texto que la sigue no pueden correr en paralelo).
+/// El lease vence solo, por si la función de Vercel se corta a mitad.
+model WhatsAppLock {
+  phone       String   @id
+  token       String
+  lockedUntil DateTime
+}
+
+/// Fotos/PDF de comprobantes recibidos por WhatsApp. Se guardan en la base
+/// (mismo criterio y mismo tope de 4MB que Attachment) para no depender de
+/// un storage externo. Al confirmar un movimiento de obra se copia a un
+/// Attachment del item, así aparece en la ficha como cualquier adjunto.
+model InboundMedia {
   id        String   @id @default(cuid())
-  fecha     DateTime @db.Date
-  monto     Decimal  @db.Decimal(14, 2)
-  medioPago String
-  nota      String?
-  resuelto  Boolean  @default(false)
+  phone     String
+  waMediaId String
+  mimeType  String
+  filename  String?
+  size      Int
+  data      Bytes
+  createdAt DateTime @default(now())
+
+  @@index([phone, createdAt])
+}
+
+/// Escritura propuesta por el agente, esperando confirmación humana. El
+/// modelo de IA NUNCA escribe movimientos directamente: solo crea una de
+/// estas; el registro real se hace recién cuando el usuario toca
+/// "Confirmar" en WhatsApp (ver lib/agent/actions.ts executePendingAction).
+model WhatsAppPendingAction {
+  id        String   @id @default(cuid())
+  phone     String
+  /// "movimiento_obra" | "movimiento_general" | "registro_rapido"
+  kind      String
+  /// Datos ya validados y normalizados, listos para escribir.
+  payload   Json
+  /// Resumen legible que se le mostró al usuario para confirmar.
+  summary   String
+  /// "pendiente" | "ejecutando" | "confirmada" | "cancelada" | "fallida"
+  status    String   @default("pendiente")
+  /// id del registro creado al confirmar (ProjectItem / GeneralMovement / QuickExpense).
+  resultId  String?
+  error     String?
+  expiresAt DateTime
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([resuelto])
+  @@index([phone, status])
 }
 
 enum ToolStatus {
