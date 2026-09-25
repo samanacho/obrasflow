@@ -216,7 +216,7 @@ async function connect() {
     if (u.qr) {
       const qr = await QRCode.toDataURL(u.qr, { margin: 1, width: 320 });
       await setSession({ status: "esperando_qr", qr, phone: null, name: null, lastError: null });
-      console.log("📱 QR nuevo: escanealo desde la pantalla Agente WhatsApp de ObrasFlow.");
+      console.log("📱 QR nuevo: escanealo en http://localhost:3000/agente-whatsapp");
     }
     if (u.connection === "open") {
       const phone = current.user?.id ? digits(current.user.id) : null;
@@ -370,7 +370,8 @@ async function shutdown() {
 async function main() {
   console.log("ObrasFlow — conector de WhatsApp (Baileys). Ctrl+C para detenerlo.");
   const url = await startLocalPanel({ local, runCommand, reportInfo, dbConfigured: DB_OK });
-  console.log(`🖥️  Configuración y QR en esta PC: ${url}`);
+  console.log("🖥️  Configuración y QR: http://localhost:3000/agente-whatsapp (solo en esta PC)");
+  void url;
   if (!DB_OK) {
     local.status = "falta_base";
     console.log("⚙️  Falta la base de datos: cargá su URL en la página de arriba (el conector se reinicia solo al guardarla).");

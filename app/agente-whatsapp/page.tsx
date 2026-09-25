@@ -9,6 +9,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import Toast from "@/components/Toast";
 import { useToast } from "@/lib/useToast";
 import BaileysView from "./BaileysView";
+import LocalConnector, { useLocalConnector } from "./LocalConnector";
 
 // Módulo para configurar y controlar el agente de WhatsApp (ver
 // docs/WHATSAPP_AGENT.md). Lo público solo dice qué variables están
@@ -104,6 +105,9 @@ export default function AgenteWhatsAppPage() {
   const [confirmRegister, setConfirmRegister] = useState(false);
   const [testTo, setTestTo] = useState("");
   const [showCloud, setShowCloud] = useState(false);
+  // App corriendo en la misma PC que el conector: conexión y configuración completas acá.
+  const { state: localState, refresh: refreshLocal } = useLocalConnector();
+  const localMode = Boolean(localState?.available);
   const { toast, showToast } = useToast();
 
   const load = useCallback(async (panelKey: string | null) => {
@@ -400,7 +404,16 @@ export default function AgenteWhatsAppPage() {
       {loading && <p className="state-message">Cargando…</p>}
       {loadError && !loading && <CAlert color="danger">No se pudo cargar el estado del agente.</CAlert>}
 
-      {data && data.provider === "baileys" && !showCloud && (
+      {data && localMode && !showCloud && localState && (
+        <LocalConnector
+          state={localState}
+          refresh={refreshLocal}
+          lastInboundAt={data.lastInboundAt}
+          activity={data.activity ? <ActivityCard activity={data.activity} /> : null}
+        />
+      )}
+
+      {data && !localMode && data.provider === "baileys" && !showCloud && (
         <BaileysView
           data={data}
           panelKey={key}

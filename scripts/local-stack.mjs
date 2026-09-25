@@ -82,13 +82,15 @@ async function main() {
   if (firstRun) await pg.createDatabase(DB_NAME);
   log(`✅ PostgreSQL local en 127.0.0.1:${DB_PORT}`);
 
+  // La IA por defecto es Claude Code; si se cambia desde la pantalla, se respeta lo guardado.
+  const hasBackend = existsSync(ENV_FILE) && /^s*AGENT_BACKENDs*=/m.test(readFileSync(ENV_FILE, "utf8"));
   ensureEnv({
     POSTGRES_PRISMA_URL: DB_URL,
     POSTGRES_URL_NON_POOLING: DB_URL,
-    AGENT_BACKEND: "cli",
+    ...(hasBackend ? {} : { AGENT_BACKEND: "cli" }),
     APP_BASE_URL: `http://localhost:${APP_PORT}`,
   });
-  const env = { POSTGRES_PRISMA_URL: DB_URL, POSTGRES_URL_NON_POOLING: DB_URL, AGENT_BACKEND: "cli", APP_BASE_URL: `http://localhost:${APP_PORT}` };
+  const env = { POSTGRES_PRISMA_URL: DB_URL, POSTGRES_URL_NON_POOLING: DB_URL, APP_BASE_URL: `http://localhost:${APP_PORT}` };
 
   // Esquema al día (solo agrega lo que falte) y datos de ejemplo la primera vez.
   run(NODE, [join(ROOT, "node_modules", "prisma", "build", "index.js"), "db", "push", "--skip-generate"], env);
@@ -111,7 +113,7 @@ async function main() {
     run(NODE, [NPM_CLI, "run", "build"], env);
     writeFileSync(stamp, sha);
   }
-  keepAlive("App ObrasFlow (http://localhost:3000)", [join(ROOT, "node_modules", "next", "dist", "bin", "next"), "start", "-p", String(APP_PORT)], env);
+  keepAlive("App ObrasFlow (http://localhost:3000)", [join(ROOT, "node_modules", "next", "dist", "bin", "next"), "start", "-p", String(APP_PORT), "-H", "127.0.0.1"], env);
 
   // 3. Conector de WhatsApp
   keepAlive("Conector de WhatsApp (http://localhost:3099)", ["--env-file-if-exists=.env.local", "--import", "tsx", "worker/whatsapp-baileys.mts"], env);

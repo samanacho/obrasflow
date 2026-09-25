@@ -29,8 +29,16 @@ async function denied() {
   return NextResponse.json({ error: "Clave del panel incorrecta." }, { status: 401 });
 }
 
+/** App corriendo en esta PC (modo local, no Vercel) y abierta desde la misma PC: no hace falta clave. */
+function localPc(req: NextRequest) {
+  return !process.env.VERCEL && ["localhost", "127.0.0.1", "[::1]"].includes(req.nextUrl.hostname);
+}
+
 export async function GET(req: NextRequest) {
   const status = await publicStatus();
+  if (localPc(req)) {
+    return NextResponse.json({ ...status, webhookUrl: webhookUrl(req), unlocked: true, activity: await activity() });
+  }
   const key = req.headers.get("x-panel-key");
   if (!key) return NextResponse.json({ ...status, webhookUrl: webhookUrl(req), unlocked: false });
   if (!isValidPanelKey(key)) return denied();
