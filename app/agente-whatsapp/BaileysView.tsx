@@ -39,14 +39,8 @@ const STEP_BADGE: Record<StepState, { label: string; color: string; dark?: boole
   info: { label: "Referencia", color: "light", dark: true },
 };
 
-const ENV_TEMPLATE = `POSTGRES_PRISMA_URL="(copialo de Vercel > Storage > tu base > .env.local)"
-POSTGRES_URL_NON_POOLING="(copialo de Vercel > Storage > tu base > .env.local)"
-ANTHROPIC_API_KEY="(tu clave de platform.claude.com)"
-ANTHROPIC_MODEL="claude-sonnet-5"
-ANTHROPIC_EFFORT="low"
-WHATSAPP_ALLOWED_NUMBERS="595981111111:Ignacio Samaniego,595982222222:Hugo Rotela"
-APP_BASE_URL="https://obrasflow-app.vercel.app"`;
 const START_COMMAND = "npm run wa:conector";
+const LOCAL_URL = "http://localhost:3099";
 
 function fmtDateTime(iso: string) {
   return new Date(iso).toLocaleString("es-PY", { dateStyle: "short", timeStyle: "short" });
@@ -176,7 +170,7 @@ export default function BaileysView({
         <>
           <p className="mb-2">
             ⚪ <strong>El conector no está corriendo.</strong> Es el programa que mantiene la sesión de WhatsApp abierta; tiene
-            que estar encendido en una PC para que el agente responda (pasos 3 y 4).
+            que estar encendido en una PC para que el agente responda. Arranca solo al iniciar Windows; si no, a mano:
           </p>
           {copyBlock("En la carpeta del proyecto (E:\\Desarrollos\\ObrasFlow), en una terminal:", START_COMMAND)}
           {s.heartbeatAt && <p className="small text-body-secondary mb-0">Última señal del conector: {fmtDateTime(s.heartbeatAt)}.</p>}
@@ -185,34 +179,18 @@ export default function BaileysView({
       );
     }
     if (s.status === "esperando_qr") {
-      if (!s.qr) {
-        return (
-          <>
-            <p className="mb-2">
-              El conector está listo para vincular. Para ver el QR, ingresá la clave del panel (<code>WHATSAPP_PANEL_KEY</code>):
-              así nadie más puede vincular su cuenta al agente.
-            </p>
-            {unlockForm}
-          </>
-        );
-      }
       return (
-        <div className="d-flex flex-wrap gap-4 align-items-start">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={s.qr} alt="Código QR para vincular WhatsApp" width={260} height={260} style={{ background: "#fff", padding: 8, borderRadius: 8 }} />
-          <div style={{ flex: "1 1 240px" }}>
-            <p className="fw-semibold mb-2">Escanealo desde el teléfono del número del agente:</p>
-            <ol className="ps-3 mb-2">
-              <li>Abrí <strong>WhatsApp Business</strong> en ese teléfono.</li>
-              <li>Tocá <strong>⋮</strong> (Android) o <strong>Configuración</strong> (iPhone) &gt; <strong>Dispositivos vinculados</strong>.</li>
-              <li>Tocá <strong>Vincular un dispositivo</strong> y apuntá la cámara a este código.</li>
-            </ol>
-            <p className="small text-body-secondary mb-0">
-              El código se renueva solo cada ~20 segundos. La app del teléfono sigue funcionando normal: el agente queda como un
-              dispositivo vinculado más (como WhatsApp Web).
-            </p>
-          </div>
-        </div>
+        <>
+          <p className="mb-2">
+            🟡 <strong>Listo para vincular.</strong> Por seguridad, el QR se muestra solo en la PC donde corre el conector (no se
+            publica en internet). En esa PC abrí:
+          </p>
+          {copyBlock("Página del conector (solo en esa PC)", LOCAL_URL)}
+          <p className="small text-body-secondary mb-0">
+            Escanealo desde WhatsApp Business del número del agente: ⋮ / Configuración &gt; Dispositivos vinculados &gt;
+            Vincular un dispositivo.
+          </p>
+        </>
       );
     }
     if (s.status === "conectado") {
@@ -257,7 +235,7 @@ export default function BaileysView({
           <p className="mb-2">
             En <a href="https://platform.claude.com" target="_blank" rel="noreferrer">platform.claude.com</a> creá la cuenta y una{" "}
             <strong>API key</strong>. Para probar alcanza el crédito gratis inicial (no cargues plata todavía). La clave va en el
-            archivo <code>.env.local</code> del conector (paso 3).
+            página del conector (<code>{LOCAL_URL}</code>), que la guarda solo en esa PC.
           </p>
           {info && <p className="small mb-0">{info.ai.ok ? "✅" : "❌"} {info.ai.detail} · modelo {info.model} · esfuerzo {info.effort}</p>}
         </>
@@ -265,42 +243,25 @@ export default function BaileysView({
     },
     {
       n: 2,
-      title: "Clave del panel en Vercel",
-      state: data.panelKeyConfigured ? "done" : "todo",
-      body: (
-        <>
-          <p className="mb-2">
-            Protege el QR y los controles de esta pantalla. Generala acá, guardala en tu gestor de contraseñas y cargala en
-            Vercel &gt; Project &gt; Settings &gt; Environment Variables como <code>WHATSAPP_PANEL_KEY</code>. Después,{" "}
-            <strong>Redeploy</strong>.
-          </p>
-          {panelSecret ? (
-            copyBlock("WHATSAPP_PANEL_KEY", panelSecret)
-          ) : (
-            <CButton size="sm" color="primary" variant="outline" onClick={() => setPanelSecret(randomHex(24))}>Generar clave</CButton>
-          )}
-        </>
-      ),
-    },
-    {
-      n: 3,
       title: "Conector en una PC encendida",
       state: s?.workerOnline ? "done" : "todo",
       body: (
         <>
           <p className="mb-2">
-            WhatsApp necesita una conexión abierta todo el tiempo, y Vercel no puede mantenerla: el conector corre en una PC (o
-            servidor) que quede prendida. En la carpeta <code>E:\Desarrollos\ObrasFlow</code> creá el archivo{" "}
-            <code>.env.local</code> con esto (reemplazando lo que está entre paréntesis; nunca lo compartas):
+            WhatsApp necesita una conexión abierta todo el tiempo y Vercel no puede mantenerla, así que el conector corre en una
+            PC que quede prendida. Ya está instalado en <code>E:\Desarrollos\ObrasFlow</code>, con su configuración en{" "}
+            <code>.env.local</code> (solo en esa PC), y <strong>arranca solo al iniciar Windows</strong>.
           </p>
-          {copyBlock(".env.local", ENV_TEMPLATE)}
-          {copyBlock("Después, en una terminal en esa carpeta:", START_COMMAND)}
-          <p className="small text-body-secondary mb-0">Cuando arranca, este paso se marca solo y aparece el QR arriba.</p>
+          <p className="small text-body-secondary mb-2">
+            Si hiciera falta arrancarlo a mano, en una terminal en esa carpeta: <code>{START_COMMAND}</code>. Cuando está corriendo,
+            este paso se marca solo.
+          </p>
+          <p className="small text-body-secondary mb-0">Su página de configuración (QR, clave de Claude, números autorizados): <code>{LOCAL_URL}</code></p>
         </>
       ),
     },
     {
-      n: 4,
+      n: 3,
       title: "Vincular la cuenta de WhatsApp (QR)",
       state: connected ? "done" : "todo",
       body: (
@@ -312,7 +273,7 @@ export default function BaileysView({
       ),
     },
     {
-      n: 5,
+      n: 4,
       title: "Primera prueba",
       state: data.lastInboundAt ? "done" : "todo",
       body: (
@@ -329,7 +290,7 @@ export default function BaileysView({
       ),
     },
     {
-      n: 6,
+      n: 5,
       title: "Dejarlo funcionando",
       state: "info",
       body: (
@@ -409,10 +370,10 @@ export default function BaileysView({
             <CCard>
               <CCardBody>
                 <p className="mb-2">
-                  Con la clave del panel (<code>WHATSAPP_PANEL_KEY</code>) ves el QR, la actividad del agente y podés reiniciar o
-                  desvincular la sesión.
+                  La conexión (QR, reiniciar, desvincular) se maneja desde la página del conector en su PC. Opcional: con una clave del
+                  panel (<code>WHATSAPP_PANEL_KEY</code>) también ves acá la actividad del agente.
                 </p>
-                {data.panelKeyConfigured ? unlockForm : <p className="small text-body-secondary mb-0">Primero cargala en Vercel (paso 2).</p>}
+                {data.panelKeyConfigured ? unlockForm : <p className="small text-body-secondary mb-0">No configurada (no hace falta para que el agente funcione).</p>}
               </CCardBody>
             </CCard>
           ) : (

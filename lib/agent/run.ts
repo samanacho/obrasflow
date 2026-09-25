@@ -40,9 +40,15 @@ export function isAgentConfigured(): boolean {
 }
 
 let client: Anthropic | null = null;
+let clientKey = "";
 function getClient(): Anthropic {
   // maxRetries 1: el reintento automático del SDK no puede comerse la ventana de 60s de la función.
-  client ??= new Anthropic({ maxRetries: 1 });
+  // Si la clave cambia en caliente (conector de WhatsApp), se crea un cliente nuevo.
+  const key = process.env.ANTHROPIC_API_KEY?.trim() ?? "";
+  if (!client || key !== clientKey) {
+    client = new Anthropic({ apiKey: key, maxRetries: 1 });
+    clientKey = key;
+  }
   return client;
 }
 

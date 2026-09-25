@@ -31,8 +31,11 @@ import { handleInbound } from "../lib/whatsapp/handle";
 import type { InboundMessage } from "../lib/whatsapp/parse";
 import type { Transport } from "../lib/whatsapp/transport";
 import { getAllowedNumbers } from "../lib/whatsapp/config";
+import { startLocalPanel } from "./local-panel.mjs";
 
 const SESSION_ID = "baileys";
+/** Sin una URL de Postgres válida el conector arranca solo su página local, para que se la carguen ahí. */
+const DB_OK = /^postgres(ql)?:\/\//.test(process.env.POSTGRES_PRISMA_URL?.trim() ?? "");
 const AUTH_DIR = process.env.BAILEYS_AUTH_DIR?.trim() || resolve(process.cwd(), ".baileys-auth");
 /** Tiempo máximo por mensaje (acá no hay límite de Vercel). */
 const TURN_BUDGET_MS = 120_000;
@@ -52,12 +55,25 @@ function remember(m: WAMessage) {
   if (recent.size > 500) recent.delete(recent.keys().next().value!);
 }
 
+/** Estado actual, para la página local (el QR vive SOLO acá, nunca en la base ni en Vercel). */
+export const local = {
+  status: "desconectado",
+  qr: null as string | null,
+  phone: null as string | null,
+  name: null as string | null,
+  lastError: null as string | null,
+  info: null as Record<string, unknown> | null,
+};
+
 async function setSession(data: { status?: string; qr?: string | null; phone?: string | null; name?: string | null; lastError?: string | null; command?: string | null }) {
+  Object.assign(local, Object.fromEntries(Object.entries(data).filter(([k]) => k !== "command")));
+  if (!DB_OK) return;
+  const { qr: _qr, ...forDb } = data; // el QR no sale de esta PC
   await prisma.whatsAppSession
     .upsert({
       where: { id: SESSION_ID },
-      create: { id: SESSION_ID, status: data.status ?? "desconectado", ...data, heartbeatAt: new Date() },
-      update: { ...data, heartbeatAt: new Date() },
+      create: { id: SESSION_ID, status: forDb.status ?? "desconectado", ...forDb, qr: null, heartbeatAt: new Date() },
+      update: { ...forDb, qr: null, heartbeatAt: new Date() },
     })
     .catch((err) => console.error("No se pudo guardar el estado de la sesión:", err.message));
 }
@@ -243,25 +259,32 @@ async function heartbeat() {
   try {
     const s = await prisma.whatsAppSession.findUnique({ where: { id: SESSION_ID } });
     await prisma.whatsAppSession.update({ where: { id: SESSION_ID }, data: { heartbeatAt: new Date(), command: null } }).catch(() => {});
-    if (s?.command === "logout" && sock) {
-      console.log("🔌 Desvinculando por pedido de la pantalla…");
-      if (s.status === "conectado") await sock.logout().catch(() => {});
-      else {
-        // Sin sesión abierta no hay nada que cerrar en WhatsApp: se borra la local y se pide un QR nuevo.
-        rmSync(AUTH_DIR, { recursive: true, force: true });
-        sock.end(undefined);
-      }
-    } else if (s?.command === "restart" && sock) {
-      console.log("🔄 Reiniciando la conexión por pedido de la pantalla…");
-      sock.end(undefined);
-    }
+    if (s?.command === "logout" || s?.command === "restart") await runCommand(s.command);
   } catch (err) {
     console.error("Latido:", (err as Error).message);
   }
 }
 
+/** Desvincular (pide QR nuevo) o reiniciar la conexión. Lo usan la pantalla de la app y la página local. */
+export async function runCommand(command: "logout" | "restart") {
+  if (!sock) return;
+  if (command === "logout") {
+    console.log("🔌 Desvinculando…");
+    if (local.status === "conectado") await sock.logout().catch(() => {});
+    else {
+      // Sin sesión abierta no hay nada que cerrar en WhatsApp: se borra la local y se pide un QR nuevo.
+      rmSync(AUTH_DIR, { recursive: true, force: true });
+      sock.end(undefined);
+    }
+  } else {
+    console.log("🔄 Reiniciando la conexión…");
+    sock.end(undefined);
+  }
+}
+
 /** Le cuenta a la pantalla con qué configuración corre el conector (sin secretos). */
-async function reportInfo() {
+export async function reportInfo() {
+  if (!DB_OK) return;
   const model = process.env.ANTHROPIC_MODEL?.trim() || "claude-sonnet-5";
   let ai = { ok: false, detail: "Falta ANTHROPIC_API_KEY en .env.local." };
   if (process.env.ANTHROPIC_API_KEY?.trim()) {
@@ -284,6 +307,7 @@ async function reportInfo() {
     ai,
     startedAt: new Date().toISOString(),
   };
+  local.info = info;
   console.log(`IA: ${ai.detail} · ${info.allowedCount} número(s) autorizado(s).`);
   await prisma.whatsAppSession
     .upsert({ where: { id: SESSION_ID }, create: { id: SESSION_ID, status: "conectando", info, heartbeatAt: new Date() }, update: { info } })
@@ -300,12 +324,14 @@ async function shutdown() {
 }
 
 async function main() {
-  const missing = ["POSTGRES_PRISMA_URL", "ANTHROPIC_API_KEY", "WHATSAPP_ALLOWED_NUMBERS"].filter((k) => !process.env[k]?.trim());
-  if (missing.length) {
-    console.error(`❌ Faltan variables en .env.local: ${missing.join(", ")} (ver docs/WHATSAPP_AGENT.md).`);
-    if (missing.includes("POSTGRES_PRISMA_URL")) process.exit(1);
-  }
   console.log("ObrasFlow — conector de WhatsApp (Baileys). Ctrl+C para detenerlo.");
+  const url = await startLocalPanel({ local, runCommand, reportInfo, dbConfigured: DB_OK });
+  console.log(`🖥️  Configuración y QR en esta PC: ${url}`);
+  if (!DB_OK) {
+    local.status = "falta_base";
+    console.log("⚙️  Falta la base de datos: cargá su URL en la página de arriba (el conector se reinicia solo al guardarla).");
+    return;
+  }
   await reportInfo();
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
