@@ -19,11 +19,11 @@ import {
   CButton,
 } from "@coreui/react";
 import CIcon from "@coreui/icons-react";
-import { cilSpeedometer, cilPeople, cilFactory, cilTruck, cilSettings, cilBadge, cilMoon, cilSun, cilMenu, cilPlus } from "@coreui/icons";
+import { cilSpeedometer, cilPeople, cilFactory, cilTruck, cilSettings, cilBadge, cilChatBubble, cilMoon, cilSun, cilMenu, cilPlus } from "@coreui/icons";
 import { NAV_ITEMS } from "@/lib/navItems";
 import QuickExpenseButton from "@/components/QuickExpenseButton";
 
-const ICONS: Record<string, any> = { cilSpeedometer, cilPeople, cilFactory, cilTruck, cilSettings, cilBadge };
+const ICONS: Record<string, any> = { cilSpeedometer, cilPeople, cilFactory, cilTruck, cilSettings, cilBadge, cilChatBubble };
 
 /** Pantallas que no tienen ítem propio en el menú y pertenecen a "Proyectos". */
 const PROYECTOS_SUBPATHS = ["/rubros", "/project", "/sitios", "/movimientos", "/ejecucion", "/registro-rapido"];

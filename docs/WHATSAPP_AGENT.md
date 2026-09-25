@@ -73,6 +73,15 @@ con un link "Ver" en Movimientos / Registro rápido).
 
 ## Puesta en marcha
 
+**La forma más fácil: el módulo "Agente WhatsApp" de la app** (`/agente-whatsapp`,
+en el menú de la izquierda). Muestra cada paso con su estado (se marca solo
+cuando el sistema detecta que quedó bien), genera el verify token y el PIN,
+tiene las URLs listas para copiar y, con la clave del panel (el verify token,
+o `WHATSAPP_PANEL_KEY` si se carga en Vercel), hace el diagnóstico en vivo
+contra Meta y Claude, muestra la actividad y permite suscribir la app,
+registrar el número, probar la IA y mandar un mensaje de prueba a un número
+autorizado. Nunca muestra el valor de un secreto.
+
 Todo se hace con herramientas **oficiales y gratuitas** de Meta (App Dashboard,
 WhatsApp Manager, Graph API Explorer) y con el script del repo
 `npm run wa -- <comando>` (`scripts/whatsapp-setup.mjs`, sin dependencias):
@@ -171,6 +180,7 @@ Vercel > Project > Settings > Environment Variables (Production), después
 | `WHATSAPP_GRAPH_VERSION` | Opcional. Default `v25.0` (soportada hasta el 29/07/2028). |
 | `APP_BASE_URL` | Opcional. Para los links que manda el agente (por defecto, el dominio de producción de Vercel). |
 | `NEXT_PUBLIC_CONTACT_EMAIL` | Opcional. Correo de contacto que muestran /privacidad y /terminos. |
+| `WHATSAPP_PANEL_KEY` | Opcional. Clave del módulo Agente WhatsApp; si no está, se usa el verify token. |
 
 Para verificar el webhook en Meta alcanza con `WHATSAPP_VERIFY_TOKEN`; sin las
 demás, los mensajes responden 503 y no se procesan.
@@ -298,6 +308,7 @@ demás, los mensajes responden 503 y no se procesan.
 | `lib/whatsapp/client.ts` | Envío de texto/botones, descarga de archivos. |
 | `lib/whatsapp/confirm.ts` | Reconocimiento de "sí"/"no" y de los botones. |
 | `lib/whatsapp/lock.ts` | Un turno por número a la vez. |
+| `app/agente-whatsapp`, `app/api/whatsapp/panel`, `lib/whatsapp/setup.ts` | Módulo de configuración y diagnóstico dentro de la app. |
 | `scripts/whatsapp-setup.mjs` | Configuración y diagnóstico del número (`npm run wa`). |
 | `app/privacidad`, `app/terminos` | Páginas públicas que pide Meta para pasar la app a Live. |
 | `lib/whatsapp/handle.ts` | Orquesta cada mensaje entrante. |
