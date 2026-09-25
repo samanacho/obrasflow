@@ -7,3 +7,6 @@ dist
 .vercel
 
 tsconfig.tsbuildinfo
+
+# sesión de WhatsApp vinculada por QR (conector Baileys) — es una credencial
+.baileys-auth/

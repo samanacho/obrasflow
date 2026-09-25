@@ -71,7 +71,34 @@ Todo lo que registra el agente queda con `Procesado por: WhatsApp · <nombre>`
 y, si vino con comprobante, con la foto/PDF adjunta (en la ficha de la obra, o
 con un link "Ver" en Movimientos / Registro rápido).
 
-## Puesta en marcha
+## Conexión por QR (Baileys) — modo por defecto
+
+El agente se conecta a una cuenta de WhatsApp (por ejemplo la de WhatsApp
+Business del número del agente) como **dispositivo vinculado**, igual que
+WhatsApp Web, con la librería [Baileys](https://github.com/WhiskeySockets/Baileys).
+Es gratis (sin cobro por mensaje de Meta) y la app del teléfono sigue
+funcionando. Todo se maneja desde la pantalla **Agente WhatsApp**
+(`/agente-whatsapp`): estado de la conexión, QR para vincular y pasos.
+
+- **Conector** (`worker/whatsapp-baileys.mts`, `npm run wa:conector`): tiene
+  que correr en una PC o servidor **siempre encendido** (Vercel no puede
+  mantener la conexión abierta). Lee `.env.local`: base de datos de producción
+  (`POSTGRES_PRISMA_URL`, `POSTGRES_URL_NON_POOLING`), `ANTHROPIC_API_KEY`,
+  `ANTHROPIC_MODEL`, `ANTHROPIC_EFFORT`, `WHATSAPP_ALLOWED_NUMBERS` y
+  `APP_BASE_URL`. Guarda la sesión vinculada en `.baileys-auth/` (ignorada por
+  git; es una credencial) y el estado/QR en la tabla `WhatsAppSession`.
+- **Pantalla**: muestra si el conector está corriendo (latido cada 15 s), el
+  QR (solo con `WHATSAPP_PANEL_KEY`, cargada en Vercel) y permite reiniciar o
+  desvincular.
+- **Confirmación**: sin botones, cada propuesta trae un código: `OK 4821`
+  registra esa propuesta y `NO 4821` la descarta. Un "sí" suelto nunca
+  registra nada.
+- **Riesgo**: no es la API oficial; WhatsApp puede bloquear cuentas que la usan
+  de forma automatizada. El agente solo responde a los números autorizados y
+  nunca inicia conversaciones. Si hiciera falta, la API oficial de Meta sigue
+  disponible (`WHATSAPP_PROVIDER=cloud`, guía más abajo).
+
+## Puesta en marcha (API oficial de Meta, alternativa)
 
 **La forma más fácil: el módulo "Agente WhatsApp" de la app** (`/agente-whatsapp`,
 en el menú de la izquierda). Muestra cada paso con su estado (se marca solo
@@ -309,6 +336,7 @@ demás, los mensajes responden 503 y no se procesan.
 | `lib/whatsapp/confirm.ts` | Reconocimiento de "sí"/"no" y de los botones. |
 | `lib/whatsapp/lock.ts` | Un turno por número a la vez. |
 | `app/agente-whatsapp`, `app/api/whatsapp/panel`, `lib/whatsapp/setup.ts` | Módulo de configuración y diagnóstico dentro de la app. |
+| `worker/whatsapp-baileys.mts`, `lib/whatsapp/transport.ts`, `app/api/whatsapp/session` | Conexión por QR (Baileys): conector, canal y estado para la pantalla. |
 | `scripts/whatsapp-setup.mjs` | Configuración y diagnóstico del número (`npm run wa`). |
 | `app/privacidad`, `app/terminos` | Páginas públicas que pide Meta para pasar la app a Live. |
 | `lib/whatsapp/handle.ts` | Orquesta cada mensaje entrante. |

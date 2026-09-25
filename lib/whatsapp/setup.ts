@@ -122,6 +122,8 @@ export async function publicStatus() {
     effort: agentEffort(),
     graphVersion: graphVersion(),
     panelKeyConfigured: panelKeyConfigured(),
+    /** "baileys" (conexión por QR, default) o "cloud" (API oficial de Meta). */
+    provider: env("WHATSAPP_PROVIDER") === "cloud" ? "cloud" : "baileys",
     lastInboundAt: lastIn?.createdAt.toISOString() ?? null,
   };
 }

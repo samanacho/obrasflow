@@ -8,6 +8,7 @@ import AppShell from "@/components/AppShell";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import Toast from "@/components/Toast";
 import { useToast } from "@/lib/useToast";
+import BaileysView from "./BaileysView";
 
 // Módulo para configurar y controlar el agente de WhatsApp (ver
 // docs/WHATSAPP_AGENT.md). Lo público solo dice qué variables están
@@ -16,7 +17,7 @@ import { useToast } from "@/lib/useToast";
 
 type CheckStatus = "ok" | "warn" | "error" | "skip";
 interface Check { id: string; group: "Meta" | "Claude"; label: string; status: CheckStatus; detail?: string; hint?: string }
-interface PanelData {
+export interface PanelData {
   vars: Record<string, boolean>;
   allowedCount: number;
   webhookReady: boolean;
@@ -26,6 +27,7 @@ interface PanelData {
   graphVersion: string;
   panelKeyConfigured: boolean;
   lastInboundAt: string | null;
+  provider: "baileys" | "cloud";
   webhookUrl: string;
   unlocked: boolean;
   diagnostics?: { checks: Check[]; phoneDisplay: string | null; isTestNumber: boolean | null; wabaId: string | null };
@@ -101,6 +103,7 @@ export default function AgenteWhatsAppPage() {
   const [pin, setPin] = useState("");
   const [confirmRegister, setConfirmRegister] = useState(false);
   const [testTo, setTestTo] = useState("");
+  const [showCloud, setShowCloud] = useState(false);
   const { toast, showToast } = useToast();
 
   const load = useCallback(async (panelKey: string | null) => {
@@ -133,25 +136,28 @@ export default function AgenteWhatsAppPage() {
     })();
   }, [load]);
 
+  /** Prueba una clave del panel; devuelve un mensaje de error o null si entró. */
+  async function unlockWith(k: string): Promise<string | null> {
+    try {
+      if ((await load(k)) === "denied") return "Clave incorrecta.";
+      setKey(k);
+      try { sessionStorage.setItem(KEY_STORAGE, k); } catch { /* nada */ }
+      return null;
+    } catch {
+      return "No se pudo conectar con el servidor.";
+    }
+  }
+
   async function unlock(e: React.FormEvent) {
     e.preventDefault();
     const k = keyInput.trim();
     if (!k) return;
     setChecking(true);
     setKeyError(null);
-    try {
-      if ((await load(k)) === "denied") {
-        setKeyError("Clave incorrecta.");
-        return;
-      }
-      setKey(k);
-      setKeyInput("");
-      try { sessionStorage.setItem(KEY_STORAGE, k); } catch { /* nada */ }
-    } catch {
-      setKeyError("No se pudo conectar con el servidor.");
-    } finally {
-      setChecking(false);
-    }
+    const err = await unlockWith(k);
+    if (err) setKeyError(err);
+    else setKeyInput("");
+    setChecking(false);
   }
 
   function lock() {
@@ -394,8 +400,26 @@ export default function AgenteWhatsAppPage() {
       {loading && <p className="state-message">Cargando…</p>}
       {loadError && !loading && <CAlert color="danger">No se pudo cargar el estado del agente.</CAlert>}
 
-      {data && (
+      {data && data.provider === "baileys" && !showCloud && (
+        <BaileysView
+          data={data}
+          panelKey={key}
+          onUnlock={unlockWith}
+          onLock={lock}
+          onShowCloud={() => setShowCloud(true)}
+          copy={copy}
+          activity={data.activity ? <ActivityCard activity={data.activity} /> : null}
+        />
+      )}
+
+      {data && (data.provider === "cloud" || showCloud) && (
         <>
+          {data.provider === "baileys" && (
+            <CAlert color="info" className="d-flex align-items-center gap-2">
+              <span>Esta es la guía de la <strong>API oficial de Meta</strong> (alternativa). El agente está configurado para la conexión por QR.</span>
+              <CButton size="sm" color="primary" variant="outline" className="ms-auto" onClick={() => setShowCloud(false)}>Volver a la conexión por QR</CButton>
+            </CAlert>
+          )}
           <div className="kpi-row">
             <div className="kpi">
               <div className="label">Estado</div>
@@ -549,38 +573,7 @@ export default function AgenteWhatsAppPage() {
                     </CCardBody>
                   </CCard>
 
-                  {data.activity && (
-                    <CCard>
-                      <CCardHeader className="fw-semibold">Actividad (últimos 7 días)</CCardHeader>
-                      <CCardBody>
-                        <div className="d-flex flex-wrap gap-3 mb-3 small">
-                          <span>📥 {data.activity.inbound7} mensajes recibidos</span>
-                          <span>📤 {data.activity.outbound7} respuestas</span>
-                          <span>✅ {data.activity.proposals7.confirmada ?? 0} registradas</span>
-                          <span>⏳ {data.activity.proposals7.pendiente ?? 0} esperando</span>
-                          <span>❌ {data.activity.proposals7.cancelada ?? 0} canceladas</span>
-                        </div>
-                        {data.activity.recent.length === 0 ? (
-                          <p className="empty-col mb-0">Todavía no hay propuestas.</p>
-                        ) : (
-                          <div className="d-flex flex-column gap-2">
-                            {data.activity.recent.map((r) => (
-                              <div key={r.id} className="border rounded p-2 small">
-                                <div className="d-flex gap-2 align-items-center">
-                                  <strong>{KIND_LABEL[r.kind] ?? r.kind}</strong>
-                                  <CBadge color={PROPOSAL_STATUS[r.status]?.color ?? "secondary"} className="ms-auto">
-                                    {PROPOSAL_STATUS[r.status]?.label ?? r.status}
-                                  </CBadge>
-                                </div>
-                                <div>{r.detail}</div>
-                                <div className="text-body-secondary">{r.by} · {fmtDateTime(r.createdAt)}</div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </CCardBody>
-                    </CCard>
-                  )}
+                  {data.activity && <ActivityCard activity={data.activity} />}
                 </div>
               )}
             </div>
@@ -604,5 +597,40 @@ export default function AgenteWhatsAppPage() {
       />
       <Toast message={toast} />
     </AppShell>
+  );
+}
+
+function ActivityCard({ activity }: { activity: NonNullable<PanelData["activity"]> }) {
+  return (
+    <CCard>
+      <CCardHeader className="fw-semibold">Actividad (últimos 7 días)</CCardHeader>
+      <CCardBody>
+        <div className="d-flex flex-wrap gap-3 mb-3 small">
+          <span>📥 {activity.inbound7} mensajes recibidos</span>
+          <span>📤 {activity.outbound7} respuestas</span>
+          <span>✅ {activity.proposals7.confirmada ?? 0} registradas</span>
+          <span>⏳ {activity.proposals7.pendiente ?? 0} esperando</span>
+          <span>❌ {activity.proposals7.cancelada ?? 0} canceladas</span>
+        </div>
+        {activity.recent.length === 0 ? (
+          <p className="empty-col mb-0">Todavía no hay propuestas.</p>
+        ) : (
+          <div className="d-flex flex-column gap-2">
+            {activity.recent.map((r) => (
+              <div key={r.id} className="border rounded p-2 small">
+                <div className="d-flex gap-2 align-items-center">
+                  <strong>{KIND_LABEL[r.kind] ?? r.kind}</strong>
+                  <CBadge color={PROPOSAL_STATUS[r.status]?.color ?? "secondary"} className="ms-auto">
+                    {PROPOSAL_STATUS[r.status]?.label ?? r.status}
+                  </CBadge>
+                </div>
+                <div>{r.detail}</div>
+                <div className="text-body-secondary">{r.by} · {fmtDateTime(r.createdAt)}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CCardBody>
+    </CCard>
   );
 }

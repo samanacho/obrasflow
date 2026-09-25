@@ -5,6 +5,7 @@ import { getWhatsAppConfig, getVerifyToken } from "@/lib/whatsapp/config";
 import { verifyMetaSignature } from "@/lib/whatsapp/signature";
 import { parseWebhookPayload, logWebhookEvents } from "@/lib/whatsapp/parse";
 import { handleInbound } from "@/lib/whatsapp/handle";
+import { cloudTransport } from "@/lib/whatsapp/transport";
 
 // Webhook de WhatsApp Cloud API (Meta). URL a configurar en Meta:
 //   https://<dominio>/api/whatsapp/webhook
@@ -67,7 +68,7 @@ export async function POST(req: NextRequest) {
       (async () => {
         for (const m of messages) {
           try {
-            await handleInbound(cfg, m, deadline);
+            await handleInbound(cloudTransport(cfg), m, deadline);
           } catch (err) {
             console.error("WhatsApp webhook: error no controlado", err);
           }

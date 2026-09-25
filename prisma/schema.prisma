@@ -310,6 +310,25 @@ model WhatsAppMessage {
 /// Turno en curso por número: los mensajes de una misma persona se procesan
 /// de a uno (una foto y el texto que la sigue no pueden correr en paralelo).
 /// El lease vence solo, por si la función de Vercel se corta a mitad.
+/// Estado de la conexión por QR (Baileys). La escribe el conector
+/// (worker/whatsapp-baileys.mts, que corre en una PC encendida) y la lee la
+/// pantalla /agente-whatsapp. `command` es el pedido de la pantalla al
+/// conector ("logout" | "restart"); el conector lo borra al cumplirlo.
+model WhatsAppSession {
+  id          String    @id
+  status      String
+  qr          String?
+  phone       String?
+  name        String?
+  lastError   String?
+  command     String?
+  /// Lo que informa el conector al arrancar: modelo de IA, si la clave de
+  /// Anthropic funciona, cuántos números autorizados tiene, versión.
+  info        Json?
+  heartbeatAt DateTime?
+  updatedAt   DateTime  @updatedAt
+}
+
 model WhatsAppLock {
   phone       String   @id
   token       String
@@ -351,6 +370,9 @@ model WhatsAppPendingAction {
   /// id del registro creado al confirmar (ProjectItem / GeneralMovement / QuickExpense).
   resultId  String?
   error     String?
+  /// Código de 4 dígitos para confirmar por texto ("OK 4821") cuando el canal
+  /// no tiene botones (conexión por QR / Baileys). Identifica UNA propuesta.
+  confirmCode String?
   expiresAt DateTime
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
