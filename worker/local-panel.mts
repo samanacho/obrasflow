@@ -208,7 +208,7 @@ async function refresh(){
   try{
     const s=await (await fetch('/state',{cache:'no-store'})).json();
     $('envfile').textContent=s.envFile;
-    const st={conectado:['Conectado','b-ok'],esperando_qr:['Esperando QR','b-warn'],conectando:['Conectando','b-soft'],desconectado:['Desconectado','b-crit']}[s.status]||[s.status,'b-soft'];
+    const st={conectado:['Conectado','b-ok'],esperando_qr:['Esperando QR','b-warn'],conectando:['Conectando','b-soft'],desconectado:['Desconectado','b-crit'],falta_base:['Falta la base','b-warn'],reiniciando:['Reiniciando','b-soft']}[s.status]||[s.status,'b-soft'];
     $('badge').textContent=st[0];$('badge').className='badge '+st[1];
     let h='';
     if(s.status==='esperando_qr'&&s.qr){h='<img class="qr" src="'+s.qr+'" alt="QR"><ol><li>Abrí <b>WhatsApp Business</b> en el teléfono del número del agente.</li><li><b>⋮</b> (Android) o <b>Configuración</b> (iPhone) › <b>Dispositivos vinculados</b>.</li><li><b>Vincular un dispositivo</b> y escaneá este código.</li></ol><small>Se renueva solo cada ~20 s. La app del teléfono sigue funcionando normal.</small>';}
