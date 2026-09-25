@@ -52,6 +52,23 @@ const recent = new Map<string, WAMessage>();
 /** Último chat (jid) de cada teléfono: se responde por el mismo chat. */
 const jidByPhone = new Map<string, string>();
 
+/**
+ * Modo "cuenta propia" (sin WHATSAPP_ALLOWED_NUMBERS): el agente atiende SOLO
+ * al dueño de la cuenta vinculada, en su chat consigo mismo ("Tú"). Nadie
+ * más puede hablarle. Sus respuestas llevan 🤖 para distinguirlas.
+ */
+const SELF_MODE = !process.env.WHATSAPP_ALLOWED_NUMBERS?.trim();
+const BOT_PREFIX = "🤖 ";
+/** Ids de lo que mandó el agente: en el chat propio también llegan como "míos" y no hay que contestarlos. */
+const botSent = new Set<string>();
+let ownPhone: string | null = null;
+let ownLid: string | null = null;
+
+function isSelfChat(jid: string) {
+  const user = jid.split("@")[0].split(":")[0];
+  return (ownPhone !== null && isPnUser(jid) && user === ownPhone) || (ownLid !== null && isLidUser(jid) && user === ownLid);
+}
+
 function remember(m: WAMessage) {
   recent.set(m.key.id!, m);
   if (recent.size > 500) recent.delete(recent.keys().next().value!);
@@ -146,7 +163,11 @@ const transport: Transport = {
   buttons: false,
   async sendText(to, text) {
     if (!sock) throw new Error("WhatsApp no está conectado");
-    const sent = await sock.sendMessage(jidByPhone.get(to) ?? `${to}@s.whatsapp.net`, { text });
+    const sent = await sock.sendMessage(jidByPhone.get(to) ?? `${to}@s.whatsapp.net`, { text: SELF_MODE ? BOT_PREFIX + text : text });
+    if (sent?.key.id) {
+      botSent.add(sent.key.id);
+      if (botSent.size > 500) botSent.delete(botSent.values().next().value!);
+    }
     return sent?.key.id ?? null;
   },
   async sendProposal(to, body) {
@@ -199,8 +220,15 @@ async function connect() {
     }
     if (u.connection === "open") {
       const phone = current.user?.id ? digits(current.user.id) : null;
+      ownPhone = phone;
+      ownLid = current.user?.lid ? digits(current.user.lid) : null;
+      if (SELF_MODE && phone) {
+        // El único usuario autorizado es el dueño de la cuenta vinculada (solo en memoria, no se guarda).
+        process.env.WHATSAPP_ALLOWED_NUMBERS = `${phone}:${(current.user?.name || "Dueño").replace(/[:,]/g, "")}`;
+      }
       await setSession({ status: "conectado", qr: null, phone, name: current.user?.name ?? null, lastError: null });
       console.log(`✅ Conectado como ${current.user?.name ?? ""} (${phone ?? "?"}).`);
+      if (SELF_MODE) console.log("💬 Modo cuenta propia: escribile al agente en tu chat \"Tú\" (mensaje a vos mismo).");
     }
     if (u.connection === "close") {
       const code = (u.lastDisconnect?.error as { output?: { statusCode?: number } } | undefined)?.output?.statusCode;
@@ -223,13 +251,23 @@ async function connect() {
   });
 
   current.ev.on("messages.upsert", ({ messages, type }) => {
-    if (type !== "notify" || current !== sock) return;
+    if (current !== sock) return;
     for (const m of messages) {
-      if (!m.key.id || m.key.fromMe) continue;
+      if (!m.key.id) continue;
       const jid = m.key.remoteJid ?? "";
       // Solo chats individuales: grupos, estados y canales no se contestan.
       if (!isPnUser(jid) && !isLidUser(jid)) continue;
-      const phone = senderPhone(m);
+      if (SELF_MODE) {
+        // Solo lo que el dueño se escribe a sí mismo, nunca lo que manda el agente.
+        if (!m.key.fromMe || !isSelfChat(jid) || botSent.has(m.key.id)) continue;
+        const t = m.message?.conversation ?? m.message?.extendedTextMessage?.text ?? "";
+        if (t.startsWith(BOT_PREFIX.trim())) continue;
+        // Mensajes viejos (sincronización al vincular): no se procesan.
+        if (Date.now() / 1000 - timestampOf(m) > 300) continue;
+      } else {
+        if (type !== "notify" || m.key.fromMe) continue;
+      }
+      const phone = SELF_MODE ? ownPhone : senderPhone(m);
       if (!phone) {
         console.warn("WhatsApp: mensaje sin número de teléfono (solo id interno) ignorado");
         continue;
@@ -309,11 +347,12 @@ export async function reportInfo() {
     model,
     effort: process.env.ANTHROPIC_EFFORT?.trim() || "medium",
     allowedCount: getAllowedNumbers().size,
+    selfMode: SELF_MODE,
     ai,
     startedAt: new Date().toISOString(),
   };
   local.info = info;
-  console.log(`IA: ${ai.detail} · ${info.allowedCount} número(s) autorizado(s).`);
+  console.log(`IA: ${ai.detail} · ${SELF_MODE ? "modo cuenta propia (chat \"Tú\")" : `${info.allowedCount} número(s) autorizado(s)`}.`);
   await prisma.whatsAppSession
     .upsert({ where: { id: SESSION_ID }, create: { id: SESSION_ID, status: "conectando", info, heartbeatAt: new Date() }, update: { info } })
     .catch(() => {});

@@ -192,8 +192,9 @@ button.ghost{background:transparent;color:var(--acc)}button.danger{border-color:
       <p id="climode" class="msg" style="display:none">🤖 IA: <b>Claude Code</b> con la sesión de Claude de esta PC (sin clave de API).</p>
       <label for="key" class="apionly">Clave de Claude (API key) <span id="keyst"></span></label>
       <input id="key" class="apionly" type="password" autocomplete="off" placeholder="sk-ant-… (dejalo vacío para no cambiarla)">
-      <label for="allowed">Números autorizados (uno por línea: número: nombre)</label>
-      <textarea id="allowed" placeholder="595981123456: Ignacio Samaniego&#10;595982123456: Hugo Rotela"></textarea>
+      <p class="msg">👤 <b>Usuario:</b> solo la cuenta de WhatsApp vinculada. Escribile al agente en tu chat <b>"Tú"</b> (mensaje a vos mismo); sus respuestas llevan 🤖.</p>
+      <label for="allowed" style="display:none">Números autorizados</label>
+      <textarea id="allowed" style="display:none" placeholder="595981123456: Ignacio Samaniego&#10;595982123456: Hugo Rotela"></textarea>
       <div class="row">
         <div style="flex:1" class="apionly"><label for="model">Modelo</label><select id="model"><option>claude-sonnet-5</option><option>claude-opus-5-5</option><option>claude-haiku-4-5</option></select></div>
         <div style="flex:1" class="apionly"><label for="effort">Esfuerzo</label><select id="effort"><option>low</option><option>medium</option><option>high</option></select></div>
@@ -214,7 +215,7 @@ async function refresh(){
     $('badge').textContent=st[0];$('badge').className='badge '+st[1];
     let h='';
     if(s.status==='esperando_qr'&&s.qr){h='<img class="qr" src="'+s.qr+'" alt="QR"><ol><li>Abrí <b>WhatsApp Business</b> en el teléfono del número del agente.</li><li><b>⋮</b> (Android) o <b>Configuración</b> (iPhone) › <b>Dispositivos vinculados</b>.</li><li><b>Vincular un dispositivo</b> y escaneá este código.</li></ol><small>Se renueva solo cada ~20 s. La app del teléfono sigue funcionando normal.</small>';}
-    else if(s.status==='conectado'){h='<p>✅ Conectado como <b>'+(s.name||'')+'</b> (+'+(s.phone||'')+'). El agente responde a los números autorizados.</p><div class="row"><button class="ghost" onclick="cmd(\\'restart\\')">Reiniciar conexión</button><button class="danger" onclick="if(confirm(\\'¿Desvincular? El agente deja de responder hasta escanear un QR nuevo.\\'))cmd(\\'logout\\')">Desvincular</button></div>';}
+    else if(s.status==='conectado'){h='<p>✅ Conectado como <b>'+(s.name||'')+'</b> (+'+(s.phone||'')+'). Escribile al agente en tu chat <b>"Tú"</b> (mensaje a vos mismo).</p><div class="row"><button class="ghost" onclick="cmd(\\'restart\\')">Reiniciar conexión</button><button class="danger" onclick="if(confirm(\\'¿Desvincular? El agente deja de responder hasta escanear un QR nuevo.\\'))cmd(\\'logout\\')">Desvincular</button></div>';}
     else if(s.status==='falta_base')h='<p>⚙️ Falta la <b>base de datos</b>: cargala a la derecha y tocá Guardar. El conector se reinicia solo y enseguida aparece el QR acá.</p>';
     else if(s.status==='reiniciando')h='<p>🔄 Reiniciando el conector (unos 20 s)…</p>';
     else h='<p>⏳ Conectando con WhatsApp…</p>';
@@ -224,13 +225,13 @@ async function refresh(){
     document.querySelectorAll('.apionly').forEach(el=>el.style.display=s.cliMode?'none':'');
     $('climode').style.display=s.cliMode?'':'none';
     $('dbst').textContent=s.dbConfigured?'✅ conectada':'— falta (primero esto)';
-    const ai=s.info&&s.info.ai;$('ai').innerHTML=ai?(ai.ok?'✅ ':'❌ ')+ai.detail+' · '+(s.info.allowedCount||0)+' número(s) autorizado(s)':'';
+    const ai=s.info&&s.info.ai;$('ai').innerHTML=ai?(ai.ok?'✅ ':'❌ ')+ai.detail+' · '+(s.info.selfMode?'modo cuenta propia (chat "Tú")':(s.info.allowedCount||0)+' número(s) autorizado(s)'):'';
     if(!loaded){$('allowed').value=s.allowed.map(e=>e.replace(':',': ')).join('\\n');$('model').value=s.model;$('effort').value=s.effort;loaded=true;}
   }catch(e){$('conn').textContent='El conector no responde.';}
 }
 async function cmd(c){await fetch('/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:c})});setTimeout(refresh,1500);}
 $('cfg').addEventListener('submit',async e=>{e.preventDefault();$('cfgmsg').textContent='Guardando…';
-  const r=await fetch('/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dbUrl:$('db').value,anthropicKey:$('key').value,allowed:$('allowed').value,model:$('model').value,effort:$('effort').value})});
+  const r=await fetch('/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dbUrl:$('db').value,anthropicKey:$('key').value,model:$('model').value,effort:$('effort').value})});
   const j=await r.json().catch(()=>({}));$('cfgmsg').textContent=r.ok?(j.restarting?'✅ Base conectada. Reiniciando el conector (unos 20 s)…':'✅ Guardado.'):'❌ '+(j.error||'No se pudo guardar.');if(r.ok){$('key').value='';$('db').value='';}refresh();});
 refresh();setInterval(refresh,3000);
 </script></main></body></html>`;
