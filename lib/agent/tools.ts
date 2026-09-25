@@ -1,5 +1,10 @@
 import { z } from "zod";
 import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
+
+/** betaZodTool que además conserva el esquema Zod: el backend por Claude Code (lib/agent/cli-run.ts) lo necesita. */
+function defineTool<S extends z.ZodObject<any>, R>(opts: { name: string; description: string; inputSchema: S; run: (i: z.infer<S>) => R }) {
+  return { ...betaZodTool(opts as any), description: opts.description, zodSchema: opts.inputSchema, runTyped: opts.run };
+}
 import type { BetaToolResultContentBlockParam } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import { prisma } from "../prisma";
 import { ITEM_KINDS } from "../itemKinds";
@@ -53,7 +58,7 @@ function proposalReply(r: ProposalResult) {
 
 export function buildTools(ctx: TurnContext) {
   return [
-    betaZodTool({
+    defineTool({
       name: "buscar_obras",
       description:
         "Busca obras por nombre, referencia, sitio, ciudad o responsable (ignora tildes). Devuelve obraId, referencia y sitio de cada una — varias obras se llaman igual (ej. \"ESTACIÓN DE CARGA RÁPIDA\") y se distinguen por referencia/sitio. Con texto vacío lista las obras no finalizadas. También devuelve sitios que coinciden.",
@@ -63,28 +68,28 @@ export function buildTools(ctx: TurnContext) {
       }),
       run: async (i) => json(await q.buscarObras(i.texto, i.incluirFinalizadas ?? false)),
     }),
-    betaZodTool({
+    defineTool({
       name: "ver_obra",
       description:
         "Detalle de una obra: presupuesto, ejecutado, saldo, % ejecutado, adelantos, rubros ya cargados (usalos para el nombre del rubro al registrar) y últimos movimientos.",
       inputSchema: z.object({ obraId: z.string() }),
       run: async (i) => json(await q.verObra(i.obraId)),
     }),
-    betaZodTool({
+    defineTool({
       name: "ver_sitio",
       description:
         "Totales de un Sitio: un lugar con varios frentes/obras (ej. parte civil + parte eléctrica). Usalo cuando pregunten por un lugar completo como \"Congreso\".",
       inputSchema: z.object({ sitioId: z.string() }),
       run: async (i) => json(await q.verSitio(i.sitioId)),
     }),
-    betaZodTool({
+    defineTool({
       name: "resumen_general",
       description:
         "Panorama de la empresa: obras por estado, presupuesto y ejecutado totales, ingresos/egresos generales, costos vs. beneficios (igual que la pantalla de Inicio), obras sobre presupuesto y capturas rápidas sin clasificar.",
       inputSchema: z.object({}),
       run: async () => json(await q.resumenGeneral()),
     }),
-    betaZodTool({
+    defineTool({
       name: "listar_movimientos",
       description:
         "Lista movimientos de plata, más recientes primero, con totales por efecto. Filtrá por obra o por sitio; sin filtro trae los de toda la empresa (y, si incluirGenerales, también los ingresos/egresos generales sin obra). Para \"cuánto se gastó\" usá totales.gastoNetoDeObras (mismo criterio que el Ejecutado: gastos y adelantos menos devoluciones); las órdenes de cambio e ingresos de capital van aparte en noSumanAlEjecutado.",
@@ -108,26 +113,26 @@ export function buildTools(ctx: TurnContext) {
           })
         ),
     }),
-    betaZodTool({
+    defineTool({
       name: "buscar_proveedores",
       description: "Busca proveedores activos del directorio (materiales/servicios) por nombre, contacto o ciudad. Vacío lista todos.",
       inputSchema: z.object({ texto: z.string() }),
       run: async (i) => json(await q.buscarProveedores(i.texto)),
     }),
-    betaZodTool({
+    defineTool({
       name: "buscar_contratistas",
       description: "Busca contratistas activos del directorio por nombre, encargado o ciudad. Vacío lista todos.",
       inputSchema: z.object({ texto: z.string() }),
       run: async (i) => json(await q.buscarContratistas(i.texto)),
     }),
-    betaZodTool({
+    defineTool({
       name: "ver_registros_rapidos",
       description:
         "Capturas del Registro rápido que todavía no se clasificaron, con su registroRapidoId (para clasificarlas con proponer_movimiento_obra / proponer_movimiento_general).",
       inputSchema: z.object({}),
       run: async () => json(await q.registrosRapidosPendientes()),
     }),
-    betaZodTool({
+    defineTool({
       name: "ver_comprobante",
       description:
         "Vuelve a mostrarte una foto o PDF de comprobante que el usuario mandó antes (por su comprobanteId del historial). Usalo cuando necesites datos del comprobante que no tenés a la vista.",
@@ -143,19 +148,19 @@ export function buildTools(ctx: TurnContext) {
         return [file, { type: "text", text: `Comprobante ${media.id} (recibido ${media.createdAt.toISOString().slice(0, 10)}).` }];
       },
     }),
-    betaZodTool({
+    defineTool({
       name: "ver_propuestas_pendientes",
       description: "Propuestas de este usuario que siguen esperando que toque Confirmar o Cancelar.",
       inputSchema: z.object({}),
       run: async () => json(await actions.listPendingActions(ctx.user.phone)),
     }),
-    betaZodTool({
+    defineTool({
       name: "cancelar_propuesta",
       description: "Cancela una propuesta pendiente (cuando el usuario dice que no va, o que la descartes).",
       inputSchema: z.object({ propuestaId: z.string() }),
       run: async (i) => actions.cancelPendingAction(ctx.user.phone, i.propuestaId),
     }),
-    betaZodTool({
+    defineTool({
       name: "proponer_movimiento_obra",
       description:
         "Prepara un gasto/pago/adelanto de UNA obra para que el usuario lo confirme. No lo registra: el usuario confirma con un botón. Validá la obra con buscar_obras y el rubro con ver_obra antes.",
@@ -184,7 +189,7 @@ export function buildTools(ctx: TurnContext) {
         return proposalReply(r);
       },
     }),
-    betaZodTool({
+    defineTool({
       name: "proponer_movimiento_general",
       description:
         "Prepara un ingreso o egreso de la EMPRESA que no es de ninguna obra (royalties, alquiler de oficina, un anticipo recibido, etc.) para que el usuario lo confirme. No lo registra.",
@@ -213,7 +218,7 @@ export function buildTools(ctx: TurnContext) {
         return proposalReply(r);
       },
     }),
-    betaZodTool({
+    defineTool({
       name: "proponer_registro_rapido",
       description:
         "Prepara una captura rápida de un pago (monto, medio de pago, fecha, nota) SIN elegir obra, para clasificarla después desde la app. Usalo cuando el usuario no sabe o no quiere decir ahora a qué obra va. No lo registra.",

@@ -35,8 +35,18 @@ const HISTORY_WINDOW_MS = 12 * 60 * 60 * 1000;
 /** Tope de idas y vueltas con herramientas por mensaje (evita loops caros). */
 const MAX_ITERATIONS = 10;
 
+/**
+ * "cli": usa Claude Code con la sesión de Claude de la PC (sin clave de API),
+ * pensado para el conector local. "api" (default si hay ANTHROPIC_API_KEY): API de Claude.
+ */
+export function agentBackend(): "api" | "cli" {
+  const b = process.env.AGENT_BACKEND?.trim();
+  if (b === "cli" || b === "api") return b;
+  return process.env.ANTHROPIC_API_KEY?.trim() ? "api" : "cli";
+}
+
 export function isAgentConfigured(): boolean {
-  return Boolean(process.env.ANTHROPIC_API_KEY?.trim());
+  return agentBackend() === "cli" ? process.env.AGENT_BACKEND?.trim() === "cli" : Boolean(process.env.ANTHROPIC_API_KEY?.trim());
 }
 
 let client: Anthropic | null = null;
@@ -60,7 +70,7 @@ function getClient(): Anthropic {
  * tarjetas con botones las escribe el sistema, no el modelo: van marcadas
  * como tales para que no las tome como propias.
  */
-async function loadHistory(phone: string, current: { id: string; createdAt: Date }): Promise<BetaMessageParam[]> {
+export async function loadHistory(phone: string, current: { id: string; createdAt: Date }): Promise<BetaMessageParam[]> {
   const rows = await prisma.whatsAppMessage.findMany({
     where: {
       phone,
@@ -86,7 +96,7 @@ async function loadHistory(phone: string, current: { id: string; createdAt: Date
   return msgs;
 }
 
-function contextBlock(user: AgentUser, pending: Awaited<ReturnType<typeof listPendingActions>>): string {
+export function contextBlock(user: AgentUser, pending: Awaited<ReturnType<typeof listPendingActions>>): string {
   const today = todayInParaguay();
   const hora = new Intl.DateTimeFormat("es-PY", { timeZone: BUSINESS_TIME_ZONE, hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
   const pend = pending.length
@@ -124,6 +134,10 @@ export async function runAgentTurn(
   current: { id: string; createdAt: Date },
   timeoutMs: number
 ): Promise<AgentTurnResult> {
+  if (agentBackend() === "cli") {
+    const { runAgentTurnCli } = await import("./cli-run");
+    return runAgentTurnCli(user, currentContent, current, timeoutMs);
+  }
   const [history, pending] = await Promise.all([loadHistory(user.phone, current), listPendingActions(user.phone)]);
   const ctx: TurnContext = { user, proposals: [] };
 

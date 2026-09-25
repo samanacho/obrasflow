@@ -12,15 +12,18 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "wa": "node scripts/whatsapp-setup.mjs",
-    "wa:conector": "node --env-file-if-exists=.env.local --import tsx worker/whatsapp-baileys.mts"
+    "wa:conector": "node --env-file-if-exists=.env.local --import tsx worker/whatsapp-baileys.mts",
+    "local": "node scripts/local-stack.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.283",
     "@anthropic-ai/sdk": "^0.128.0",
     "@coreui/coreui": "^5.9.0",
     "@coreui/icons": "^3.1.0",
     "@coreui/icons-react": "^2.3.0",
     "@coreui/react": "^5.13.0",
     "@coreui/react-chartjs": "^3.0.0",
+    "@modelcontextprotocol/sdk": "^1.30.1",
     "@prisma/client": "^5.20.0",
     "@vercel/functions": "^3.9.9",
     "@whiskeysockets/baileys": "^7.0.0-rc14",
@@ -45,6 +48,7 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@types/three": "^0.185.4",
+    "embedded-postgres": "^18.4.0-beta.17",
     "prisma": "^5.20.0",
     "tsx": "^4.16.2",
     "typescript": "^5.5.3"

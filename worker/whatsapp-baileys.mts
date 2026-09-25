@@ -32,6 +32,8 @@ import type { InboundMessage } from "../lib/whatsapp/parse";
 import type { Transport } from "../lib/whatsapp/transport";
 import { getAllowedNumbers } from "../lib/whatsapp/config";
 import { startLocalPanel } from "./local-panel.mjs";
+import { agentBackend } from "../lib/agent/run";
+import { checkClaudeCli } from "../lib/agent/cli-run";
 
 const SESSION_ID = "baileys";
 /** Sin una URL de Postgres válida el conector arranca solo su página local, para que se la carguen ahí. */
@@ -285,9 +287,12 @@ export async function runCommand(command: "logout" | "restart") {
 /** Le cuenta a la pantalla con qué configuración corre el conector (sin secretos). */
 export async function reportInfo() {
   if (!DB_OK) return;
-  const model = process.env.ANTHROPIC_MODEL?.trim() || "claude-sonnet-5";
+  const cli = agentBackend() === "cli";
+  const model = cli ? `Claude Code (${process.env.CLAUDE_CLI_MODEL?.trim() || "sonnet"})` : process.env.ANTHROPIC_MODEL?.trim() || "claude-sonnet-5";
   let ai = { ok: false, detail: "Falta ANTHROPIC_API_KEY en .env.local." };
-  if (process.env.ANTHROPIC_API_KEY?.trim()) {
+  if (cli) {
+    ai = await checkClaudeCli();
+  } else if (process.env.ANTHROPIC_API_KEY?.trim()) {
     try {
       const Anthropic = (await import("@anthropic-ai/sdk")).default;
       const m = await new Anthropic({ maxRetries: 0 }).models.retrieve(model);

@@ -81,6 +81,7 @@ export function startLocalPanel(deps: Deps): Promise<string> {
       return json(res, 200, {
         ...deps.local,
         aiKeyConfigured: Boolean(process.env.ANTHROPIC_API_KEY?.trim()),
+        cliMode: process.env.AGENT_BACKEND?.trim() === "cli",
         model: process.env.ANTHROPIC_MODEL?.trim() || "claude-sonnet-5",
         effort: process.env.ANTHROPIC_EFFORT?.trim() || "medium",
         allowed: allowedList(),
@@ -185,16 +186,17 @@ button.ghost{background:transparent;color:var(--acc)}button.danger{border-color:
   <section class="card">
     <h2>Configuración</h2>
     <form id="cfg">
-      <label for="db">Base de datos de ObrasFlow (URL de Postgres) <span id="dbst"></span></label>
-      <input id="db" type="password" autocomplete="off" placeholder="postgresql://… (dejalo vacío para no cambiarla)">
-      <small>Está en Vercel › proyecto obrasflow-app › <b>Storage</b> › tu base › pestaña <b>.env.local</b> › <b>Show secret</b>: copiá el valor de <code>POSTGRES_PRISMA_URL</code> (o de <code>DATABASE_URL</code>).</small>
-      <label for="key">Clave de Claude (API key) <span id="keyst"></span></label>
-      <input id="key" type="password" autocomplete="off" placeholder="sk-ant-… (dejalo vacío para no cambiarla)">
+      <label for="db" class="apionly">Base de datos de ObrasFlow (URL de Postgres) <span id="dbst"></span></label>
+      <input id="db" class="apionly" type="password" autocomplete="off" placeholder="postgresql://… (dejalo vacío para no cambiarla)">
+      <small class="apionly">Está en Vercel › proyecto obrasflow-app › <b>Storage</b> › tu base › pestaña <b>.env.local</b> › <b>Show secret</b>: copiá el valor de <code>POSTGRES_PRISMA_URL</code> (o de <code>DATABASE_URL</code>).</small>
+      <p id="climode" class="msg" style="display:none">🤖 IA: <b>Claude Code</b> con la sesión de Claude de esta PC (sin clave de API).</p>
+      <label for="key" class="apionly">Clave de Claude (API key) <span id="keyst"></span></label>
+      <input id="key" class="apionly" type="password" autocomplete="off" placeholder="sk-ant-… (dejalo vacío para no cambiarla)">
       <label for="allowed">Números autorizados (uno por línea: número: nombre)</label>
       <textarea id="allowed" placeholder="595981123456: Ignacio Samaniego&#10;595982123456: Hugo Rotela"></textarea>
       <div class="row">
-        <div style="flex:1"><label for="model">Modelo</label><select id="model"><option>claude-sonnet-5</option><option>claude-opus-5-5</option><option>claude-haiku-4-5</option></select></div>
-        <div style="flex:1"><label for="effort">Esfuerzo</label><select id="effort"><option>low</option><option>medium</option><option>high</option></select></div>
+        <div style="flex:1" class="apionly"><label for="model">Modelo</label><select id="model"><option>claude-sonnet-5</option><option>claude-opus-5-5</option><option>claude-haiku-4-5</option></select></div>
+        <div style="flex:1" class="apionly"><label for="effort">Esfuerzo</label><select id="effort"><option>low</option><option>medium</option><option>high</option></select></div>
       </div>
       <button type="submit">Guardar</button>
       <div id="cfgmsg" class="msg"></div>
@@ -219,6 +221,8 @@ async function refresh(){
     if(s.lastError&&s.status!=='conectado')h+='<p class="msg" style="color:var(--warn)">'+s.lastError+'</p>';
     $('conn').innerHTML=h;
     $('keyst').textContent=s.aiKeyConfigured?'✅ cargada':'— falta';
+    document.querySelectorAll('.apionly').forEach(el=>el.style.display=s.cliMode?'none':'');
+    $('climode').style.display=s.cliMode?'':'none';
     $('dbst').textContent=s.dbConfigured?'✅ conectada':'— falta (primero esto)';
     const ai=s.info&&s.info.ai;$('ai').innerHTML=ai?(ai.ok?'✅ ':'❌ ')+ai.detail+' · '+(s.info.allowedCount||0)+' número(s) autorizado(s)':'';
     if(!loaded){$('allowed').value=s.allowed.map(e=>e.replace(':',': ')).join('\\n');$('model').value=s.model;$('effort').value=s.effort;loaded=true;}
