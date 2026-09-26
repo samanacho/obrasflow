@@ -485,6 +485,29 @@ export async function cancelPendingAction(phone: string, id: string): Promise<st
 
 // -------------------------------- ejecución --------------------------------
 
+/** Líneas "• Etiqueta: valor" sin las vacías. */
+function detail(rows: [string, string | null | undefined | false][]): string[] {
+  return rows.filter(([, v]) => Boolean(v)).map(([k, v]) => `• ${k}: ${v}`);
+}
+
+/** Cómo quedó el presupuesto de la obra después de registrar (semáforo + %). */
+async function budgetLine(obraId: string): Promise<string | null> {
+  const p = await prisma.project.findUnique({ where: { id: obraId }, select: { budget: true, spent: true } });
+  if (!p) return null;
+  const budget = Number(p.budget);
+  const spent = Number(p.spent);
+  if (!(budget > 0)) return `⚪ *Ejecutado de la obra:* ${fmtGs(spent)} (no tiene presupuesto cargado)`;
+  const pct = Math.round((spent / budget) * 100);
+  const light = pct > 100 ? "🔴" : pct >= 80 ? "🟡" : "🟢";
+  const rest = budget - spent;
+  return `${light} *Presupuesto de la obra:* ${pct} % ejecutado · ${rest >= 0 ? `quedan ${fmtGs(rest)}` : `se pasó ${fmtGs(-rest)}`}\n   (${fmtGs(spent)} de ${fmtGs(budget)})`;
+}
+
+async function pendingQuickLine(): Promise<string | null> {
+  const n = await prisma.quickExpense.count({ where: { resuelto: false } });
+  return n ? `📥 Quedan ${n} registro${n === 1 ? "" : "s"} rápido${n === 1 ? "" : "s"} sin clasificar.` : null;
+}
+
 function appUrl(path: string): string | null {
   const base =
     process.env.APP_BASE_URL?.replace(/\/$/, "") ||
@@ -590,10 +613,28 @@ async function runAction(user: AgentUser, kind: ActionKind, payload: any): Promi
       }
     }
     const url = appUrl(`/project/${p.obraId}`);
-    return {
-      resultId: item.id,
-      message: `✅ Registrado: ${fmtGs(p.monto)} en ${p.obraLabel} (rubro "${p.rubro}")${adjunto}.${p.registroRapidoId ? " La captura de Registro rápido quedó clasificada." : ""}${url ? `\n${url}` : ""}`,
-    };
+    const lines = [
+      "✅ *Registrado · Movimiento de obra*",
+      `📍 ${p.obraLabel}`,
+      "",
+      ...detail([
+        ["Monto", `*${fmtGs(p.monto)}*`],
+        ["Rubro", p.rubro],
+        ["Tipo", `${p.tipo}${p.tipoInsumo ? ` · ${p.tipoInsumo}` : ""}`],
+        ["Proveedor", p.proveedorNombre],
+        ["Fecha", fechaLabel(p.fecha)],
+        ["Medio de pago", p.medioPago],
+        ["Estado", p.estado],
+        ["Centro de costos", p.categoria],
+        ["Notas", p.notas ? short(p.notas, NOTAS_EN_RESUMEN) : null],
+        ["Comprobante", adjunto ? (adjunto.startsWith(" con") ? "adjunto ✓" : "⚠️ no se pudo adjuntar, subilo desde la app") : null],
+        ["Registro rápido", p.registroRapidoId ? "la captura quedó clasificada ✓" : null],
+      ]),
+    ];
+    const budget = await budgetLine(p.obraId).catch(() => null);
+    if (budget) lines.push("", budget);
+    if (url) lines.push("", `🔗 ${url}`);
+    return { resultId: item.id, message: lines.join("\n") };
   }
 
   if (kind === "movimiento_general") {
@@ -617,10 +658,24 @@ async function runAction(user: AgentUser, kind: ActionKind, payload: any): Promi
       });
     });
     const url = appUrl("/movimientos");
-    return {
-      resultId: g.id,
-      message: `✅ Registrado: ${p.tipo} general de ${fmtGs(p.monto)} — "${p.concepto}".${p.registroRapidoId ? " La captura de Registro rápido quedó clasificada." : ""}${url ? `\n${url}` : ""}`,
-    };
+    const lines = [
+      `✅ *Registrado · ${p.tipo === "ingreso" ? "Ingreso" : "Egreso"} general (sin obra)*`,
+      "",
+      ...detail([
+        ["Monto", `*${fmtGs(p.monto)}*`],
+        ["Concepto", p.concepto],
+        ["Fecha", fechaLabel(p.fecha)],
+        ["Categoría", p.categoria],
+        ["Medio de pago", p.medioPago],
+        ["Estado", p.estado],
+        ["Responsable", p.responsable],
+        ["Notas", p.notas ? short(p.notas, NOTAS_EN_RESUMEN) : null],
+        ["Comprobante", p.comprobanteMediaId ? "adjunto ✓" : null],
+        ["Registro rápido", p.registroRapidoId ? "la captura quedó clasificada ✓" : null],
+      ]),
+    ];
+    if (url) lines.push("", `🔗 ${url}`);
+    return { resultId: g.id, message: lines.join("\n") };
   }
 
   if (kind === "registro_rapido") {
@@ -630,10 +685,23 @@ async function runAction(user: AgentUser, kind: ActionKind, payload: any): Promi
       data: { fecha: new Date(p.fecha), monto: p.monto, medioPago: p.medioPago, nota, comprobanteMediaId: p.comprobanteMediaId },
     });
     const url = appUrl("/registro-rapido");
-    return {
-      resultId: q.id,
-      message: `✅ Anotado en Registro rápido: ${fmtGs(p.monto)} (${p.medioPago}). Clasificalo cuando puedas desde la app o pedímelo por acá.${url ? `\n${url}` : ""}`,
-    };
+    const lines = [
+      "✅ *Anotado en Registro rápido*",
+      "",
+      ...detail([
+        ["Monto", `*${fmtGs(p.monto)}*`],
+        ["Medio de pago", p.medioPago],
+        ["Fecha", fechaLabel(p.fecha)],
+        ["Nota", p.nota ? short(p.nota, NOTAS_EN_RESUMEN) : null],
+        ["Comprobante", p.comprobanteMediaId ? "adjunto ✓" : null],
+      ]),
+      "",
+      "Falta decir a qué obra o concepto va: clasificalo desde la app o pedímelo por acá.",
+    ];
+    const pend = await pendingQuickLine().catch(() => null);
+    if (pend) lines.push(pend);
+    if (url) lines.push("", `🔗 ${url}`);
+    return { resultId: q.id, message: lines.join("\n") };
   }
 
   throw new NothingWrittenError(`tipo de propuesta desconocido (${kind}).`);
