@@ -395,7 +395,8 @@ export default function AgenteWhatsAppPage() {
 
   return (
     <AppShell crumbs={[{ label: "Memby" }]}>
-      {!(localMode && !showCloud) && (
+      {/* Hasta saber si el conector local responde no se muestra ningún encabezado (evita el parpadeo). */}
+      {localState !== null && !(localMode && !showCloud) && (
         <>
           <h1 className="of-page-title">💬 Memby</h1>
           <p className="module-desc mb-4">
@@ -405,7 +406,7 @@ export default function AgenteWhatsAppPage() {
         </>
       )}
 
-      {loading && <p className="state-message">Cargando…</p>}
+      {(loading || localState === null) && <p className="state-message">Cargando…</p>}
       {loadError && !loading && <CAlert color="danger">No se pudo cargar el estado del agente.</CAlert>}
 
       {data && localMode && !showCloud && localState && (
