@@ -428,7 +428,7 @@ function DashboardView({
         />
         <StatCard
           label="Ejecutado"
-          value={`${execPct} %`}
+          value={`${execPct} %`}
           tone={budgetState({ budget: totalBudget, spent: totalSpent }).light}
           bar={{ pct: execPct, light: budgetState({ budget: totalBudget, spent: totalSpent }).light }}
           sub={<span title={`${fmtMoney(totalSpent)} de ${fmtMoney(totalBudget)}`}>{fmtGsShort(totalSpent)} de {fmtGsShort(totalBudget)}</span>}
@@ -442,7 +442,7 @@ function DashboardView({
           sub={totalBudget === 0 && generalNet === 0 ? "sin obras cargadas" : totalBenefit >= 0 ? "ganancia sobre presupuesto" : "pérdida sobre presupuesto"}
           href="/movimientos"
         />
-        <StatCard label="Avance promedio" value={`${avgProgress} %`} bar={{ pct: avgProgress, light: "none" }} sub={`sobre ${projects.length} obra${projects.length === 1 ? "" : "s"}`} />
+        <StatCard label="Avance promedio" value={`${avgProgress} %`} bar={{ pct: avgProgress, light: "none" }} sub={`sobre ${projects.length} obra${projects.length === 1 ? "" : "s"}`} />
       </div>
       <div className="home-mini">
         <Link href="/contratistas">👷 {summary?.contractorsActive ?? "—"} contratistas activos</Link>

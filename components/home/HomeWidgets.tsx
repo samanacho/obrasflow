@@ -133,15 +133,15 @@ export function attentionItems(projects: ProjectDTO[], extras: { pendingQuick?: 
       </>
     );
     if (b.light === "crit") {
-      items.push({ key: `b-${p.id}`, rank: 0, light: "crit", title: name, detail: `Pasó el presupuesto: ${b.pct} % (${fmtGsShort(p.spent - p.budget)} de más)`, href: `/project/${p.id}` });
+      items.push({ key: `b-${p.id}`, rank: 0, light: "crit", title: name, detail: `Pasó el presupuesto: ${b.pct} % (${fmtGsShort(p.spent - p.budget)} de más)`, href: `/project/${p.id}` });
     } else if (b.pct !== null && b.pct >= 90) {
-      items.push({ key: `b-${p.id}`, rank: 2, light: "warn", title: name, detail: `Cerca del tope: ${b.pct} % · quedan ${fmtGsShort(p.budget - p.spent)}`, href: `/project/${p.id}` });
+      items.push({ key: `b-${p.id}`, rank: 2, light: "warn", title: name, detail: `Cerca del tope: ${b.pct} % · quedan ${fmtGsShort(p.budget - p.spent)}`, href: `/project/${p.id}` });
     }
     const d = daysLeft(p.end);
     if (d < 0) {
-      items.push({ key: `d-${p.id}`, rank: 1, light: "crit", title: name, detail: `Venció hace ${-d} día${d === -1 ? "" : "s"} (avance ${Math.round(p.progress)} %)`, href: `/project/${p.id}` });
+      items.push({ key: `d-${p.id}`, rank: 1, light: "crit", title: name, detail: `Venció hace ${-d} día${d === -1 ? "" : "s"} (avance ${Math.round(p.progress)} %)`, href: `/project/${p.id}` });
     } else if (d <= 7) {
-      items.push({ key: `d-${p.id}`, rank: 3, light: "warn", title: name, detail: d === 0 ? "Vence hoy" : `Vence en ${d} día${d === 1 ? "" : "s"} (avance ${Math.round(p.progress)} %)`, href: `/project/${p.id}` });
+      items.push({ key: `d-${p.id}`, rank: 3, light: "warn", title: name, detail: d === 0 ? "Vence hoy" : `Vence en ${d} día${d === 1 ? "" : "s"} (avance ${Math.round(p.progress)} %)`, href: `/project/${p.id}` });
     }
   }
   if (extras.pendingQuick) {
@@ -311,13 +311,13 @@ export function ObrasList({ projects }: { projects: ProjectDTO[] }) {
                     <span className="home-bar sm" aria-hidden="true">
                       <span className="fill is-accent" style={{ width: `${pct}%` }} />
                     </span>
-                    <span className="v">{pct} %</span>
+                    <span className="v">{pct}&nbsp;%</span>
                     <span className="row-l">Presupuesto</span>
                     <span className="home-bar sm" aria-hidden="true">
                       <span className={`fill is-${b.light}`} style={{ width: `${Math.min(100, b.pct ?? 0)}%` }} />
                     </span>
                     <span className={`v tone-${b.light}`} title={`${fmtGs(p.spent)} de ${fmtGs(p.budget)}`}>
-                      {b.pct === null ? "—" : `${b.pct} %`}
+                      {b.pct === null ? "—" : `${b.pct} %`}
                     </span>
                   </span>
                 </Link>
