@@ -16,6 +16,21 @@ import { loadHistory, contextBlock, type AgentTurnResult } from "./run";
 // guardar la sesión. Solo puede usar las herramientas de ObrasFlow.
 
 const SERVER = "obrasflow";
+
+/**
+ * Entorno para Claude Code: el de la PC, sin variables heredadas de otra
+ * sesión de Claude (p. ej. si el conector se lanzó desde la app de Claude),
+ * que redirigen la autenticación y hacen fallar con "Not logged in".
+ */
+function cleanEnv(): Record<string, string | undefined> {
+  const out: Record<string, string | undefined> = {};
+  for (const [k, v] of Object.entries(process.env)) {
+    if (k === "CLAUDE_CODE_OAUTH_TOKEN") out[k] = v;
+    else if (/^(CLAUDECODE|CLAUDE_CODE_|CLAUDE_AGENT_SDK|CLAUDE_PID|CLAUDE_EFFORT|CLAUDE_PREVIEW|ANTHROPIC_BASE_URL|BAGGAGE|AI_AGENT)/.test(k)) continue;
+    else out[k] = v;
+  }
+  return out;
+}
 const MAX_TURNS = 12;
 
 /** Convierte lo que devuelve una herramienta al formato de resultado de MCP. */
@@ -91,6 +106,7 @@ export async function runAgentTurnCli(
         maxTurns: MAX_TURNS,
         abortController: abort,
         cwd: tmpdir(),
+        env: cleanEnv(),
       },
     });
     for await (const m of q) {
@@ -120,7 +136,7 @@ export async function checkClaudeCli(): Promise<{ ok: boolean; detail: string }>
   try {
     const q = query({
       prompt: "Respondé solamente: ok",
-      options: { tools: [], settingSources: [], persistSession: false, maxTurns: 1, abortController: abort, cwd: tmpdir(), model: process.env.CLAUDE_CLI_MODEL?.trim() || "sonnet" },
+      options: { tools: [], settingSources: [], persistSession: false, maxTurns: 1, abortController: abort, cwd: tmpdir(), env: cleanEnv(), model: process.env.CLAUDE_CLI_MODEL?.trim() || "sonnet" },
     });
     for await (const m of q) {
       if (m.type === "result") {

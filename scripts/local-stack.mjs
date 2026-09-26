@@ -26,6 +26,11 @@ const ENV_FILE = join(ROOT, ".env.local");
 const NODE = process.execPath;
 const NPM_CLI = join(NODE, "..", "node_modules", "npm", "bin", "npm-cli.js");
 
+// Sin variables heredadas de una sesión de Claude (si se lanzó desde la app de Claude): rompen la autenticación de Claude Code.
+for (const k of Object.keys(process.env)) {
+  if (k !== "CLAUDE_CODE_OAUTH_TOKEN" && /^(CLAUDECODE|CLAUDE_CODE_|CLAUDE_AGENT_SDK|CLAUDE_PID|CLAUDE_EFFORT|CLAUDE_PREVIEW|ANTHROPIC_BASE_URL|BAGGAGE|AI_AGENT)/.test(k)) delete process.env[k];
+}
+
 const log = (...a) => console.log(`[${new Date().toLocaleTimeString("es-PY")}]`, ...a);
 
 /** Asegura estas variables en .env.local (sin tocar las demás, p. ej. los números autorizados). */
