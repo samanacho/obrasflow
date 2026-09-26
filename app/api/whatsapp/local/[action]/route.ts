@@ -33,7 +33,7 @@ export async function GET(req: NextRequest, { params }: { params: { action: stri
 
 export async function POST(req: NextRequest, { params }: { params: { action: string } }) {
   if (!fromThisPc(req)) return NextResponse.json({ available: false }, { status: 403 });
-  if (params.action !== "config" && params.action !== "command" && params.action !== "send") return NextResponse.json({ error: "Acción desconocida." }, { status: 400 });
+  if (!["config", "command", "send", "send-media"].includes(params.action)) return NextResponse.json({ error: "Acción desconocida." }, { status: 400 });
   const body = await req.text();
   return forward(`/${params.action}`, { method: "POST", headers: { "Content-Type": "application/json" }, body });
 }

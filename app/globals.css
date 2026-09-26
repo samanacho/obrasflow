@@ -576,4 +576,25 @@ a{color:inherit;}
 .memby-composer{display:flex;gap:8px;align-items:flex-end;padding:10px 14px 14px;background:var(--surface);}
 .memby-composer textarea{border-radius:20px !important;padding:9px 16px !important;resize:none;min-height:42px;max-height:140px;}
 .memby-send{width:42px;height:42px;flex:none;border-radius:50% !important;display:inline-flex !important;align-items:center;justify-content:center;padding:0 !important;font-size:1.05rem;}
+/* Adjuntos, notas de voz y avisos */
+.memby-chat-card{position:relative;}
+.memby-chat-card.is-drop{border-color:var(--accent);}
+.memby-drop{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font-weight:600;color:var(--accent-ink);
+  background:color-mix(in srgb, var(--accent-soft) 88%, transparent);border:2px dashed var(--accent);border-radius:14px;pointer-events:none;}
+.memby-thumb{display:block;margin:2px 0 6px;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--paper);max-width:240px;}
+.memby-thumb img{display:block;width:100%;max-height:220px;object-fit:cover;}
+.memby-bubble code{font-size:.85em;background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:0 4px;color:var(--ink);}
+.memby-bubble a{color:var(--accent-ink);}
+.memby-voice-tag,.memby-notice-tag{display:inline-block;font-size:.7rem;font-weight:700;letter-spacing:.02em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:2px;}
+.memby-voice-text{display:block;color:var(--ink);}
+.memby-bubble.notice{background:color-mix(in srgb, var(--warn-soft) 55%, var(--surface));border-color:color-mix(in srgb, var(--warn) 25%, var(--line));}
+.memby-bubble.notice .memby-notice-tag{color:var(--warn);}
+.memby-attach{width:42px;height:42px;flex:none;border-radius:50%;border:1px solid var(--line);background:var(--paper);font-size:1.1rem;line-height:1;cursor:pointer;transition:background .15s ease,border-color .15s ease;}
+.memby-attach:hover:not(:disabled){background:var(--accent-soft);border-color:color-mix(in srgb, var(--accent) 40%, var(--line));}
+.memby-attach:disabled{opacity:.5;cursor:default;}
+.memby-file{display:flex;align-items:center;gap:8px;margin:10px 14px 0;padding:6px 8px 6px 12px;border:1px solid var(--line);border-radius:12px;background:var(--paper);font-size:.85rem;}
+.memby-file .name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;}
+.memby-file .size{color:var(--ink-soft);font-size:.78rem;}
+.memby-file button{border:0;background:transparent;color:var(--ink-soft);width:28px;height:28px;border-radius:50%;cursor:pointer;}
+.memby-file button:hover{background:var(--line);color:var(--ink);}
 @media (max-width: 575px){.memby-chat-body{height:62vh;}.memby-bubble{max-width:88%;}.memby-hero-status{margin-left:0;}}

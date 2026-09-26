@@ -144,7 +144,9 @@ export async function handleInbound(
         ? msg.caption ?? ""
         : msg.kind === "button"
           ? `[Tocó el botón "${msg.title}"]`
-          : `[Mandó un mensaje de tipo ${msg.type}]`;
+          : msg.type === "audio" || msg.type === "audio_largo"
+            ? "[🎤 Nota de voz]"
+            : `[Mandó un mensaje de tipo ${msg.type}]`;
 
   // Deduplicación: WhatsApp puede reenviar el mismo webhook. waMessageId es
   // único en la tabla, así que un repetido se descarta (el findUnique evita
@@ -187,8 +189,10 @@ export async function handleInbound(
         t,
         user,
         msg.type === "audio"
-          ? "🎤 Todavía no puedo escuchar audios. Escribime el mensaje, o mandame una foto o PDF del comprobante."
-          : "Por ahora entiendo mensajes de texto, fotos y PDF."
+          ? "🎤 No pude entender esa nota de voz. ¿Me la repetís más cerca del micrófono, o me lo escribís?"
+          : msg.type === "audio_largo"
+            ? "🎤 Esa nota de voz es muy larga (más de 3 minutos). Mandame una más corta o escribímelo."
+            : "Por ahora entiendo mensajes de texto, notas de voz, fotos y PDF."
       );
     }
 

@@ -165,8 +165,12 @@ export default function LocalConnector({
               <ul className="ps-3 mb-2">
                 <li>Preguntale: <em>¿cuánto llevamos gastado en Puente Río Claro?</em></li>
                 <li>Pedile que anote: <em>500 mil de cemento para Puente Río Claro, en efectivo</em></li>
-                <li>Mandale desde el teléfono la foto o PDF de un comprobante.</li>
+                <li>Mandale la foto o PDF de un comprobante: desde el teléfono o con 📎 acá (también podés arrastrarlo o pegarlo).</li>
+                <li>Mandale una <strong>nota de voz</strong>: la pasa a texto en esta PC y te responde igual que a un mensaje escrito.</li>
               </ul>
+              <p className="mb-2">
+                🔔 Te avisa solo cuando una obra llega al 90 % o se pasa del presupuesto, si una propuesta lleva más de 2 horas sin confirmar, y a las 19:00 te manda el resumen del día.
+              </p>
               <p className="mb-2">
                 Antes de registrar, Memby te muestra una <strong>propuesta</strong>: tocá <strong>Confirmar</strong> acá o respondé{" "}
                 <strong>OK</strong> y el código en WhatsApp.

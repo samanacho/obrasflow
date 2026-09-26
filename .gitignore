@@ -19,3 +19,4 @@ logs/
 
 # Prompts de trabajo locales (no se publican)
 docs/prompt-*.md
+.local-models/

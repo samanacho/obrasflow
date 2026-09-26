@@ -17,12 +17,14 @@ const MODELS = ["claude-sonnet-5", "claude-opus-5-5", "claude-haiku-4-5"];
 const CLI_MODELS = ["sonnet", "opus", "haiku"];
 const APP_PAGE = `${process.env.APP_BASE_URL?.trim() || "http://localhost:3000"}/agente-whatsapp`;
 const EFFORTS = ["low", "medium", "high"];
+const MEDIA_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 
 interface Deps {
   local: { status: string; qr: string | null; phone: string | null; name: string | null; lastError: string | null; info: Record<string, unknown> | null };
   runCommand: (c: "logout" | "restart") => Promise<void>;
   reportInfo: () => Promise<void>;
   sendToSelf: (text: string) => Promise<void>;
+  sendMediaToSelf: (file: { data: Buffer; mimeType: string; fileName: string; caption: string }) => Promise<void>;
   dbConfigured: boolean;
 }
 
@@ -37,12 +39,12 @@ function setEnv(key: string, value: string) {
   process.env[key] = value;
 }
 
-function readBody(req: IncomingMessage): Promise<any> {
+function readBody(req: IncomingMessage, max = 20_000): Promise<any> {
   return new Promise((ok) => {
     let raw = "";
     req.on("data", (c) => {
       raw += c;
-      if (raw.length > 20_000) req.destroy();
+      if (raw.length > max) req.destroy();
     });
     req.on("end", () => {
       try {
@@ -166,6 +168,23 @@ export function startLocalPanel(deps: Deps): Promise<string> {
       if (text.length > 2000) return json(res, 400, { error: "El mensaje es demasiado largo." });
       try {
         await deps.sendToSelf(text);
+        return json(res, 200, { ok: true });
+      } catch (err) {
+        return json(res, 409, { error: (err as Error).message });
+      }
+    }
+    if (req.method === "POST" && url.pathname === "/send-media") {
+      // Foto o PDF elegido en el chat de la pantalla (base64, hasta 4 MB).
+      const b = await readBody(req, 6_000_000);
+      const mimeType = typeof b.mimeType === "string" ? b.mimeType : "";
+      if (!MEDIA_TYPES.includes(mimeType)) return json(res, 400, { error: "Solo fotos (JPG, PNG, WEBP) o PDF." });
+      const data = typeof b.data === "string" ? Buffer.from(b.data, "base64") : null;
+      if (!data?.length) return json(res, 400, { error: "No llegó el archivo." });
+      if (data.length > 4 * 1024 * 1024) return json(res, 400, { error: "El archivo pesa más de 4 MB." });
+      const fileName = typeof b.fileName === "string" ? b.fileName.replace(/[\\/:*?"<>|\r\n]/g, "").slice(0, 120) : "";
+      const caption = typeof b.caption === "string" ? b.caption.trim().slice(0, 1000) : "";
+      try {
+        await deps.sendMediaToSelf({ data, mimeType, fileName, caption });
         return json(res, 200, { ok: true });
       } catch (err) {
         return json(res, 409, { error: (err as Error).message });

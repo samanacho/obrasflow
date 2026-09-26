@@ -335,6 +335,13 @@ model WhatsAppLock {
   lockedUntil DateTime
 }
 
+/// Avisos automáticos que Memby ya mandó (presupuesto, propuestas sin
+/// confirmar, resumen del día): la clave evita repetir el mismo aviso.
+model WhatsAppNotice {
+  key    String   @id
+  sentAt DateTime @default(now())
+}
+
 /// Fotos/PDF de comprobantes recibidos por WhatsApp. Se guardan en la base
 /// (mismo criterio y mismo tope de 4MB que Attachment) para no depender de
 /// un storage externo. Al confirmar un movimiento de obra se copia a un

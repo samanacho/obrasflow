@@ -32,6 +32,10 @@ Es la práctica habitual en este repositorio (en la app de Claude y en el CLI
 - Modo local completo (`npm run local`, arranca solo con Windows): Postgres
   local en `.local-db/`, app en http://localhost:3000, conector de WhatsApp.
   Pantalla del agente: http://localhost:3000/agente-whatsapp
+- Memby (conector, `worker/`): notas de voz transcriptas en la PC con Whisper
+  (`worker/transcribe.mts`, modelo en `.local-models/`), avisos automáticos
+  (`worker/notices.mts`, tabla `WhatsAppNotice`). Opciones en `.env.local`:
+  `MEMBY_VOZ=off`, `MEMBY_AVISOS=off`, `MEMBY_RESUMEN_HORA=19`, `WHISPER_MODEL`.
 - Producción: https://obrasflow-app.vercel.app (base Neon, se despliega con
   cada push a `main`). El build corre `prisma db push --accept-data-loss`:
   los cambios de esquema tienen que ser aditivos.

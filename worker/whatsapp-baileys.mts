@@ -20,6 +20,7 @@ import makeWASocket, {
   DisconnectReason,
   downloadMediaMessage,
   fetchLatestBaileysVersion,
+  generateMessageIDV2,
   isLidUser,
   isPnUser,
   useMultiFileAuthState,
@@ -34,6 +35,8 @@ import { getAllowedNumbers } from "../lib/whatsapp/config";
 import { startLocalPanel } from "./local-panel.mjs";
 import { agentBackend } from "../lib/agent/run";
 import { checkClaudeCli } from "../lib/agent/cli-run";
+import { MAX_AUDIO_SECONDS, transcribeVoiceNote, warmUpTranscriber } from "./transcribe.mjs";
+import { avisosActivos, startNotices } from "./notices.mjs";
 
 const SESSION_ID = "baileys";
 /** Sin una URL de Postgres válida el conector arranca solo su página local, para que se la carguen ahí. */
@@ -49,6 +52,8 @@ let reconnectTimer: NodeJS.Timeout | null = null;
 
 /** Mensajes recientes por id: para marcar leído y bajar fotos/PDF. */
 const recent = new Map<string, WAMessage>();
+/** Archivos que se mandaron desde la pantalla: ya se tienen, no hace falta bajarlos de WhatsApp. */
+const ownMedia = new Map<string, Buffer>();
 /** Último chat (jid) de cada teléfono: se responde por el mismo chat. */
 const jidByPhone = new Map<string, string>();
 
@@ -180,6 +185,8 @@ const transport: Transport = {
     if (typing && m.key.remoteJid) await sock.sendPresenceUpdate("composing", m.key.remoteJid);
   },
   async downloadMedia(msg, maxBytes) {
+    const mine = ownMedia.get(msg.waMediaId);
+    if (mine) return mine.length > maxBytes ? { tooLarge: true, size: mine.length } : { data: mine, mimeType: msg.mimeType };
     const m = recent.get(msg.waMediaId);
     if (!sock || !m) throw new Error("No encontré el archivo del mensaje");
     const inner = m.message?.documentWithCaptionMessage?.message ?? m.message;
@@ -277,10 +284,32 @@ async function connect() {
       remember(m);
       jidByPhone.set(phone, jid);
       queue = queue
-        .then(() => handleInbound(transport, inbound, Date.now() + TURN_BUDGET_MS))
+        .then(async () => handleInbound(transport, await voiceToText(m, inbound), Date.now() + TURN_BUDGET_MS))
         .catch((err) => console.error("WhatsApp: error procesando mensaje", err));
     }
   });
+}
+
+/**
+ * Nota de voz -> mensaje de texto "🎤 …" (transcripto en esta PC). Si no se
+ * puede, sigue como "audio" y el agente contesta que no la pudo escuchar.
+ */
+async function voiceToText(m: WAMessage, inbound: InboundMessage): Promise<InboundMessage> {
+  if (inbound.kind !== "unsupported" || inbound.type !== "audio" || !sock) return inbound;
+  if (process.env.MEMBY_VOZ?.trim().toLowerCase() === "off") return inbound;
+  try {
+    const audio = m.message?.audioMessage ?? m.message?.ephemeralMessage?.message?.audioMessage;
+    if (Number(audio?.seconds ?? 0) > MAX_AUDIO_SECONDS) return { ...inbound, type: "audio_largo" };
+    await sock.sendPresenceUpdate("composing", m.key.remoteJid!).catch(() => {});
+    const data = await downloadMediaMessage(m, "buffer", {}, { logger, reuploadRequest: sock.updateMediaMessage });
+    const { text } = await transcribeVoiceNote(data);
+    if (!text) return inbound;
+    return { kind: "text", waMessageId: inbound.waMessageId, from: inbound.from, timestamp: inbound.timestamp, text: `🎤 ${text}` };
+  } catch (err) {
+    if ((err as { tooLong?: number }).tooLong) return { ...inbound, type: "audio_largo" };
+    console.error("🎤 No se pudo transcribir la nota de voz:", (err as Error).message);
+    return inbound;
+  }
 }
 
 function scheduleReconnect(ms: number) {
@@ -313,6 +342,30 @@ async function heartbeat() {
 export async function sendToSelf(text: string) {
   if (!sock || local.status !== "conectado" || !ownPhone) throw new Error("WhatsApp no está conectado.");
   await sock.sendMessage(`${ownPhone}@s.whatsapp.net`, { text });
+}
+
+/**
+ * Foto o PDF desde el chat de la pantalla: se manda al chat "Tú" y Memby lo
+ * lee como cualquier comprobante que llega del teléfono.
+ */
+export async function sendMediaToSelf(file: { data: Buffer; mimeType: string; fileName: string; caption: string }) {
+  if (!sock || local.status !== "conectado" || !ownPhone) throw new Error("WhatsApp no está conectado.");
+  const messageId = generateMessageIDV2(sock.user?.id);
+  ownMedia.set(messageId, file.data);
+  if (ownMedia.size > 20) ownMedia.delete(ownMedia.keys().next().value!);
+  const caption = file.caption || undefined;
+  const content =
+    file.mimeType === "application/pdf"
+      ? { document: file.data, mimetype: file.mimeType, fileName: file.fileName || "comprobante.pdf", caption }
+      : { image: file.data, mimetype: file.mimeType, caption };
+  await sock.sendMessage(`${ownPhone}@s.whatsapp.net`, content, { messageId });
+}
+
+/** Aviso automático de Memby al chat "Tú" (queda en el historial como cualquier respuesta). */
+async function sendNotice(text: string) {
+  if (!ownPhone) return;
+  const wamid = await transport.sendText(ownPhone, text);
+  await prisma.whatsAppMessage.create({ data: { phone: ownPhone, direction: "out", text, waMessageId: wamid } });
 }
 
 /** Desvincular (pide QR nuevo) o reiniciar la conexión. Lo usan la pantalla de la app y la página local. */
@@ -379,7 +432,7 @@ async function shutdown() {
 
 async function main() {
   console.log("ObrasFlow — conector de WhatsApp (Baileys). Ctrl+C para detenerlo.");
-  const url = await startLocalPanel({ local, runCommand, reportInfo, sendToSelf, dbConfigured: DB_OK });
+  const url = await startLocalPanel({ local, runCommand, reportInfo, sendToSelf, sendMediaToSelf, dbConfigured: DB_OK });
   console.log("🖥️  Configuración y QR: http://localhost:3000/agente-whatsapp (solo en esta PC)");
   void url;
   if (!DB_OK) {
@@ -391,6 +444,11 @@ async function main() {
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
   setInterval(heartbeat, 15_000);
+  if (SELF_MODE) {
+    startNotices(() => (local.status === "conectado" ? ownPhone : null), sendNotice);
+    if (avisosActivos()) console.log(`🔔 Avisos automáticos activos (resumen diario a las ${process.env.MEMBY_RESUMEN_HORA?.trim() || 19}:00).`);
+  }
+  if (process.env.MEMBY_VOZ?.trim().toLowerCase() !== "off") warmUpTranscriber();
   await connect();
 }
 

@@ -30,6 +30,11 @@ export async function GET(req: NextRequest) {
       })
     : [];
   const byId = new Map(proposals.map((p) => [p.id, p]));
+  const mediaIds = rows.map((r) => r.mediaId).filter((x): x is string => Boolean(x));
+  const medias = mediaIds.length
+    ? await prisma.inboundMedia.findMany({ where: { id: { in: mediaIds } }, select: { id: true, mimeType: true, filename: true } })
+    : [];
+  const mediaById = new Map(medias.map((m) => [m.id, m]));
 
   return NextResponse.json({
     available: true,
@@ -40,6 +45,7 @@ export async function GET(req: NextRequest) {
         from: r.direction === "in" ? "user" : "agent",
         text: r.text ?? "",
         mediaId: r.mediaId,
+        media: r.mediaId && mediaById.has(r.mediaId) ? { mimeType: mediaById.get(r.mediaId)!.mimeType, filename: mediaById.get(r.mediaId)!.filename } : null,
         createdAt: r.createdAt.toISOString(),
         proposal: p
           ? {
