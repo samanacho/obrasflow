@@ -20,5 +20,5 @@ export const NAV_ITEMS: NavItem[] = [
   // dar el contexto/requerimientos para desarrollarlo en un paso aparte.
   { key: "personal", label: "Personal", href: "/personal", icon: "cilBadge", highlightFirstLetter: true },
   // Configuración y control del agente de WhatsApp (docs/WHATSAPP_AGENT.md).
-  { key: "agente", label: "Agente WhatsApp", href: "/agente-whatsapp", icon: "cilChatBubble" },
+  { key: "agente", label: "Memby", href: "/agente-whatsapp", icon: "cilChatBubble" },
 ];

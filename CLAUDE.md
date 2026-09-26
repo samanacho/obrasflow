@@ -1,7 +1,8 @@
 # ObrasFlow — instrucciones para Claude
 
 Sistema de gestión de obras de una constructora de Paraguay (Next.js 14 App
-Router + Prisma + Postgres), con un agente de WhatsApp (Baileys + Claude).
+Router + Prisma + Postgres), con un asistente de WhatsApp llamado **Memby**
+(Baileys + Claude). Pantalla: /agente-whatsapp (atajo /memby).
 El dueño (Ignacio) no es técnico: explicá en español de Paraguay, con voseo,
 claro y sin jerga.
 

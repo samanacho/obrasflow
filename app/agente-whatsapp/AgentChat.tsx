@@ -1,13 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { CCard, CCardBody, CCardHeader, CBadge, CButton, CFormTextarea, CSpinner } from "@coreui/react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { CButton, CFormTextarea, CSpinner } from "@coreui/react";
+import { dayjs, TZ } from "@/lib/dayjs";
+import MembyAvatar from "./MembyAvatar";
 
-// Chat con el agente dentro de /agente-whatsapp (modo local). Muestra la
-// misma conversación que el chat "Tú" de WhatsApp y permite escribirle al
-// agente desde acá: el mensaje se envía POR WhatsApp (aparece en el teléfono)
-// y el agente lo procesa por su flujo normal. Confirmar / Descartar una
-// propuesta manda "OK código" / "NO código", igual que responderlo a mano.
+// Chat con Memby dentro de /agente-whatsapp (modo local). Es la misma
+// conversación que el chat "Tú" de WhatsApp: lo que se escribe acá se envía
+// POR WhatsApp y Memby lo procesa por su flujo normal. Confirmar / Descartar
+// una propuesta manda "OK código" / "NO código", igual que responderlo a mano.
 
 interface ChatMessage {
   id: string;
@@ -18,20 +19,20 @@ interface ChatMessage {
   proposal: { id: string; kind: string; status: string; code: string | null } | null;
 }
 
-const STATUS: Record<string, { label: string; color: string }> = {
-  pendiente: { label: "Esperando confirmación", color: "warning" },
-  ejecutando: { label: "Registrando…", color: "info" },
-  confirmada: { label: "Registrada", color: "success" },
-  cancelada: { label: "Descartada", color: "secondary" },
-  fallida: { label: "Falló", color: "danger" },
-  vencida: { label: "Venció", color: "secondary" },
+const STATUS_LABEL: Record<string, string> = {
+  pendiente: "Esperando confirmación",
+  ejecutando: "Registrando…",
+  confirmada: "Registrada",
+  cancelada: "Descartada",
+  fallida: "Falló",
+  vencida: "Venció",
 };
-
-function time(iso: string) {
-  const d = new Date(iso);
-  const today = new Date().toDateString() === d.toDateString();
-  return d.toLocaleString("es-PY", today ? { timeStyle: "short" } : { dateStyle: "short", timeStyle: "short" });
-}
+const SUGGESTIONS = [
+  "¿Cuánto llevamos gastado en ",
+  "Anotá un gasto de ",
+  "¿Qué tengo pendiente de confirmar?",
+  "Dame un resumen general",
+];
 
 /** *negrita* de WhatsApp -> <strong>, respetando saltos de línea. Sin HTML del mensaje. */
 function WaText({ text }: { text: string }) {
@@ -43,9 +44,20 @@ function WaText({ text }: { text: string }) {
   );
 }
 
-/** Quita del texto de la tarjeta las instrucciones del código: en la pantalla están los botones. */
-function cardText(text: string) {
-  return text.replace(/\n*👉 Para registrar respondé[\s\S]*$/, "").trim();
+/** En la pantalla la propuesta tiene botones: se quitan las instrucciones del código y el prefijo 🤖. */
+function cleanBot(text: string) {
+  return text.replace(/^🤖\s*/, "").replace(/\n*👉 Para registrar respondé[\s\S]*$/, "").trim();
+}
+function cleanUser(text: string) {
+  return text.replace(/^\[Mandó (una foto|un PDF) — comprobanteId \w+\]\s*/, "");
+}
+
+function dayLabel(iso: string) {
+  const d = dayjs(iso).tz(TZ);
+  const today = dayjs().tz(TZ);
+  if (d.isSame(today, "day")) return "Hoy";
+  if (d.isSame(today.subtract(1, "day"), "day")) return "Ayer";
+  return d.format("dddd D [de] MMMM");
 }
 
 export default function AgentChat({ connected }: { connected: boolean }) {
@@ -55,7 +67,9 @@ export default function AgentChat({ connected }: { connected: boolean }) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [waitingReply, setWaitingReply] = useState(false);
-  const bottom = useRef<HTMLDivElement | null>(null);
+  const body = useRef<HTMLDivElement | null>(null);
+  const input = useRef<HTMLTextAreaElement | null>(null);
+  const seen = useRef<Set<string> | null>(null);
   const lastCount = useRef(0);
 
   const load = useCallback(async () => {
@@ -80,12 +94,30 @@ export default function AgentChat({ connected }: { connected: boolean }) {
     return () => clearInterval(id);
   }, [load]);
 
+  // Scroll al final cuando llega algo nuevo.
   useEffect(() => {
     if (messages.length !== lastCount.current) {
       lastCount.current = messages.length;
-      bottom.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      const el = body.current;
+      if (el) el.scrollTo({ top: el.scrollHeight, behavior: seen.current ? "smooth" : "auto" });
     }
-  }, [messages.length]);
+  }, [messages.length, waitingReply]);
+
+  // Solo los mensajes que llegan después de abrir la pantalla entran con animación.
+  const isNew = (id: string) => {
+    if (!seen.current) return false;
+    return !seen.current.has(id);
+  };
+  useEffect(() => {
+    if (!loaded) return;
+    const s = seen.current ?? new Set<string>();
+    const wasInit = seen.current !== null;
+    const t = setTimeout(() => {
+      messages.forEach((m) => s.add(m.id));
+      seen.current = s;
+    }, wasInit ? 700 : 0);
+    return () => clearTimeout(t);
+  }, [messages, loaded]);
 
   async function send(text: string) {
     const t = text.trim();
@@ -110,51 +142,55 @@ export default function AgentChat({ connected }: { connected: boolean }) {
     }
   }
 
+  let lastDay = "";
   return (
-    <CCard>
-      <CCardHeader className="d-flex align-items-center gap-2">
-        <span className="fw-semibold">💬 Chat con el agente</span>
-        <span className="ms-auto small text-body-secondary">Es tu chat &quot;Tú&quot; de WhatsApp, en vivo</span>
-      </CCardHeader>
-      <CCardBody className="p-0">
-        <div
-          className="px-3 py-3 d-flex flex-column gap-2"
-          style={{ height: 460, overflowY: "auto", background: "var(--cui-tertiary-bg, rgba(0,0,0,.03))" }}
-        >
-          {!loaded && <p className="state-message py-3 mb-0">Cargando…</p>}
-          {loaded && messages.length === 0 && (
-            <p className="empty-col text-center my-auto">
-              Todavía no hay mensajes. Escribí abajo o en tu chat &quot;Tú&quot; de WhatsApp, por ejemplo: <em>¿cuánto llevamos
-              gastado en Puente Río Claro?</em>
+    <div className="memby-chat-card">
+      <div className="memby-chat-head">
+        <MembyAvatar size={38} online={connected} />
+        <div>
+          <div className="who">Memby</div>
+          <div className="st">{waitingReply ? "escribiendo…" : connected ? "en línea · tu chat \"Tú\" de WhatsApp" : "desconectado"}</div>
+        </div>
+      </div>
+
+      <div className="memby-chat-body" ref={body}>
+        {!loaded && <p className="state-message py-3 mb-0">Cargando…</p>}
+        {loaded && messages.length === 0 && (
+          <div className="text-center my-auto px-4 animate__animated animate__fadeIn">
+            <MembyAvatar size={64} />
+            <p className="mt-3 mb-1 fw-semibold">¡Hola! Soy Memby.</p>
+            <p className="small text-body-secondary mb-0">
+              Preguntame por tus obras o pedime que anote un gasto. Podés escribirme acá o en tu chat &quot;Tú&quot; de WhatsApp.
             </p>
-          )}
-          {messages.map((m) => {
-            const mine = m.from === "user";
-            const p = m.proposal;
-            const st = p ? STATUS[p.status] ?? { label: p.status, color: "secondary" } : null;
-            return (
-              <div key={m.id} className={`d-flex ${mine ? "justify-content-end" : "justify-content-start"}`}>
-                <div
-                  className="px-3 py-2 shadow-sm"
-                  style={{
-                    maxWidth: "82%",
-                    borderRadius: 12,
-                    background: mine ? "var(--ok-soft, #dcf8c6)" : "var(--surface, #fff)",
-                    border: "1px solid var(--line, rgba(0,0,0,.08))",
-                  }}
-                >
-                  {!mine && <div className="small fw-semibold mb-1">🤖 Agente</div>}
-                  {m.mediaId ? (
-                    <div className="mb-1">
-                      <a href={`/api/inbound-media/${m.mediaId}`} target="_blank" rel="noreferrer">📎 Ver comprobante</a>
-                    </div>
-                  ) : null}
-                  <WaText text={p ? cardText(m.text) : m.text.replace(/^\[Mandó (una foto|un PDF) — comprobanteId \w+\]\s*/, "")} />
-                  {p && st && (
-                    <div className="mt-2 pt-2 border-top d-flex align-items-center gap-2 flex-wrap">
-                      <CBadge color={st.color}>{st.label}</CBadge>
+          </div>
+        )}
+        {messages.map((m, i) => {
+          const day = dayLabel(m.createdAt);
+          const showDay = day !== lastDay;
+          lastDay = day;
+          const mine = m.from === "user";
+          const prev = messages[i - 1];
+          const firstOfGroup = !prev || prev.from !== m.from || showDay;
+          const p = m.proposal;
+          const anim = isNew(m.id) ? ` animate__animated ${mine ? "animate__fadeInRight" : "animate__fadeInUp"} animate__faster` : "";
+          return (
+            <Fragment key={m.id}>
+              {showDay && <div className="memby-day">{day}</div>}
+              <div className={`memby-row${mine ? " me" : ""}`} style={{ marginTop: firstOfGroup ? 8 : 0 }}>
+                {!mine && (firstOfGroup ? <MembyAvatar size={30} /> : <span className="spacer" />)}
+                <div className={`memby-bubble ${mine ? "me" : "bot"}${anim}`}>
+                  {m.mediaId && (
+                    <a className="attach" href={`/api/inbound-media/${m.mediaId}`} target="_blank" rel="noreferrer">📎 Ver comprobante</a>
+                  )}
+                  {p ? (
+                    <div className="memby-ticket">
+                      <div className="d-flex align-items-center gap-2 mb-1">
+                        <span className="small fw-semibold">Propuesta</span>
+                        <span className={`memby-chip ${p.status}`}>{STATUS_LABEL[p.status] ?? p.status}</span>
+                      </div>
+                      <WaText text={cleanBot(m.text)} />
                       {p.status === "pendiente" && p.code && (
-                        <>
+                        <div className="memby-ticket-actions">
                           <CButton size="sm" color="success" disabled={sending || !connected} onClick={() => send(`OK ${p.code}`)}>
                             ✅ Confirmar
                           </CButton>
@@ -162,51 +198,75 @@ export default function AgentChat({ connected }: { connected: boolean }) {
                             Descartar
                           </CButton>
                           <span className="small text-body-secondary">código {p.code}</span>
-                        </>
+                        </div>
                       )}
                     </div>
+                  ) : (
+                    <WaText text={mine ? cleanUser(m.text) : cleanBot(m.text)} />
                   )}
-                  <div className="text-end small text-body-secondary mt-1" style={{ fontSize: ".72rem" }}>{time(m.createdAt)}</div>
+                  <span className="time">{dayjs(m.createdAt).tz(TZ).format("HH:mm")}</span>
                 </div>
               </div>
-            );
-          })}
-          {waitingReply && (
-            <div className="d-flex justify-content-start">
-              <div className="px-3 py-2 small text-body-secondary" style={{ borderRadius: 12, border: "1px dashed var(--line, #ccc)" }}>
-                <CSpinner size="sm" className="me-2" />El agente está escribiendo…
-              </div>
+            </Fragment>
+          );
+        })}
+        {waitingReply && (
+          <div className="memby-row mt-2 animate__animated animate__fadeIn">
+            <MembyAvatar size={30} />
+            <div className="memby-bubble bot memby-typing" aria-label="Memby está escribiendo">
+              <span />
+              <span />
+              <span />
             </div>
-          )}
-          <div ref={bottom} />
+          </div>
+        )}
+      </div>
+
+      {connected && !draft && (
+        <div className="memby-suggest">
+          {SUGGESTIONS.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => {
+                if (s.endsWith(" ")) {
+                  setDraft(s);
+                  setTimeout(() => input.current?.focus(), 0);
+                } else send(s);
+              }}
+            >
+              {s.trim()}
+              {s.endsWith(" ") ? "…" : ""}
+            </button>
+          ))}
         </div>
-        <form
-          className="d-flex gap-2 p-3 border-top align-items-end"
-          onSubmit={(e) => {
-            e.preventDefault();
-            send(draft);
+      )}
+      <form
+        className="memby-composer"
+        onSubmit={(e) => {
+          e.preventDefault();
+          send(draft);
+        }}
+      >
+        <CFormTextarea
+          ref={input}
+          rows={1}
+          value={draft}
+          placeholder={connected ? "Escribile a Memby…" : "WhatsApp no está conectado"}
+          disabled={!connected || sending}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              send(draft);
+            }
           }}
-        >
-          <CFormTextarea
-            rows={1}
-            value={draft}
-            placeholder={connected ? "Escribile al agente… (Enter envía, Shift+Enter nueva línea)" : "WhatsApp no está conectado"}
-            disabled={!connected || sending}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                send(draft);
-              }
-            }}
-            style={{ resize: "none" }}
-          />
-          <CButton type="submit" color="primary" disabled={!connected || sending || !draft.trim()}>
-            {sending ? <CSpinner size="sm" /> : "Enviar"}
-          </CButton>
-        </form>
-        {error && <div className="px-3 pb-3 small text-danger">{error}</div>}
-      </CCardBody>
-    </CCard>
+        />
+        <CButton type="submit" color="primary" className="memby-send" disabled={!connected || sending || !draft.trim()} aria-label="Enviar">
+          {sending ? <CSpinner size="sm" /> : "➤"}
+        </CButton>
+      </form>
+      {error && <div className="px-3 pb-3 small text-danger">{error}</div>}
+    </div>
   );
 }

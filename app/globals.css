@@ -511,3 +511,69 @@ a{color:inherit;}
 .of-swal{background:var(--surface,#fff);color:var(--ink,#2a2622);border-radius:12px;font-family:'IBM Plex Sans',system-ui,sans-serif;}
 .of-swal .swal2-title{font-family:'Barlow Condensed',sans-serif;font-weight:700;}
 .of-swal .swal2-html-container{color:var(--ink-soft,#6f675e);}
+
+/* ==========================================================================
+   Memby — asistente de WhatsApp (app/agente-whatsapp). Misma paleta apagada;
+   movimiento mínimo y suave (se apaga con prefers-reduced-motion, arriba).
+   ========================================================================== */
+.memby-avatar{position:relative;display:inline-flex;flex:none;border-radius:50%;}
+.memby-avatar svg{display:block;border-radius:50%;}
+.memby-avatar-dot{position:absolute;right:0;bottom:0;width:28%;height:28%;border-radius:50%;background:var(--ok);border:2px solid var(--surface);}
+
+.memby-hero{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:18px 20px;margin-bottom:22px;border-radius:14px;
+  background:
+    linear-gradient(0deg, transparent 23px, color-mix(in srgb, var(--line) 55%, transparent) 24px) 0 0/24px 24px,
+    linear-gradient(90deg, transparent 23px, color-mix(in srgb, var(--line) 55%, transparent) 24px) 0 0/24px 24px,
+    var(--surface);
+  border:1px solid var(--line);box-shadow:var(--shadow);}
+.memby-hero-name{font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:700;font-size:2rem;line-height:1;margin:0;}
+.memby-hero-sub{margin:4px 0 0;color:var(--ink-soft);font-size:.9rem;}
+.memby-hero-status{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.memby-pill{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;font-size:.85rem;font-weight:600;background:var(--paper);border:1px solid var(--line);}
+.memby-pill .dot{width:9px;height:9px;border-radius:50%;background:var(--ink-soft);}
+.memby-pill.is-on .dot{background:var(--ok);box-shadow:0 0 0 0 color-mix(in srgb, var(--ok) 60%, transparent);animation:memby-pulse 2.4s ease-out infinite;}
+.memby-pill.is-wait .dot{background:var(--warn);}
+.memby-pill.is-off .dot{background:var(--crit);}
+@keyframes memby-pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb, var(--ok) 55%, transparent);}70%{box-shadow:0 0 0 8px transparent;}100%{box-shadow:0 0 0 0 transparent;}}
+
+.memby-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.memby-stat{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;text-align:center;}
+.memby-stat .n{font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:700;font-size:1.7rem;line-height:1;}
+.memby-stat .l{font-size:.72rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;margin-top:4px;}
+
+/* Chat */
+.memby-chat-card{border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--surface);box-shadow:var(--shadow);display:flex;flex-direction:column;}
+.memby-chat-head{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--surface);}
+.memby-chat-head .who{font-weight:700;line-height:1.1;}
+.memby-chat-head .st{font-size:.78rem;color:var(--ink-soft);}
+.memby-chat-body{height:520px;overflow-y:auto;padding:16px 14px;display:flex;flex-direction:column;gap:4px;
+  background:radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--line) 80%, transparent) 1px, transparent 0) 0 0/18px 18px, var(--paper);}
+.memby-day{align-self:center;margin:10px 0 6px;padding:3px 12px;border-radius:999px;font-size:.72rem;font-weight:600;color:var(--ink-soft);background:var(--surface);border:1px solid var(--line);text-transform:capitalize;}
+.memby-row{display:flex;align-items:flex-end;gap:8px;}
+.memby-row.me{justify-content:flex-end;}
+.memby-row .spacer{width:30px;flex:none;}
+.memby-bubble{max-width:78%;padding:8px 12px 6px;border-radius:14px;border:1px solid var(--line);box-shadow:0 1px 1px rgba(51,49,44,.04);font-size:.92rem;line-height:1.45;}
+.memby-bubble.me{background:var(--accent-soft);border-color:color-mix(in srgb, var(--accent) 25%, var(--line));border-bottom-right-radius:4px;}
+.memby-bubble.bot{background:var(--surface);border-bottom-left-radius:4px;}
+.memby-bubble .time{display:block;text-align:right;font-size:.68rem;color:var(--ink-soft);margin-top:2px;}
+.memby-bubble .attach{display:inline-flex;align-items:center;gap:6px;font-size:.82rem;margin-bottom:4px;}
+.memby-ticket{margin-top:8px;border:1px dashed color-mix(in srgb, var(--accent) 45%, var(--line));border-radius:10px;padding:10px;background:color-mix(in srgb, var(--paper) 60%, var(--surface));}
+.memby-ticket-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center;}
+.memby-chip{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;font-size:.74rem;font-weight:600;border:1px solid transparent;}
+.memby-chip.pendiente{background:var(--warn-soft);color:var(--warn);border-color:color-mix(in srgb, var(--warn) 30%, transparent);}
+.memby-chip.confirmada{background:var(--ok-soft);color:var(--ok);border-color:color-mix(in srgb, var(--ok) 30%, transparent);}
+.memby-chip.cancelada,.memby-chip.vencida{background:var(--paper);color:var(--ink-soft);border-color:var(--line);}
+.memby-chip.fallida{background:var(--crit-soft);color:var(--crit);}
+.memby-chip.ejecutando{background:var(--accent-soft);color:var(--accent-ink);}
+.memby-typing{display:inline-flex;gap:4px;padding:10px 14px;}
+.memby-typing span{width:7px;height:7px;border-radius:50%;background:var(--ink-soft);opacity:.5;animation:memby-bounce 1.2s infinite ease-in-out;}
+.memby-typing span:nth-child(2){animation-delay:.15s;}
+.memby-typing span:nth-child(3){animation-delay:.3s;}
+@keyframes memby-bounce{0%,60%,100%{transform:translateY(0);opacity:.4;}30%{transform:translateY(-4px);opacity:.9;}}
+.memby-suggest{display:flex;gap:6px;flex-wrap:wrap;padding:10px 14px 0;background:var(--surface);}
+.memby-suggest button{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:999px;padding:4px 12px;font-size:.8rem;cursor:pointer;transition:background .15s ease,border-color .15s ease;}
+.memby-suggest button:hover{background:var(--accent-soft);border-color:color-mix(in srgb, var(--accent) 40%, var(--line));}
+.memby-composer{display:flex;gap:8px;align-items:flex-end;padding:10px 14px 14px;background:var(--surface);}
+.memby-composer textarea{border-radius:20px !important;padding:9px 16px !important;resize:none;min-height:42px;max-height:140px;}
+.memby-send{width:42px;height:42px;flex:none;border-radius:50% !important;display:inline-flex !important;align-items:center;justify-content:center;padding:0 !important;font-size:1.05rem;}
+@media (max-width: 575px){.memby-chat-body{height:62vh;}.memby-bubble{max-width:88%;}.memby-hero-status{margin-left:0;}}

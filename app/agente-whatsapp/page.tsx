@@ -394,12 +394,16 @@ export default function AgenteWhatsAppPage() {
   }
 
   return (
-    <AppShell crumbs={[{ label: "Agente WhatsApp" }]}>
-      <h1 className="of-page-title">💬 Agente WhatsApp</h1>
-      <p className="module-desc mb-4">
-        Configuración y control del asistente que responde consultas y prepara registros por WhatsApp. Seguí los pasos en
-        orden: cada uno se marca solo cuando el sistema detecta que quedó bien. Guía completa en docs/WHATSAPP_AGENT.md.
-      </p>
+    <AppShell crumbs={[{ label: "Memby" }]}>
+      {!(localMode && !showCloud) && (
+        <>
+          <h1 className="of-page-title">💬 Memby</h1>
+          <p className="module-desc mb-4">
+            Configuración y control de Memby, el asistente que responde consultas y prepara registros por WhatsApp. Seguí los
+            pasos en orden: cada uno se marca solo cuando el sistema detecta que quedó bien. Guía completa en docs/WHATSAPP_AGENT.md.
+          </p>
+        </>
+      )}
 
       {loading && <p className="state-message">Cargando…</p>}
       {loadError && !loading && <CAlert color="danger">No se pudo cargar el estado del agente.</CAlert>}
@@ -409,7 +413,7 @@ export default function AgenteWhatsAppPage() {
           state={localState}
           refresh={refreshLocal}
           lastInboundAt={data.lastInboundAt}
-          activity={data.activity ? <ActivityCard activity={data.activity} /> : null}
+          stats={data.activity ? { inbound7: data.activity.inbound7, confirmadas: data.activity.proposals7.confirmada ?? 0, esperando: data.activity.proposals7.pendiente ?? 0 } : null}
         />
       )}
 

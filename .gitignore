@@ -16,3 +16,6 @@ tsconfig.tsbuildinfo
 !.env.example
 logs/
 .local-db/
+
+# Prompts de trabajo locales (no se publican)
+docs/prompt-*.md
