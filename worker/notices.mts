@@ -128,6 +128,16 @@ async function dailyNotice(phone: string): Promise<{ text: string; keys: string[
   return { text: lines.join("\n"), keys: [key] };
 }
 
+/** Avisos que corresponde mandar ahora (sin mandarlos ni marcarlos). */
+export async function dueNotices(phone: string) {
+  const out: { text: string; keys: string[] }[] = [];
+  for (const build of [() => budgetNotice(), () => pendingNotice(phone), () => dailyNotice(phone)]) {
+    const n = await build();
+    if (n) out.push(n);
+  }
+  return out;
+}
+
 export function avisosActivos() {
   return process.env.MEMBY_AVISOS?.trim().toLowerCase() !== "off";
 }
@@ -143,9 +153,7 @@ export function startNotices(ready: () => string | null, send: Send) {
     if (running || !phone || !avisosActivos()) return;
     running = true;
     try {
-      for (const build of [() => budgetNotice(), () => pendingNotice(phone), () => dailyNotice(phone)]) {
-        const n = await build();
-        if (!n) continue;
+      for (const n of await dueNotices(phone)) {
         // Se marca antes de mandar: ante un error se pierde un aviso, pero nunca se repite en loop.
         await markSent(n.keys);
         await send(n.text);

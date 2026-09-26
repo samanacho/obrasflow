@@ -378,7 +378,9 @@ export default function AgentChat({ connected }: { connected: boolean }) {
           disabled={!connected || sending}
           onClick={() => fileInput.current?.click()}
         >
-          📎
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l7.9-7.9" />
+          </svg>
         </button>
         <CFormTextarea
           ref={input}

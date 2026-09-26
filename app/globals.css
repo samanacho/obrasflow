@@ -589,8 +589,8 @@ a{color:inherit;}
 .memby-voice-text{display:block;color:var(--ink);}
 .memby-bubble.notice{background:color-mix(in srgb, var(--warn-soft) 55%, var(--surface));border-color:color-mix(in srgb, var(--warn) 25%, var(--line));}
 .memby-bubble.notice .memby-notice-tag{color:var(--warn);}
-.memby-attach{width:42px;height:42px;flex:none;border-radius:50%;border:1px solid var(--line);background:var(--paper);font-size:1.1rem;line-height:1;cursor:pointer;transition:background .15s ease,border-color .15s ease;}
-.memby-attach:hover:not(:disabled){background:var(--accent-soft);border-color:color-mix(in srgb, var(--accent) 40%, var(--line));}
+.memby-attach{width:42px;height:42px;flex:none;border-radius:50%;border:1px solid var(--line);background:var(--paper);color:var(--ink-soft);display:inline-flex;align-items:center;justify-content:center;padding:0;cursor:pointer;transition:background .15s ease,border-color .15s ease;}
+.memby-attach:hover:not(:disabled){background:var(--accent-soft);color:var(--accent-ink);border-color:color-mix(in srgb, var(--accent) 40%, var(--line));}
 .memby-attach:disabled{opacity:.5;cursor:default;}
 .memby-file{display:flex;align-items:center;gap:8px;margin:10px 14px 0;padding:6px 8px 6px 12px;border:1px solid var(--line);border-radius:12px;background:var(--paper);font-size:.85rem;}
 .memby-file .name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;}

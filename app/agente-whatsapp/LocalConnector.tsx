@@ -165,7 +165,7 @@ export default function LocalConnector({
               <ul className="ps-3 mb-2">
                 <li>Preguntale: <em>¿cuánto llevamos gastado en Puente Río Claro?</em></li>
                 <li>Pedile que anote: <em>500 mil de cemento para Puente Río Claro, en efectivo</em></li>
-                <li>Mandale la foto o PDF de un comprobante: desde el teléfono o con 📎 acá (también podés arrastrarlo o pegarlo).</li>
+                <li>Mandale la foto o PDF de un comprobante: desde el teléfono o con el clip del chat (también podés arrastrarlo o pegarlo).</li>
                 <li>Mandale una <strong>nota de voz</strong>: la pasa a texto en esta PC y te responde igual que a un mensaje escrito.</li>
               </ul>
               <p className="mb-2">
