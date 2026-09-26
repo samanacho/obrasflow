@@ -65,10 +65,13 @@ export default function QuickSearch() {
     if (!open) return;
     setQ("");
     setSel(0);
+    // El modal toma el foco al abrirse: se lo pasamos al campo de búsqueda.
+    const t = [60, 200].map((ms) => setTimeout(() => input.current?.focus(), ms));
     fetch("/api/projects")
       .then((r) => (r.ok ? r.json() : []))
       .then((d: ProjectDTO[]) => setProjects(Array.isArray(d) ? d : []))
       .catch(() => setProjects([]));
+    return () => t.forEach(clearTimeout);
   }, [open]);
 
   const entries = useMemo<Entry[]>(() => {
@@ -132,6 +135,7 @@ export default function QuickSearch() {
             </svg>
             <input
               ref={input}
+              autoFocus
               value={q}
               placeholder="Buscar obra, pantalla o acción…"
               aria-label="Buscar"
