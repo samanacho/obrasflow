@@ -82,7 +82,7 @@ export default function LocalConnector({
         : { cls: "is-wait", label: "Conectando…" };
 
   return (
-    <>
+    <div className="memby-theme">
       <section className="memby-hero animate__animated animate__fadeIn">
         <MembyAvatar size={64} online={connected} />
         <div>
@@ -182,6 +182,6 @@ export default function LocalConnector({
           </CCard>
         </div>
       </div>
-    </>
+    </div>
   );
 }

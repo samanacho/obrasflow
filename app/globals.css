@@ -520,6 +520,13 @@ a{color:inherit;}
 .memby-avatar svg{display:block;border-radius:50%;}
 .memby-avatar-dot{position:absolute;right:0;bottom:0;width:28%;height:28%;border-radius:50%;background:var(--ok);border:2px solid var(--surface);}
 
+/* Paleta propia de Memby: "Salvia" (verde tranquilo + casco amarillo). Solo dentro de su pantalla. */
+.memby-theme{--accent:#4e7a63;--accent-ink:#355a47;--accent-soft:#ddebe2;--electrico:#e0ae3c;--electrico-soft:#f6ecd0;--paper:#f2f5f1;}
+:root[data-coreui-theme="dark"] .memby-theme{--accent:#8fbba3;--accent-ink:#bcd9c8;--accent-soft:#2f4238;--electrico:#e0bc62;--electrico-soft:#403521;--paper:#1f2622;}
+@media (prefers-color-scheme: dark){:root:not([data-coreui-theme="light"]) .memby-theme{--accent:#8fbba3;--accent-ink:#bcd9c8;--accent-soft:#2f4238;--electrico:#e0bc62;--electrico-soft:#403521;--paper:#1f2622;}}
+.memby-theme .btn-primary{--cui-btn-bg:var(--accent);--cui-btn-border-color:var(--accent);--cui-btn-hover-bg:var(--accent-ink);--cui-btn-hover-border-color:var(--accent-ink);--cui-btn-active-bg:var(--accent-ink);--cui-btn-disabled-bg:var(--accent);--cui-btn-disabled-border-color:var(--accent);--cui-btn-color:#fff;--cui-btn-hover-color:#fff;}
+:root[data-coreui-theme="dark"] .memby-theme .btn-primary{--cui-btn-color:#14201a;--cui-btn-hover-color:#14201a;}
+
 .memby-hero{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:18px 20px;margin-bottom:22px;border-radius:14px;
   background:
     linear-gradient(0deg, transparent 23px, color-mix(in srgb, var(--line) 55%, transparent) 24px) 0 0/24px 24px,

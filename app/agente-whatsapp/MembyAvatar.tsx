@@ -1,5 +1,5 @@
 // Avatar de Memby: una "M" con casco de obra, en los colores de la paleta
-// (acento azul apagado + ocre del rubro eléctrico). SVG propio, sin imágenes.
+// (paleta Salvia: verde tranquilo + casco amarillo, ver .memby-theme). SVG propio, sin imágenes.
 
 export default function MembyAvatar({ size = 40, online = false }: { size?: number; online?: boolean }) {
   return (
