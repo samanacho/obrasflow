@@ -585,7 +585,7 @@ a{color:inherit;}
 .memby-thumb img{display:block;width:100%;max-height:220px;object-fit:cover;}
 .memby-bubble code{font-size:.85em;background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:0 4px;color:var(--ink);}
 .memby-bubble a{color:var(--accent-ink);}
-.memby-voice-tag,.memby-notice-tag{display:inline-block;font-size:.7rem;font-weight:700;letter-spacing:.02em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:2px;}
+.memby-voice-tag,.memby-notice-tag{display:block;font-size:.7rem;font-weight:700;letter-spacing:.02em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:2px;}
 .memby-voice-text{display:block;color:var(--ink);}
 .memby-bubble.notice{background:color-mix(in srgb, var(--warn-soft) 55%, var(--surface));border-color:color-mix(in srgb, var(--warn) 25%, var(--line));}
 .memby-bubble.notice .memby-notice-tag{color:var(--warn);}
