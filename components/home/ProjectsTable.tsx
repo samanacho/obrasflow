@@ -87,8 +87,8 @@ export default function ProjectsTable({
         header: "Rubro",
         cell: (c) => <span className={`home-type t-${c.row.original.type}`}>{c.getValue()}</span>,
       }),
-      col.accessor((p) => STATUS_LABEL[p.status], { id: "estado", header: "Estado" }),
-      col.accessor("manager", { header: "Responsable" }),
+      col.accessor((p) => STATUS_LABEL[p.status], { id: "estado", header: "Estado", meta: { cls: "d-none d-lg-table-cell" } }),
+      col.accessor("manager", { header: "Responsable", meta: { cls: "d-none d-xxl-table-cell" } }),
       col.accessor((p) => (p.status === "finalizado" ? 99999 : daysLeft(p.end)), {
         id: "fin",
         header: "Fin",
@@ -111,7 +111,7 @@ export default function ProjectsTable({
       col.accessor("budget", {
         header: "Presupuesto",
         cell: (c) => <span title={fmtGs(c.getValue())}>{fmtGsShort(c.getValue())}</span>,
-        meta: { num: true },
+        meta: { num: true, cls: "d-none d-md-table-cell" },
       }),
       col.accessor("spent", {
         header: "Ejecutado",
@@ -228,7 +228,7 @@ export default function ProjectsTable({
                   const canSort = h.column.getCanSort() && h.column.id !== "acciones";
                   const num = (h.column.columnDef.meta as { num?: boolean } | undefined)?.num;
                   return (
-                    <th key={h.id} className={num ? "text-end" : undefined} style={h.column.id === "semaforo" ? { width: 28 } : undefined}>
+                    <th key={h.id} className={[num ? "text-end" : "", (h.column.columnDef.meta as { cls?: string } | undefined)?.cls ?? ""].join(" ").trim() || undefined} style={h.column.id === "semaforo" ? { width: 28 } : undefined}>
                       {canSort ? (
                         <button type="button" className={`of-th-sort${sorted ? " on" : ""}`} onClick={h.column.getToggleSortingHandler()} title="Ordenar">
                           {flexRender(h.column.columnDef.header, h.getContext()) || (h.column.id === "semaforo" ? "●" : "")}
@@ -256,7 +256,7 @@ export default function ProjectsTable({
             {table.getRowModel().rows.map((r) => (
               <tr key={r.id}>
                 {r.getVisibleCells().map((c) => (
-                  <td key={c.id} className={(c.column.columnDef.meta as { num?: boolean } | undefined)?.num ? "text-end" : undefined}>
+                  <td key={c.id} className={[(c.column.columnDef.meta as { num?: boolean } | undefined)?.num ? "text-end" : "", (c.column.columnDef.meta as { cls?: string } | undefined)?.cls ?? "", c.column.id === "name" ? "of-ptable-name" : ""].join(" ").trim() || undefined}>
                     {flexRender(c.column.columnDef.cell, c.getContext())}
                   </td>
                 ))}
@@ -267,10 +267,13 @@ export default function ProjectsTable({
             <tfoot>
               <tr>
                 <td />
-                <td colSpan={5}>
+                <td colSpan={2}>
                   Total · {visible.length} obra{visible.length === 1 ? "" : "s"}
                 </td>
-                <td className="text-end" title={fmtGs(totBudget)}>
+                <td className="d-none d-lg-table-cell" />
+                <td className="d-none d-xxl-table-cell" />
+                <td />
+                <td className="text-end d-none d-md-table-cell" title={fmtGs(totBudget)}>
                   {fmtGsShort(totBudget)}
                 </td>
                 <td className="text-end" title={fmtGs(totSpent)}>

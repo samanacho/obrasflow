@@ -656,7 +656,7 @@ a{color:inherit;}
 .home-obra-list li + li{border-top:1px solid var(--line);}
 .home-obra{display:grid;grid-template-columns:10px minmax(0,1fr) 260px;align-items:center;gap:14px;padding:11px 6px;color:var(--ink);text-decoration:none;border-radius:8px;transition:background .15s ease;}
 .home-obra:hover{background:var(--paper);color:var(--ink);}
-.home-obra-light{width:10px;height:10px;border-radius:50%;background:var(--line);}
+.home-obra-light{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--line);vertical-align:middle;}
 .home-obra-light.is-ok{background:var(--ok);} .home-obra-light.is-warn{background:var(--warn);} .home-obra-light.is-crit{background:var(--crit);}
 .home-obra-main{min-width:0;display:flex;flex-direction:column;gap:3px;}
 .home-obra-main .name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -763,3 +763,4 @@ a{color:inherit;}
 .of-th-sort.on{color:var(--accent-ink);}
 .of-th-sort.on .arr{opacity:1;}
 @media (max-width: 575px){.of-map-canvas{height:340px;}}
+.of-ptable-name{min-width:190px;}

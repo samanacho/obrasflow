@@ -110,7 +110,7 @@ export default function ObrasMap({ projects, onUpdated }: { projects: ProjectDTO
           )
           .addTo(g);
       }
-      if (bounds.length === 1) map.current?.setView(bounds[0], 12);
+      if (bounds.length === 1) map.current?.setView(bounds[0], 10);
       else if (bounds.length > 1) map.current?.fitBounds(bounds, { padding: [30, 30], maxZoom: 13 });
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
