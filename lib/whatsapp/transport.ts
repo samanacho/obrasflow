@@ -22,7 +22,7 @@ export interface Transport {
 
 /** Texto que se agrega a la tarjeta cuando el canal no tiene botones. */
 export function codeInstructions(code: string) {
-  return `👉 Para registrar respondé *OK ${code}*\n❌ Para descartar respondé *NO ${code}*`;
+  return `¿Lo registro? Respondé *Sí* o *No*\n(o *OK ${code}* / *NO ${code}* si respondés más tarde)`;
 }
 
 export function cloudTransport(cfg: WhatsAppConfig): Transport {

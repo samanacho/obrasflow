@@ -250,6 +250,11 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
         options: ["Factura", "Nota de remisión", "Recibo de dinero", "Vale de caja chica", "Liquidación de jornales", "Otro"],
       },
       { key: "comprobante", label: "N° de comprobante (timbrado y N° de factura)", type: "text" },
+      // Factura paraguaya: el precio ya incluye el IVA; se guarda la
+      // "Liquidación del IVA" que figura al pie (10 % = monto/11, 5 % = monto/21).
+      { key: "rucProveedor", label: "RUC del emisor", type: "text", placeholder: "Ej. 80012345-6", showIf: (d) => d.tipoComprobante === "Factura" },
+      { key: "iva10", label: "IVA 10 % incluido (Gs.)", type: "number", showIf: (d) => d.tipoComprobante === "Factura" },
+      { key: "iva5", label: "IVA 5 % incluido (Gs.)", type: "number", showIf: (d) => d.tipoComprobante === "Factura" },
       { key: "comprobanteArchivo", label: "Archivo adjunto (foto o PDF del comprobante)", type: "file" },
       {
         key: "procesadoPor",

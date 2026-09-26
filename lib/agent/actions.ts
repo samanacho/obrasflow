@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
-import { prisma } from "../prisma";
+import { prisma, isRemoteDb } from "../prisma";
+import { callMemby } from "../memby/remote-prisma";
 import { ITEM_KINDS } from "../itemKinds";
 import { MOVIMIENTO_TIPOS } from "../movimientos";
 import { PARTNERS } from "../profitShare";
@@ -12,9 +13,10 @@ import { fmtGs, normalizeText } from "./format";
 //   1. propose*()  — el modelo de IA arma una propuesta. Acá se valida TODO
 //      contra la base (obra existe, proveedor existe, montos/fechas sanos) y
 //      se guarda como WhatsAppPendingAction. No se toca ningún movimiento.
-//   2. executePendingAction() — corre SOLO cuando el usuario toca el botón
-//      "Confirmar" de esa propuesta. Ni el modelo ni un "sí" escrito llegan
-//      acá (un "sí" puede estar respondiendo otra cosa).
+//   2. executePendingAction() — corre SOLO cuando el usuario confirma esa
+//      propuesta: botón "Confirmar", su código ("OK 4821"), o un "Sí" a secas
+//      cuando la tarjeta es el último mensaje y la única pendiente (ver
+//      lib/whatsapp/handle.ts). El modelo nunca llega acá.
 // ---------------------------------------------------------------------------
 
 /** Cuánto vive una propuesta sin confirmar (los botones de WhatsApp igual dejan de servir a las 24h). */
@@ -22,8 +24,9 @@ const PROPOSAL_TTL_MS = 24 * 60 * 60 * 1000;
 /** Tope de cordura: nada de lo que maneja esta empresa pasa de 10 mil millones en un solo movimiento. */
 const MAX_MONTO = 10_000_000_000;
 const WARN_MONTO = 100_000_000;
-/** Mismo tope que Attachment (app/api/items/[itemId]/attachment/route.ts). */
-export const MAX_MEDIA_BYTES = 4 * 1024 * 1024;
+/** Mismo tope que Attachment (app/api/items/[itemId]/attachment/route.ts). Desde el
+ * conector remoto el archivo viaja a Vercel en base64 (+33%) y Vercel acepta hasta 4,5 MB. */
+export const MAX_MEDIA_BYTES = isRemoteDb ? 3 * 1024 * 1024 : 4 * 1024 * 1024;
 /** Las imágenes viajan a Claude en base64 (+33%) y el API acepta hasta 5 MB por imagen. */
 export const MAX_IMAGE_BYTES = 3_700_000;
 /** Largo máximo de las notas dentro del resumen (el payload guarda el texto completo). */
@@ -61,6 +64,12 @@ interface MovimientoObraPayload {
   comprobanteMediaId: string | null;
   /** Captura de Registro rápido que este movimiento clasifica (se marca resuelta al confirmar). */
   registroRapidoId?: string | null;
+  /** Datos del comprobante (factura paraguaya): tipo, N° con timbrado, RUC y la liquidación del IVA. */
+  tipoComprobante?: string | null;
+  nroComprobante?: string | null;
+  rucProveedor?: string | null;
+  iva10?: number | null;
+  iva5?: number | null;
 }
 
 interface MovimientoGeneralPayload {
@@ -139,6 +148,65 @@ function validOption(v: string | null | undefined, options: string[], label: str
   const found = options.find((o) => o.toLowerCase() === String(v).trim().toLowerCase());
   if (!found) throw new Error(`${label} inválido "${v}". Opciones: ${options.join(", ")}.`);
   return found;
+}
+
+const TIPOS_COMPROBANTE = fieldOptions("tipoComprobante");
+export const IVA_TASAS = ["10", "5", "exenta", "mixta"] as const;
+
+/**
+ * Datos de la factura/comprobante. En Paraguay el precio incluye el IVA: con
+ * tasa única se calcula (10 % → monto/11, 5 % → monto/21); con tasa mixta
+ * tienen que venir los importes de la "Liquidación del IVA" del pie.
+ */
+async function validFactura(
+  input: { tipoComprobante?: string | null; nroComprobante?: string | null; rucProveedor?: string | null; ivaTasa?: string | null; iva10?: number | null; iva5?: number | null },
+  monto: number,
+  warnings: string[]
+) {
+  const tipoComprobante = validOption(input.tipoComprobante, TIPOS_COMPROBANTE, "Tipo de comprobante");
+  const nroComprobante = cleanText(input.nroComprobante, 80);
+  const rucProveedor = cleanText(input.rucProveedor, 20);
+  if (rucProveedor && !/^\d{3,9}-\d$/.test(rucProveedor)) warnings.push(`El RUC "${rucProveedor}" no tiene el formato habitual (ej. 80012345-6).`);
+
+  const entero = (v: number | null | undefined) => (v === null || v === undefined || !Number.isFinite(Number(v)) ? null : Math.round(Number(v)));
+  let iva10 = entero(input.iva10);
+  let iva5 = entero(input.iva5);
+  const tasa = input.ivaTasa ? String(input.ivaTasa).toLowerCase() : null;
+  if (tasa && !IVA_TASAS.includes(tasa as (typeof IVA_TASAS)[number])) throw new Error(`Tasa de IVA inválida "${input.ivaTasa}". Opciones: ${IVA_TASAS.join(", ")}.`);
+  if (tasa === "10" && iva10 === null) iva10 = Math.round(monto / 11);
+  if (tasa === "5" && iva5 === null) iva5 = Math.round(monto / 21);
+  if (tasa === "exenta") iva10 = iva5 = null;
+  if (tasa === "mixta" && iva10 === null && iva5 === null) {
+    warnings.push("Factura con IVA mixto: no pude leer la liquidación del IVA, queda sin desglose.");
+  }
+  // Tope: el IVA no puede superar lo que corresponde si todo el monto fuera de esa tasa.
+  const maxIva = Math.round(monto / 11) + 1;
+  if ((iva10 ?? 0) + (iva5 ?? 0) > maxIva) {
+    throw new Error(`El IVA (${fmtGs((iva10 ?? 0) + (iva5 ?? 0))}) no cierra con el total ${fmtGs(monto)}: revisá la liquidación del IVA del comprobante.`);
+  }
+
+  // La misma factura cargada dos veces es la discrepancia más común.
+  if (nroComprobante) {
+    const repetida = await prisma.projectItem.findFirst({
+      where: { kind: "change_order", data: { path: ["comprobante"], equals: nroComprobante } },
+      include: { project: { select: { name: true, reference: true } } },
+    });
+    if (repetida) {
+      warnings.push(
+        `El comprobante N° ${nroComprobante} ya está cargado en ${repetida.project.name}${repetida.project.reference ? ` (REF: ${repetida.project.reference})` : ""}, rubro "${repetida.title}". Si es la misma factura, cancelá.`
+      );
+    }
+  }
+  return { tipoComprobante, nroComprobante, rucProveedor, iva10, iva5 };
+}
+
+function facturaLines(f: { tipoComprobante?: string | null; nroComprobante?: string | null; rucProveedor?: string | null; iva10?: number | null; iva5?: number | null }): string[] {
+  const out: string[] = [];
+  const comp = [f.tipoComprobante, f.nroComprobante ? `N° ${f.nroComprobante}` : null, f.rucProveedor ? `RUC ${f.rucProveedor}` : null].filter(Boolean).join(" · ");
+  if (comp) out.push(`• Comprobante: ${comp}`);
+  const iva = [f.iva10 ? `10 %: ${fmtGs(f.iva10)}` : null, f.iva5 ? `5 %: ${fmtGs(f.iva5)}` : null].filter(Boolean).join(" · ");
+  if (iva) out.push(`• IVA incluido: ${iva}`);
+  return out;
 }
 
 async function validComprobante(user: AgentUser, mediaId: string | null | undefined): Promise<string | null> {
@@ -283,6 +351,13 @@ export async function proposeMovimientoObra(
     comprobanteId?: string | null;
     registroRapidoId?: string | null;
     reemplazaA?: string | null;
+    proveedorTexto?: string | null;
+    tipoComprobante?: string | null;
+    nroComprobante?: string | null;
+    rucProveedor?: string | null;
+    ivaTasa?: string | null;
+    iva10?: number | null;
+    iva5?: number | null;
   }
 ): Promise<ProposalResult> {
   const warnings: string[] = [];
@@ -306,6 +381,7 @@ export async function proposeMovimientoObra(
   const notas = cleanText(input.notas, 1000);
   const captura = await validRegistroRapido(input.registroRapidoId, monto, warnings);
   const comprobanteMediaId = (await validComprobante(user, input.comprobanteId)) ?? captura?.comprobanteMediaId ?? null;
+  const factura = await validFactura(input, monto, warnings);
   await checkReplaceable(user, input.reemplazaA);
 
   // Proveedor: mismas reglas que el formulario (solo aplica a ciertos tipos de insumo).
@@ -321,6 +397,10 @@ export async function proposeMovimientoObra(
     if (!prov) throw new Error(`No existe un proveedor con id "${input.proveedorId}". Buscalo con buscar_proveedores.`);
     proveedorId = prov.id;
     proveedorNombre = prov.name;
+  } else if (input.proveedorTexto) {
+    // Emisor que no está en el directorio (ej. la ferretería de la factura): queda el nombre tal cual.
+    proveedorNombre = cleanText(input.proveedorTexto, 120);
+    if (proveedorNombre) warnings.push(`"${proveedorNombre}" no está en el directorio de proveedores: queda solo el nombre.`);
   }
 
   // Rubro: si ya existe (sin importar mayúsculas ni tildes) se usa el nombre
@@ -345,7 +425,7 @@ export async function proposeMovimientoObra(
   const obraLabel = `${obra.name}${obra.reference ? ` (REF: ${obra.reference})` : ""}${obra.sitio ? ` · Sitio ${obra.sitio.nombre}` : ""}`;
   const payload: MovimientoObraPayload = {
     obraId: obra.id, obraLabel, rubro, tipo, monto, fecha, tipoInsumo, proveedorId, proveedorNombre,
-    categoria, medioPago, estado, notas, comprobanteMediaId, registroRapidoId: captura?.id ?? null,
+    categoria, medioPago, estado, notas, comprobanteMediaId, registroRapidoId: captura?.id ?? null, ...factura,
   };
 
   const lines = [
@@ -359,7 +439,8 @@ export async function proposeMovimientoObra(
     `• ${medioPago ? `Medio de pago: ${medioPago} · ` : ""}Estado: ${estado}`,
     categoria ? `• Centro de costos: ${categoria}` : null,
     captura ? `• Clasifica la captura de Registro rápido del ${fmtYmd(ymd(captura.fecha))}` : null,
-    comprobanteMediaId ? "• Comprobante: adjunto ✓" : null,
+    ...facturaLines(factura),
+    comprobanteMediaId ? "• Foto/PDF del comprobante: adjunto ✓" : null,
     notas ? `• Notas: ${short(notas, NOTAS_EN_RESUMEN)}` : null,
   ].filter((l): l is string => Boolean(l));
   await cancelReplaced(user, input.reemplazaA);
@@ -521,6 +602,14 @@ function appUrl(path: string): string | null {
  * "Confirmar" o un webhook repetido de WhatsApp nunca registra dos veces.
  */
 export async function executePendingAction(user: AgentUser, id: string): Promise<string> {
+  // Conector de la PC: el registro necesita una transacción, así que corre entero en Vercel.
+  if (isRemoteDb) {
+    return callMemby(process.env.MEMBY_REMOTE_URL!.trim(), process.env.MEMBY_CONNECTOR_KEY!.trim(), "/api/memby/execute", {
+      phone: user.phone,
+      name: user.name,
+      actionId: id,
+    });
+  }
   const claimed = await prisma.whatsAppPendingAction.updateMany({
     where: { id, phone: user.phone, status: "pendiente", expiresAt: { gt: new Date() } },
     data: { status: "ejecutando" },
@@ -579,9 +668,14 @@ async function runAction(user: AgentUser, kind: ActionKind, payload: any): Promi
       monto: p.monto,
       fecha: p.fecha,
       ...(p.tipoInsumo ? { tipoInsumo: p.tipoInsumo } : {}),
-      ...(p.proveedorId ? { proveedorId: p.proveedorId, proveedorNombre: p.proveedorNombre } : {}),
+      ...(p.proveedorId ? { proveedorId: p.proveedorId, proveedorNombre: p.proveedorNombre } : p.proveedorNombre ? { proveedorNombre: p.proveedorNombre } : {}),
       ...(p.categoria ? { categoria: p.categoria } : {}),
       ...(p.medioPago ? { medioPago: p.medioPago } : {}),
+      ...(p.tipoComprobante ? { tipoComprobante: p.tipoComprobante } : {}),
+      ...(p.nroComprobante ? { comprobante: p.nroComprobante } : {}),
+      ...(p.rucProveedor ? { rucProveedor: p.rucProveedor } : {}),
+      ...(p.iva10 ? { iva10: p.iva10 } : {}),
+      ...(p.iva5 ? { iva5: p.iva5 } : {}),
       ...(p.notas ? { notas: p.notas } : {}),
       procesadoPor,
     };
@@ -626,6 +720,8 @@ async function runAction(user: AgentUser, kind: ActionKind, payload: any): Promi
         ["Medio de pago", p.medioPago],
         ["Estado", p.estado],
         ["Centro de costos", p.categoria],
+        ["Factura", [p.tipoComprobante, p.nroComprobante ? `N° ${p.nroComprobante}` : null].filter(Boolean).join(" ") || null],
+        ["IVA incluido", [p.iva10 ? `10 %: ${fmtGs(p.iva10)}` : null, p.iva5 ? `5 %: ${fmtGs(p.iva5)}` : null].filter(Boolean).join(" · ") || null],
         ["Notas", p.notas ? short(p.notas, NOTAS_EN_RESUMEN) : null],
         ["Comprobante", adjunto ? (adjunto.startsWith(" con") ? "adjunto ✓" : "⚠️ no se pudo adjuntar, subilo desde la app") : null],
         ["Registro rápido", p.registroRapidoId ? "la captura quedó clasificada ✓" : null],

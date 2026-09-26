@@ -40,9 +40,9 @@ const MIN_AGENT_MS = 8_000;
 
 const STALE_NOTICE = "⏳ Me llegaron con atraso algunos mensajes tuyos (WhatsApp los retuvo). Si algo sigue pendiente, repetímelo y lo vemos.";
 const USE_BUTTON_NOTICE =
-  "Para registrar tocá ✅ *Confirmar* en la tarjeta de la propuesta (o ❌ *Cancelar*). Por seguridad, un \"sí\" escrito no registra nada.";
+  "Tenés propuestas esperando y no sé a cuál responde ese mensaje: tocá ✅ *Confirmar* o ❌ *Cancelar* en la tarjeta que corresponda.";
 const USE_CODE_NOTICE =
-  "Para registrar respondé con el código que figura en la propuesta, por ejemplo *OK 1234* (o *NO 1234* para descartarla). Por seguridad, un \"sí\" solo no registra nada.";
+  "Tenés propuestas esperando y no sé a cuál responde ese mensaje: respondé con el código de la tarjeta, por ejemplo *OK 1234* (o *NO 1234* para descartarla).";
 
 /** "OK 4821" / "sí 4821" / "confirmar 4821" → confirmar; "NO 4821" / "cancelar 4821" → cancelar. */
 function parseCodeReply(text: string): { op: "confirm" | "cancel"; code: string } | null {
@@ -248,18 +248,30 @@ async function handleContent(
         byCode.op === "confirm" ? await executePendingAction(user, action.id) : await cancelPendingAction(user.phone, action.id);
       return reply(t, user, result);
     }
-    // "sí"/"no" a secas justo después de una tarjeta: se le recuerda cómo
-    // confirmar (sin gastar una llamada al modelo).
+    // "Sí" / "No" a secas justo después de una tarjeta: confirma o descarta
+    // ESA tarjeta (la última que mandó Memby), resuelto en código, sin pasar
+    // por el modelo. Solo si la tarjeta es el último mensaje enviado y sigue
+    // pendiente: si hubo otra cosa en el medio, el "sí" podría responder a
+    // otra pregunta, y ahí se pide el código.
     if (isAffirmative(text) || isNegative(text)) {
       const lastOut = await prisma.whatsAppMessage.findFirst({
-        where: { phone: user.phone, direction: "out", NOT: { text: { in: [USE_BUTTON_NOTICE, USE_CODE_NOTICE] } } },
+        where: { phone: user.phone, direction: "out" },
         orderBy: { createdAt: "desc" },
         select: { proposalId: true },
       });
-      if (lastOut?.proposalId) {
-        const p = await prisma.whatsAppPendingAction.findUnique({ where: { id: lastOut.proposalId }, select: { status: true } });
-        if (p?.status === "pendiente") return reply(t, user, t.buttons ? USE_BUTTON_NOTICE : USE_CODE_NOTICE);
+      const p = lastOut?.proposalId
+        ? await prisma.whatsAppPendingAction.findUnique({ where: { id: lastOut.proposalId }, select: { id: true, status: true } })
+        : null;
+      const pendientes = await prisma.whatsAppPendingAction.count({ where: { phone: user.phone, status: "pendiente", expiresAt: { gt: new Date() } } });
+      if (p?.status === "pendiente" && pendientes === 1) {
+        if (isAffirmative(text) && ageMs > STALE_BUTTON_MS) {
+          return reply(t, user, `Ese "sí" me llegó con ${Math.round(ageMs / 60000)} minutos de atraso, así que no registré nada. Si todavía vale, mandalo de nuevo.`);
+        }
+        const result = isAffirmative(text) ? await executePendingAction(user, p.id) : await cancelPendingAction(user.phone, p.id);
+        return reply(t, user, result);
       }
+      // Hay propuestas esperando pero no se sabe a cuál responde: se pide el código.
+      if (pendientes > 0) return reply(t, user, t.buttons ? USE_BUTTON_NOTICE : USE_CODE_NOTICE);
     }
     return agentTurn(t, user, inbound, [{ type: "text", text }], deadline, false);
   }
@@ -271,7 +283,7 @@ async function handleContent(
   }
   const dl = await t.downloadMedia(msg, MAX_MEDIA_BYTES);
   if ("tooLarge" in dl) {
-    return reply(t, user, "Ese archivo pesa más de 4 MB, que es el máximo. Probá con una foto de menor resolución o un PDF más liviano.");
+    return reply(t, user, `Ese archivo pesa más de ${Math.round(MAX_MEDIA_BYTES / 1024 / 1024)} MB, que es el máximo. Probá con una foto de menor resolución o un PDF más liviano.`);
   }
   const mimeType = cleanMime(dl.mimeType) || declared;
   const isPdf = mimeType === PDF_TYPE;

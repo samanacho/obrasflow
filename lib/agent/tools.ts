@@ -175,9 +175,19 @@ export function buildTools(ctx: TurnContext) {
           .string()
           .optional()
           .describe("Solo si tipoInsumo es Materiales, Maquinaria / Alquileres o Servicios varios. Obtenelo con buscar_proveedores."),
+        proveedorTexto: z
+          .string()
+          .optional()
+          .describe("Nombre del emisor/proveedor tal como figura en el comprobante, SOLO si no aparece en buscar_proveedores."),
         categoria: z.string().optional().describe("Centro de costos / partida, si el usuario la menciona."),
         medioPago: z.enum(opts("medioPago") as [string, ...string[]]).optional(),
         estado: z.enum((CO.statusOptions ?? ["Pendiente", "Pagado", "Conciliado"]) as [string, ...string[]]).optional().describe("Default \"Pagado\" (ya se pagó). \"Pendiente\" si es una deuda a pagar."),
+        tipoComprobante: z.enum(opts("tipoComprobante") as [string, ...string[]]).optional().describe("Qué es el comprobante, si hay uno."),
+        nroComprobante: z.string().optional().describe("N° de factura/comprobante tal como figura (ej. \"001-001-0012345\"), con el timbrado si se lee (ej. \"Timbrado 12345678 · 001-001-0012345\")."),
+        rucProveedor: z.string().optional().describe("RUC del emisor que figura en la factura (ej. \"80012345-6\")."),
+        ivaTasa: z.enum(actions.IVA_TASAS).optional().describe("IVA de la factura: \"10\" o \"5\" si todo es de esa tasa, \"exenta\", o \"mixta\" si tiene ítems de 10 % y 5 %."),
+        iva10: z.number().int().optional().describe("Liquidación del IVA 10 % en Gs. tal como figura al pie de la factura (ya incluido en el monto). Obligatorio si ivaTasa es mixta."),
+        iva5: z.number().int().optional().describe("Liquidación del IVA 5 % en Gs. tal como figura al pie de la factura (ya incluido en el monto). Obligatorio si ivaTasa es mixta."),
         notas: z.string().optional(),
         comprobanteId,
         registroRapidoId,
