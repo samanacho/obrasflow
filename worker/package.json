@@ -1,0 +1,9 @@
+{
+  "name": "obrasflow-conector-local",
+  "private": true,
+  "description": "Dependencias que usa SOLO el conector de WhatsApp en la PC (notas de voz). Vercel no las instala.",
+  "dependencies": {
+    "@huggingface/transformers": "^4.3.0",
+    "ogg-opus-decoder": "^1.7.5"
+  }
+}

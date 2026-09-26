@@ -8,6 +8,17 @@
 
 import { resolve } from "path";
 
+// Las librerías están en worker/package.json (no en el de la app): Vercel no
+// las instala. Se importan por nombre en variable para que el build de la app
+// no las busque; el lanzador local (scripts/local-stack.mjs) las instala.
+const TRANSFORMERS = "@huggingface/transformers";
+const OGG_DECODER = "ogg-opus-decoder";
+interface OggDecoder {
+  ready: Promise<void>;
+  decodeFile(data: Uint8Array): Promise<{ channelData: Float32Array[]; samplesDecoded: number }>;
+  free(): void;
+}
+
 const MODEL = process.env.WHISPER_MODEL?.trim() || "onnx-community/whisper-small";
 /** Notas más largas no se transcriben (en CPU tardaría demasiado). */
 export const MAX_AUDIO_SECONDS = 180;
@@ -18,7 +29,7 @@ let asr: Promise<Asr> | null = null;
 function loadModel(): Promise<Asr> {
   if (!asr) {
     asr = (async () => {
-      const { pipeline, env } = await import("@huggingface/transformers");
+      const { pipeline, env } = await import(TRANSFORMERS);
       env.cacheDir = resolve(process.cwd(), ".local-models");
       const t0 = Date.now();
       const p = await pipeline("automatic-speech-recognition", MODEL, { dtype: "q8", device: "cpu" });
@@ -38,8 +49,8 @@ export function warmUpTranscriber() {
 }
 
 async function decodeOgg(data: Buffer): Promise<Float32Array> {
-  const { OggOpusDecoder } = await import("ogg-opus-decoder");
-  const decoder = new OggOpusDecoder();
+  const { OggOpusDecoder } = await import(OGG_DECODER);
+  const decoder: OggDecoder = new OggOpusDecoder();
   await decoder.ready;
   try {
     const out = await decoder.decodeFile(new Uint8Array(data));

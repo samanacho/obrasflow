@@ -120,7 +120,15 @@ async function main() {
   }
   keepAlive("App ObrasFlow (http://localhost:3000)", [join(ROOT, "node_modules", "next", "dist", "bin", "next"), "start", "-p", String(APP_PORT), "-H", "127.0.0.1"], env);
 
-  // 3. Conector de WhatsApp
+  // 3. Conector de WhatsApp (sus librerías de voz van aparte: worker/package.json).
+  if (!existsSync(join(ROOT, "worker", "node_modules", "@huggingface", "transformers"))) {
+    log("Instalando las librerías de notas de voz del conector…");
+    try {
+      run(NODE, [NPM_CLI, "install", "--prefix", "worker", "--no-audit", "--no-fund"]);
+    } catch {
+      log("⚠️ No se pudieron instalar; Memby funciona igual, pero sin notas de voz.");
+    }
+  }
   keepAlive("Conector de WhatsApp (http://localhost:3099)", ["--env-file-if-exists=.env.local", "--import", "tsx", "worker/whatsapp-baileys.mts"], env);
 
   const stop = async () => {
