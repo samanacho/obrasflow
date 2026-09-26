@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "crypto";
 import Anthropic from "@anthropic-ai/sdk";
-import { prisma } from "../prisma";
+// Tablas de Memby: en la app local pueden venir de producción (ver lib/memby/chat-db.ts).
+import { membyDb as prisma } from "../memby/chat-db";
 import { getAllowedNumbers, getWhatsAppConfig, normalizePhone } from "./config";
 import { sendText } from "./client";
 

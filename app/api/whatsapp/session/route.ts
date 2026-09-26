@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+// Tablas de Memby: en la app local pueden venir de producción (ver lib/memby/chat-db.ts).
+import { membyDb as prisma } from "@/lib/memby/chat-db";
 import { isValidPanelKey } from "@/lib/whatsapp/setup";
 
 // Estado de la conexión por QR (Baileys) para la pantalla /agente-whatsapp.

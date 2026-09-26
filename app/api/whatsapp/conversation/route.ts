@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+// Tablas de Memby: en la app local pueden venir de producción (ver lib/memby/chat-db.ts).
+import { membyDb as prisma } from "@/lib/memby/chat-db";
 
 // Conversación reciente con el agente para el chat de /agente-whatsapp
 // (modo local). Solo desde esta PC y nunca en Vercel: son mensajes privados.
