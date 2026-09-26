@@ -720,3 +720,46 @@ a{color:inherit;}
 .of-search-empty{padding:18px 12px;color:var(--ink-soft);text-align:center;}
 .of-search-foot{display:flex;gap:16px;flex-wrap:wrap;padding:8px 16px;border-top:1px solid var(--line);font-size:.74rem;color:var(--ink-soft);background:var(--paper);}
 @media (max-width: 767px){.of-search-btn{min-width:0;}.of-search-btn .t,.of-search-btn kbd{display:none;}}
+
+/* ───────── Proyectos: herramientas, acciones rápidas, mapa y tabla ───────── */
+.home-obras-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.home-seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+.home-seg button{border:0;background:var(--paper);color:var(--ink-soft);padding:4px 10px;font-size:.8rem;cursor:pointer;}
+.home-seg button + button{border-left:1px solid var(--line);}
+.home-seg button.on{background:var(--accent-soft);color:var(--accent-ink);font-weight:600;}
+.home-tool{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:8px;padding:4px 10px;font-size:.8rem;cursor:pointer;line-height:1.3;transition:border-color .15s ease,background .15s ease;}
+.home-tool:hover:not(:disabled){border-color:color-mix(in srgb, var(--accent) 45%, var(--line));background:var(--surface);}
+.home-tool:disabled{opacity:.5;cursor:default;}
+.home-tool.sm{padding:2px 8px;}
+.home-tool.is-danger:hover:not(:disabled){border-color:color-mix(in srgb, var(--crit) 45%, var(--line));}
+.home-obra-li{display:flex;align-items:center;gap:6px;}
+.home-obra-li .home-obra{flex:1;min-width:0;}
+.home-obra-more{flex:none;width:34px;height:34px;border-radius:8px;border:1px solid transparent;background:transparent;color:var(--ink-soft);font-size:1.2rem;line-height:1;cursor:pointer;}
+.home-obra-more:hover{border-color:var(--line);background:var(--paper);color:var(--ink);}
+
+.of-qa-budget{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:var(--paper);border:1px solid var(--line);margin-bottom:14px;font-size:.9rem;}
+.of-qa-budget.is-ok strong:last-child{color:var(--ok);} .of-qa-budget.is-warn strong:last-child{color:var(--warn);} .of-qa-budget.is-crit strong:last-child{color:var(--crit);}
+.of-qa-budget.is-crit{background:color-mix(in srgb, var(--crit-soft) 55%, var(--paper));}
+.of-qa-section{margin-bottom:16px;}
+.of-qa-label{font-size:.74rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px;}
+
+.of-map-canvas{height:440px;border-radius:12px;border:1px solid var(--line);overflow:hidden;z-index:0;}
+.of-map-canvas.is-placing{cursor:crosshair;outline:2px solid var(--accent);outline-offset:2px;}
+.of-map-canvas.is-placing .leaflet-container,.of-map-canvas.is-placing .leaflet-grab{cursor:crosshair;}
+.of-map-placing{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;margin-bottom:8px;border-radius:10px;background:var(--accent-soft);color:var(--accent-ink);font-size:.88rem;}
+.of-map-placing button{margin-left:auto;border:1px solid color-mix(in srgb, var(--accent) 40%, var(--line));background:var(--surface);color:var(--accent-ink);border-radius:8px;padding:2px 10px;font-size:.8rem;cursor:pointer;}
+.of-map-legend{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;margin-top:8px;font-size:.8rem;color:var(--ink-soft);}
+.of-map-legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px;}
+.of-map-missing{margin-top:12px;}
+.of-map-pop{font-size:.85rem;line-height:1.45;}
+
+.of-ptable{--cui-table-bg:transparent;font-size:.88rem;}
+.of-ptable thead th{font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft);border-bottom:1.5px solid var(--line);white-space:nowrap;}
+.of-ptable tbody tr:hover td{background:var(--paper);}
+.of-ptable tfoot td{font-weight:700;border-top:1.5px solid var(--line);border-bottom:0;background:var(--paper);}
+.of-ptable td.text-end,.of-ptable th.text-end{font-variant-numeric:tabular-nums;}
+.of-th-sort{border:0;background:transparent;padding:0;font:inherit;color:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:4px;}
+.of-th-sort .arr{font-size:.7rem;opacity:.45;}
+.of-th-sort.on{color:var(--accent-ink);}
+.of-th-sort.on .arr{opacity:1;}
+@media (max-width: 575px){.of-map-canvas{height:340px;}}

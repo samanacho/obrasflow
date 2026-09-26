@@ -6,6 +6,9 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+import QuickActions from "./QuickActions";
+import { exportObrasXlsx, printObras } from "@/lib/ui/exportObras";
 import { dayjs, TZ } from "@/lib/dayjs";
 import type { ProjectDTO, ProjectStatus, ProjectType } from "@/lib/types";
 
@@ -197,6 +200,8 @@ export function StatCard({
 
 /* ───────────── Obras ───────────── */
 
+const ObrasMap = dynamic(() => import("./ObrasMap"), { ssr: false, loading: () => <p className="empty-col">Cargando mapa…</p> });
+
 type SortKey = "atencion" | "vence" | "avance" | "nombre";
 const SORTS: { key: SortKey; label: string }[] = [
   { key: "atencion", label: "Más comprometidas primero" },
@@ -214,8 +219,19 @@ const STATUS_FILTERS: { key: ProjectStatus | "activas" | "todas"; label: string 
 ];
 const LIGHT_RANK: Record<Light, number> = { crit: 0, warn: 1, ok: 2, none: 3 };
 
-export function ObrasList({ projects }: { projects: ProjectDTO[] }) {
+export function ObrasList({
+  projects,
+  onUpdated,
+  onSpentChanged,
+}: {
+  projects: ProjectDTO[];
+  onUpdated: (p: ProjectDTO) => void;
+  onSpentChanged: () => void;
+}) {
   const [status, setStatus] = useStored<(typeof STATUS_FILTERS)[number]["key"]>("of-home-status", "activas");
+  const [view, setView] = useStored<"lista" | "mapa">("of-home-view", "lista");
+  const [actionsFor, setActionsFor] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
   const [type, setType] = useStored<ProjectType | "">("of-home-type", "");
   const [sort, setSort] = useStored<SortKey>("of-home-sort", "atencion");
   const [q, setQ] = useState("");
@@ -243,13 +259,58 @@ export function ObrasList({ projects }: { projects: ProjectDTO[] }) {
     return withMeta;
   }, [projects, status, type, sort, q]);
 
+  const filterLabel = [
+    STATUS_FILTERS.find((x) => x.key === status)?.label,
+    type ? TYPE_LABEL[type] : null,
+    q.trim() ? `"${q.trim()}"` : null,
+    SORTS.find((x) => x.key === sort)?.label.toLowerCase(),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const selected = actionsFor ? projects.find((p) => p.id === actionsFor) ?? null : null;
+
   return (
     <section className="home-obras">
       <div className="home-obras-head">
         <h2 className="home-h2">Tus obras</h2>
-        <Link href="/rubros" className="small">
-          Ver por rubro →
-        </Link>
+        <div className="home-obras-tools">
+          <div className="home-seg" role="group" aria-label="Vista">
+            <button type="button" className={view === "lista" ? "on" : ""} aria-pressed={view === "lista"} onClick={() => setView("lista")}>
+              ☰ Lista
+            </button>
+            <button type="button" className={view === "mapa" ? "on" : ""} aria-pressed={view === "mapa"} onClick={() => setView("mapa")}>
+              🗺️ Mapa
+            </button>
+          </div>
+          <button
+            type="button"
+            className="home-tool"
+            disabled={exporting || rows.length === 0}
+            title="Descargar la lista filtrada en Excel"
+            onClick={async () => {
+              setExporting(true);
+              try {
+                await exportObrasXlsx(rows.map((r) => r.p));
+              } finally {
+                setExporting(false);
+              }
+            }}
+          >
+            ⬇ Excel
+          </button>
+          <button
+            type="button"
+            className="home-tool"
+            disabled={rows.length === 0}
+            title="Imprimir o guardar como PDF"
+            onClick={() => printObras(rows.map((r) => r.p), filterLabel)}
+          >
+            🖨 PDF
+          </button>
+          <Link href="/rubros" className="small">
+            Ver por rubro →
+          </Link>
+        </div>
       </div>
       <div className="home-filters">
         <div className="home-chips" role="group" aria-label="Estado">
@@ -281,7 +342,9 @@ export function ObrasList({ projects }: { projects: ProjectDTO[] }) {
         </div>
       </div>
 
-      {rows.length === 0 ? (
+      {view === "mapa" ? (
+        <ObrasMap projects={rows.map((r) => r.p)} onUpdated={onUpdated} />
+      ) : rows.length === 0 ? (
         <p className="empty-col">No hay obras con ese filtro.</p>
       ) : (
         <ul className="home-obra-list">
@@ -289,7 +352,7 @@ export function ObrasList({ projects }: { projects: ProjectDTO[] }) {
             const pct = Math.max(0, Math.min(100, Math.round(p.progress || 0)));
             const late = d < 0 && p.status !== "finalizado";
             return (
-              <li key={p.id}>
+              <li key={p.id} className="home-obra-li">
                 <Link href={`/project/${p.id}`} className="home-obra">
                   <span className={`home-obra-light is-${late && b.light !== "crit" ? "crit" : b.light}`} aria-hidden="true" />
                   <span className="home-obra-main">
@@ -321,11 +384,16 @@ export function ObrasList({ projects }: { projects: ProjectDTO[] }) {
                     </span>
                   </span>
                 </Link>
+                <button type="button" className="home-obra-more" title="Acciones rápidas" aria-label={`Acciones rápidas de ${p.name}`} onClick={() => setActionsFor(p.id)}>
+                  ⋯
+                </button>
               </li>
             );
           })}
         </ul>
       )}
+
+      <QuickActions project={selected} onClose={() => setActionsFor(null)} onUpdated={onUpdated} onSpentChanged={onSpentChanged} />
     </section>
   );
 }

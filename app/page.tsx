@@ -6,14 +6,13 @@ import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   CCard, CCardBody, CCardHeader, CNav, CNavItem, CNavLink,
-  CButton, CButtonGroup, CFormSelect,
-  CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell,
-  CBadge, CAlert, CInputGroup, CFormInput,
+  CButton, CButtonGroup,
+  CBadge, CAlert,
 } from "@coreui/react";
 import { CChartDoughnut } from "@coreui/react-chartjs";
 import CIcon from "@coreui/icons-react";
 import {
-  cilPlus, cilArrowLeft, cilArrowRight, cilCloudDownload, cilPencil, cilTrash,
+  cilPlus, cilArrowLeft, cilArrowRight, cilPencil,
   cilSpeedometer, cilListRich, cilViewColumn,
 } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
@@ -33,7 +32,7 @@ const DhtmlxGanttChart = dynamic(() => import("@/components/DhtmlxGanttChart"), 
 });
 import type { ProjectDTO, ProjectStatus, ProjectType, DashboardSummaryDTO, PoleLotDTO, PoleSpecDTO, GeneralMovementDTO } from "@/lib/types";
 import { fechaFiscalizacionEstimada, capacityForDate, FACTORY_SCHEDULE_LABEL } from "@/lib/factoryCapacity";
-import { todayLocal } from "@/lib/dates";
+import ProjectsTable from "@/components/home/ProjectsTable";
 import { TodayPanel, attentionItems, StatCard, ObrasList, Fold, budgetState, fmtGsShort } from "@/components/home/HomeWidgets";
 
 const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
@@ -48,12 +47,6 @@ const STATUS_LABEL: Record<ProjectStatus, string> = {
   en_curso: "En curso",
   pausado: "Pausado",
   finalizado: "Finalizado",
-};
-const STATUS_COLOR: Record<ProjectStatus, string> = {
-  planificado: "info",
-  en_curso: "warning",
-  pausado: "secondary",
-  finalizado: "success",
 };
 const STATUS_ORDER: ProjectStatus[] = ["planificado", "en_curso", "pausado", "finalizado"];
 const TABS = [
@@ -135,6 +128,20 @@ function HomeInner() {
     } finally {
       setLoading(false);
     }
+  }
+
+  /** Vuelve a pedir las obras sin mostrar el esqueleto (después de anotar un gasto, por ejemplo). */
+  async function refreshProjects() {
+    try {
+      const res = await fetch("/api/projects");
+      if (res.ok) setProjects(await res.json());
+    } catch {
+      /* queda lo que había */
+    }
+    loadSummary();
+  }
+  function replaceProject(p: ProjectDTO) {
+    setProjects((cur) => cur.map((x) => (x.id === p.id ? p : x)));
   }
 
   async function loadSummary() {
@@ -313,10 +320,10 @@ function HomeInner() {
       )}
 
       {!loading && !loadError && (
-        <div className={tab === "dashboard" ? "" : "panel tab-panel"}>
-          {tab === "dashboard" && <DashboardView projects={projects} metrics={metrics} summary={summary} poleLots={poleLots} poleSpecs={poleSpecs} onNewProject={() => openModal(null)} />}
+        <div className={tab === "kanban" ? "panel tab-panel" : ""}>
+          {tab === "dashboard" && <DashboardView projects={projects} metrics={metrics} summary={summary} poleLots={poleLots} poleSpecs={poleSpecs} onUpdated={replaceProject} onSpentChanged={refreshProjects} />}
           {tab === "kanban" && <BoardView projects={projects} onEdit={openModal} onMove={moveStatus} />}
-          {tab === "tabla" && <TablaView projects={projects} onEdit={openModal} onDelete={setConfirmTarget} />}
+          {tab === "tabla" && <ProjectsTable projects={projects} onEdit={openModal} onDelete={setConfirmTarget} onUpdated={replaceProject} onSpentChanged={refreshProjects} />}
         </div>
       )}
 
@@ -383,14 +390,15 @@ interface DashboardMetrics {
 }
 
 function DashboardView({
-  projects, metrics, summary, poleLots, poleSpecs, onNewProject,
+  projects, metrics, summary, poleLots, poleSpecs, onUpdated, onSpentChanged,
 }: {
   projects: ProjectDTO[];
   metrics: DashboardMetrics;
   summary: DashboardSummaryDTO | null;
   poleLots: PoleLotDTO[];
   poleSpecs: PoleSpecDTO[];
-  onNewProject: () => void;
+  onUpdated: (p: ProjectDTO) => void;
+  onSpentChanged: () => void;
 }) {
   const { byType, totalBudget, totalSpent, totalBenefit, generalNet, avgProgress, execPct, active, finished } = metrics;
 
@@ -450,7 +458,7 @@ function DashboardView({
         <a href="https://www.contrataciones.gov.py/buscador/licitaciones.html" target="_blank" rel="noopener noreferrer">🏛️ Licitaciones DNCP ↗</a>
       </div>
 
-      <ObrasList projects={projects} />
+      <ObrasList projects={projects} onUpdated={onUpdated} onSpentChanged={onSpentChanged} />
 
       <Fold id="rubros" title="Análisis por rubro" hint="presupuesto y resultado por tipo de obra">
       <div className="row g-3 mb-4">
@@ -672,122 +680,6 @@ function KanbanView({
         );
       })}
     </div>
-  );
-}
-
-function exportCSV(projects: ProjectDTO[]) {
-  const headers = ["Nombre", "Referencia", "Tipo", "Responsable", "Inicio", "Fin", "Estado", "Presupuesto", "Ejecutado", "Avance"];
-  const rows = projects.map((p) => [
-    p.name, p.reference ?? "", typeLabel(p), p.manager, p.start, p.end, STATUS_LABEL[p.status], p.budget, p.spent, `${p.progress}%`,
-  ]);
-  const csv = [headers, ...rows]
-    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
-    .join("\n");
-  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `obrasflow-proyectos-${todayLocal()}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function TablaView({
-  projects, onEdit, onDelete,
-}: {
-  projects: ProjectDTO[];
-  onEdit: (p: ProjectDTO) => void;
-  onDelete: (p: ProjectDTO) => void;
-}) {
-  const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<ProjectType | "">("");
-  const [statusFilter, setStatusFilter] = useState<ProjectStatus | "">("");
-
-  const filtered = projects.filter((p) => {
-    if (typeFilter && p.type !== typeFilter) return false;
-    if (statusFilter && p.status !== statusFilter) return false;
-    if (search && !(`${p.name} ${p.manager} ${p.reference ?? ""}`.toLowerCase().includes(search.toLowerCase()))) return false;
-    return true;
-  });
-
-  return (
-    <CCard>
-      <CCardHeader className="d-flex justify-content-between align-items-center">
-        <span className="fw-semibold">Seguimiento de proyectos</span>
-        <CButton size="sm" color="secondary" variant="outline" onClick={() => exportCSV(filtered)}>
-          <CIcon icon={cilCloudDownload} className="me-1" /> Exportar CSV
-        </CButton>
-      </CCardHeader>
-      <CCardBody>
-        <div className="row g-2 mb-3">
-          <div className="col-md-6">
-            <CInputGroup>
-              <CFormInput placeholder="Buscar por nombre, responsable o referencia…" value={search} onChange={(e) => setSearch(e.target.value)} />
-            </CInputGroup>
-          </div>
-          <div className="col-md-3">
-            <CFormSelect value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as ProjectType | "")}>
-              <option value="">Todos los tipos</option>
-              <option value="civil">Civil</option>
-              <option value="electrico">Eléctrico</option>
-              <option value="vial">Vial</option>
-              <option value="otro">Otro</option>
-            </CFormSelect>
-          </div>
-          <div className="col-md-3">
-            <CFormSelect value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as ProjectStatus | "")}>
-              <option value="">Todos los estados</option>
-              {STATUS_ORDER.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
-            </CFormSelect>
-          </div>
-        </div>
-
-        <div className="table-responsive">
-          <CTable hover align="middle">
-            <CTableHead>
-              <CTableRow>
-                <CTableHeaderCell>Proyecto</CTableHeaderCell>
-                <CTableHeaderCell>Referencia</CTableHeaderCell>
-                <CTableHeaderCell>Tipo</CTableHeaderCell>
-                <CTableHeaderCell>Responsable</CTableHeaderCell>
-                <CTableHeaderCell>Inicio</CTableHeaderCell>
-                <CTableHeaderCell>Fin</CTableHeaderCell>
-                <CTableHeaderCell>Estado</CTableHeaderCell>
-                <CTableHeaderCell>Presupuesto</CTableHeaderCell>
-                <CTableHeaderCell>Avance</CTableHeaderCell>
-                <CTableHeaderCell />
-              </CTableRow>
-            </CTableHead>
-            <CTableBody>
-              {filtered.length === 0 && (
-                <CTableRow>
-                  <CTableDataCell colSpan={10} className="empty-col">
-                    {projects.length === 0 ? "Sin proyectos todavía." : "Ningún proyecto coincide con el filtro."}
-                  </CTableDataCell>
-                </CTableRow>
-              )}
-              {filtered.map((p) => (
-                <CTableRow key={p.id}>
-                  <CTableDataCell><Link href={`/project/${p.id}`}><strong>{p.name}</strong></Link></CTableDataCell>
-                  <CTableDataCell>{p.reference || "—"}</CTableDataCell>
-                  <CTableDataCell><CBadge color={TYPE_COLOR[p.type]}>{typeLabel(p)}</CBadge></CTableDataCell>
-                  <CTableDataCell>{p.manager}</CTableDataCell>
-                  <CTableDataCell className="mono">{fmtDate(p.start)}</CTableDataCell>
-                  <CTableDataCell className="mono">{fmtDate(p.end)}</CTableDataCell>
-                  <CTableDataCell><CBadge color={STATUS_COLOR[p.status]}>{STATUS_LABEL[p.status]}</CBadge></CTableDataCell>
-                  <CTableDataCell className="mono">{fmtMoney(p.budget)}</CTableDataCell>
-                  <CTableDataCell className="mono">{clampPct(p.progress)}%</CTableDataCell>
-                  <CTableDataCell className="text-end">
-                    <CButton size="sm" color="secondary" variant="outline" className="me-1" onClick={() => onEdit(p)}><CIcon icon={cilPencil} size="sm" /></CButton>
-                    <CButton size="sm" color="danger" variant="outline" onClick={() => onDelete(p)}><CIcon icon={cilTrash} size="sm" /></CButton>
-                  </CTableDataCell>
-                </CTableRow>
-              ))}
-            </CTableBody>
-          </CTable>
-        </div>
-      </CCardBody>
-    </CCard>
   );
 }
 

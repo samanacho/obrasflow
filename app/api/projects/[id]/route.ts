@@ -66,7 +66,20 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const body = (await req.json()) as Record<string, unknown>;
     const data: Record<string, unknown> = {};
-    if (typeof body.status === "string") data.status = body.status;
+    if (typeof body.status === "string") {
+      if (!["planificado", "en_curso", "pausado", "finalizado"].includes(body.status)) {
+        return NextResponse.json({ error: "Estado inválido." }, { status: 400 });
+      }
+      data.status = body.status;
+    }
+    // Ubicación desde el mapa de Inicio: "lat,lng" o null para quitarla.
+    if (body.coordinates === null) data.coordinates = null;
+    else if (typeof body.coordinates === "string") {
+      if (!/^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/.test(body.coordinates.trim())) {
+        return NextResponse.json({ error: "Ubicación inválida." }, { status: 400 });
+      }
+      data.coordinates = body.coordinates.trim();
+    }
     if (typeof body.progress === "number") data.progress = Math.max(0, Math.min(100, Math.round(body.progress)));
     if (body.budget !== undefined) {
       const budget = Number(body.budget);

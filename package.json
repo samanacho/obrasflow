@@ -44,6 +44,7 @@
     "react-plotly.js": "^4.1.0",
     "sweetalert2": "^11.26.25",
     "three": "^0.185.1",
+    "write-excel-file": "^4.1.1",
     "zod": "^4.6.5"
   },
   "devDependencies": {
