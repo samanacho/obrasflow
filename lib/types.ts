@@ -247,6 +247,8 @@ export interface DashboardSummaryDTO {
   openRelevamientos: number;
   pendingCotizaciones: number;
   pendingMilestones: number;
+  /** Capturas de Registro rápido sin clasificar. */
+  pendingQuickExpenses?: number;
 }
 
 export interface ContractorInput {

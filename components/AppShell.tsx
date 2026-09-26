@@ -22,6 +22,7 @@ import CIcon from "@coreui/icons-react";
 import { cilSpeedometer, cilPeople, cilFactory, cilTruck, cilSettings, cilBadge, cilChatBubble, cilMoon, cilSun, cilMenu, cilPlus } from "@coreui/icons";
 import { NAV_ITEMS } from "@/lib/navItems";
 import QuickExpenseButton from "@/components/QuickExpenseButton";
+import QuickSearch from "@/components/QuickSearch";
 
 const ICONS: Record<string, any> = { cilSpeedometer, cilPeople, cilFactory, cilTruck, cilSettings, cilBadge, cilChatBubble };
 
@@ -120,6 +121,7 @@ export default function AppShell({
               ))}
             </CBreadcrumb>
             <div className="d-flex align-items-center gap-2">
+              <QuickSearch />
               <QuickExpenseButton />
               {headerActions}
               <CButton color="light" variant="ghost" onClick={toggleTheme} title="Cambiar tema">

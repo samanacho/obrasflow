@@ -6,12 +6,13 @@ export const dynamic = "force-dynamic";
 /** Agregados livianos para las tarjetas y accesos rápidos del Dashboard —
  * evita que el frontend tenga que pedir los items de cada proyecto uno por uno. */
 export async function GET() {
-  const [contractorsActive, ratedHistory, openRelevamientos, pendingCotizaciones, pendingMilestones] = await Promise.all([
+  const [contractorsActive, ratedHistory, openRelevamientos, pendingCotizaciones, pendingMilestones, pendingQuickExpenses] = await Promise.all([
     prisma.contractor.count({ where: { status: "activo" } }),
     prisma.contractorHistoryEntry.findMany({ where: { rating: { not: null } }, select: { rating: true } }),
     prisma.projectItem.count({ where: { kind: "rfi", status: { in: ["Pendiente", "En proceso"] } } }),
     prisma.projectItem.count({ where: { kind: "cotizacion", status: "Pendiente" } }),
     prisma.projectItem.count({ where: { kind: "milestone", status: { not: "Cumplido" } } }),
+    prisma.quickExpense.count({ where: { resuelto: false } }),
   ]);
 
   const avgRating = ratedHistory.length
@@ -24,5 +25,6 @@ export async function GET() {
     openRelevamientos,
     pendingCotizaciones,
     pendingMilestones,
+    pendingQuickExpenses,
   });
 }
