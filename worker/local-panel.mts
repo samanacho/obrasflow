@@ -22,6 +22,7 @@ interface Deps {
   local: { status: string; qr: string | null; phone: string | null; name: string | null; lastError: string | null; info: Record<string, unknown> | null };
   runCommand: (c: "logout" | "restart") => Promise<void>;
   reportInfo: () => Promise<void>;
+  sendToSelf: (text: string) => Promise<void>;
   dbConfigured: boolean;
 }
 
@@ -86,7 +87,7 @@ export function startLocalPanel(deps: Deps): Promise<string> {
         aiKeyConfigured: Boolean(process.env.ANTHROPIC_API_KEY?.trim()),
         cliMode: process.env.AGENT_BACKEND?.trim() === "cli",
         backend: process.env.AGENT_BACKEND?.trim() === "api" ? "api" : "cli",
-        cliModel: process.env.CLAUDE_CLI_MODEL?.trim() || "sonnet",
+        cliModel: process.env.CLAUDE_CLI_MODEL?.trim() || "haiku",
         selfMode: Boolean((deps.local.info as { selfMode?: boolean } | null)?.selfMode),
         model: process.env.ANTHROPIC_MODEL?.trim() || "claude-sonnet-5",
         effort: process.env.ANTHROPIC_EFFORT?.trim() || "medium",
@@ -157,6 +158,18 @@ export function startLocalPanel(deps: Deps): Promise<string> {
       }
       await deps.reportInfo();
       return json(res, 200, { ok: true, info: deps.local.info });
+    }
+    if (req.method === "POST" && url.pathname === "/send") {
+      const b = await readBody(req);
+      const text = typeof b.text === "string" ? b.text.trim() : "";
+      if (!text) return json(res, 400, { error: "Mensaje vacío." });
+      if (text.length > 2000) return json(res, 400, { error: "El mensaje es demasiado largo." });
+      try {
+        await deps.sendToSelf(text);
+        return json(res, 200, { ok: true });
+      } catch (err) {
+        return json(res, 409, { error: (err as Error).message });
+      }
     }
     if (req.method === "POST" && url.pathname === "/command") {
       const b = await readBody(req);

@@ -305,6 +305,16 @@ async function heartbeat() {
   }
 }
 
+/**
+ * Manda un mensaje al chat propio ("Tú") como si lo escribiera el dueño en el
+ * teléfono: aparece en WhatsApp y el agente lo procesa por el flujo normal.
+ * Lo usa el chat de la pantalla /agente-whatsapp.
+ */
+export async function sendToSelf(text: string) {
+  if (!sock || local.status !== "conectado" || !ownPhone) throw new Error("WhatsApp no está conectado.");
+  await sock.sendMessage(`${ownPhone}@s.whatsapp.net`, { text });
+}
+
 /** Desvincular (pide QR nuevo) o reiniciar la conexión. Lo usan la pantalla de la app y la página local. */
 export async function runCommand(command: "logout" | "restart") {
   if (!sock) return;
@@ -326,7 +336,7 @@ export async function runCommand(command: "logout" | "restart") {
 export async function reportInfo() {
   if (!DB_OK) return;
   const cli = agentBackend() === "cli";
-  const model = cli ? `Claude Code (${process.env.CLAUDE_CLI_MODEL?.trim() || "sonnet"})` : process.env.ANTHROPIC_MODEL?.trim() || "claude-sonnet-5";
+  const model = cli ? `Claude Code (${process.env.CLAUDE_CLI_MODEL?.trim() || "haiku"})` : process.env.ANTHROPIC_MODEL?.trim() || "claude-sonnet-5";
   let ai = { ok: false, detail: "Falta ANTHROPIC_API_KEY en .env.local." };
   if (cli) {
     ai = await checkClaudeCli();
@@ -369,7 +379,7 @@ async function shutdown() {
 
 async function main() {
   console.log("ObrasFlow — conector de WhatsApp (Baileys). Ctrl+C para detenerlo.");
-  const url = await startLocalPanel({ local, runCommand, reportInfo, dbConfigured: DB_OK });
+  const url = await startLocalPanel({ local, runCommand, reportInfo, sendToSelf, dbConfigured: DB_OK });
   console.log("🖥️  Configuración y QR: http://localhost:3000/agente-whatsapp (solo en esta PC)");
   void url;
   if (!DB_OK) {

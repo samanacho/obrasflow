@@ -96,7 +96,7 @@ export async function runAgentTurnCli(
       prompt: input(),
       options: {
         systemPrompt: SYSTEM_PROMPT,
-        model: process.env.CLAUDE_CLI_MODEL?.trim() || "sonnet",
+        model: process.env.CLAUDE_CLI_MODEL?.trim() || "haiku",
         tools: [],
         mcpServers: { [SERVER]: server },
         allowedTools: defs.map((d) => `mcp__${SERVER}__${d.name}`),
@@ -136,7 +136,7 @@ export async function checkClaudeCli(): Promise<{ ok: boolean; detail: string }>
   try {
     const q = query({
       prompt: "Respondé solamente: ok",
-      options: { tools: [], settingSources: [], persistSession: false, maxTurns: 1, abortController: abort, cwd: tmpdir(), env: cleanEnv(), model: process.env.CLAUDE_CLI_MODEL?.trim() || "sonnet" },
+      options: { tools: [], settingSources: [], persistSession: false, maxTurns: 1, abortController: abort, cwd: tmpdir(), env: cleanEnv(), model: process.env.CLAUDE_CLI_MODEL?.trim() || "haiku" },
     });
     for await (const m of q) {
       if (m.type === "result") {
