@@ -6,16 +6,19 @@ import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   CCard, CCardBody, CCardHeader, CNav, CNavItem, CNavLink,
-  CButton, CButtonGroup,
-  CBadge, CAlert,
+  CButton, CButtonGroup, CFormSelect,
+  CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell,
+  CBadge, CAlert, CInputGroup, CFormInput,
 } from "@coreui/react";
-import { CChartDoughnut } from "@coreui/react-chartjs";
+import { CChartDoughnut, CChartBar } from "@coreui/react-chartjs";
 import CIcon from "@coreui/icons-react";
 import {
-  cilPlus, cilArrowLeft, cilArrowRight, cilPencil,
-  cilSpeedometer, cilListRich, cilViewColumn,
+  cilPlus, cilArrowLeft, cilArrowRight, cilCloudDownload, cilPencil, cilTrash,
+  cilPeople, cilSpeedometer, cilFlagAlt, cilCalculator, cilListRich, cilViewColumn, cilLightbulb, cilBalanceScale, cilExternalLink,
 } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
+import ProjectsTable from "@/components/home/ProjectsTable";
+import PlotlyGauge from "@/components/PlotlyGauge";
 import NewProjectWizard from "@/components/NewProjectWizard";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import Toast from "@/components/Toast";
@@ -32,8 +35,7 @@ const DhtmlxGanttChart = dynamic(() => import("@/components/DhtmlxGanttChart"), 
 });
 import type { ProjectDTO, ProjectStatus, ProjectType, DashboardSummaryDTO, PoleLotDTO, PoleSpecDTO, GeneralMovementDTO } from "@/lib/types";
 import { fechaFiscalizacionEstimada, capacityForDate, FACTORY_SCHEDULE_LABEL } from "@/lib/factoryCapacity";
-import ProjectsTable from "@/components/home/ProjectsTable";
-import { TodayPanel, attentionItems, StatCard, ObrasList, Fold, budgetState, fmtGsShort } from "@/components/home/HomeWidgets";
+import { todayLocal } from "@/lib/dates";
 
 const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
 const TYPE_COLOR: Record<ProjectType, string> = { civil: "info", electrico: "warning", vial: "secondary", otro: "dark" };
@@ -47,6 +49,12 @@ const STATUS_LABEL: Record<ProjectStatus, string> = {
   en_curso: "En curso",
   pausado: "Pausado",
   finalizado: "Finalizado",
+};
+const STATUS_COLOR: Record<ProjectStatus, string> = {
+  planificado: "info",
+  en_curso: "warning",
+  pausado: "secondary",
+  finalizado: "success",
 };
 const STATUS_ORDER: ProjectStatus[] = ["planificado", "en_curso", "pausado", "finalizado"];
 const TABS = [
@@ -107,14 +115,6 @@ function HomeInner() {
 
   useEffect(() => { loadProjects(); loadSummary(); loadPostesSummary(); loadGeneralMovements(); }, []);
 
-  useEffect(() => {
-    if (searchParams.get("nuevo") === "1") {
-      openModal(null);
-      router.replace(tab === "dashboard" ? "/" : `/?tab=${tab}`, { scroll: false });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
-
   async function loadProjects() {
     setLoading(true);
     setLoadError(null);
@@ -130,7 +130,7 @@ function HomeInner() {
     }
   }
 
-  /** Vuelve a pedir las obras sin mostrar el esqueleto (después de anotar un gasto, por ejemplo). */
+  // Usados por la tabla de proyectos (edición en línea y acciones rápidas).
   async function refreshProjects() {
     try {
       const res = await fetch("/api/projects");
@@ -301,18 +301,7 @@ function HomeInner() {
         </CNavItem>
       </CNav>
 
-      {loading && (
-        <div className="home-skeleton" aria-label="Cargando proyectos">
-          <div className="sk sk-hero" />
-          <div className="sk-row">
-            <div className="sk" />
-            <div className="sk" />
-            <div className="sk" />
-            <div className="sk" />
-          </div>
-          <div className="sk sk-list" />
-        </div>
-      )}
+      {loading && <p className="state-message">Cargando proyectos…</p>}
       {!loading && loadError && (
         <CAlert color="danger" className="d-flex align-items-center justify-content-between">
           {loadError} <CButton size="sm" color="danger" variant="outline" onClick={loadProjects}>Reintentar</CButton>
@@ -320,8 +309,8 @@ function HomeInner() {
       )}
 
       {!loading && !loadError && (
-        <div className={tab === "kanban" ? "panel tab-panel" : ""}>
-          {tab === "dashboard" && <DashboardView projects={projects} metrics={metrics} summary={summary} poleLots={poleLots} poleSpecs={poleSpecs} onUpdated={replaceProject} onSpentChanged={refreshProjects} />}
+        <div className="panel tab-panel">
+          {tab === "dashboard" && <DashboardView projects={projects} metrics={metrics} summary={summary} poleLots={poleLots} poleSpecs={poleSpecs} onNewProject={() => openModal(null)} />}
           {tab === "kanban" && <BoardView projects={projects} onEdit={openModal} onMove={moveStatus} />}
           {tab === "tabla" && <ProjectsTable projects={projects} onEdit={openModal} onDelete={setConfirmTarget} onUpdated={replaceProject} onSpentChanged={refreshProjects} />}
         </div>
@@ -390,19 +379,24 @@ interface DashboardMetrics {
 }
 
 function DashboardView({
-  projects, metrics, summary, poleLots, poleSpecs, onUpdated, onSpentChanged,
+  projects, metrics, summary, poleLots, poleSpecs, onNewProject,
 }: {
   projects: ProjectDTO[];
   metrics: DashboardMetrics;
   summary: DashboardSummaryDTO | null;
   poleLots: PoleLotDTO[];
   poleSpecs: PoleSpecDTO[];
-  onUpdated: (p: ProjectDTO) => void;
-  onSpentChanged: () => void;
+  onNewProject: () => void;
 }) {
   const { byType, totalBudget, totalSpent, totalBenefit, generalNet, avgProgress, execPct, active, finished } = metrics;
+  const sortedByProgress = [...projects].sort((a, b) => clampPct(b.progress) - clampPct(a.progress));
 
   const now = Date.now();
+  const overBudget = projects.filter((p) => p.spent > p.budget);
+  const dueSoon = projects
+    .filter((p) => p.status !== "finalizado")
+    .map((p) => ({ p, daysLeft: Math.ceil((new Date(p.end).getTime() - now) / 86400000) }))
+    .filter((x) => x.daysLeft <= 7);
 
   const lotesEnProceso = poleLots.filter((l) => l.estado === "en_curado" || l.estado === "listo_para_ensayo" || l.estado === "en_ensayo").length;
   const postesEnStock = poleLots
@@ -418,49 +412,104 @@ function DashboardView({
     .sort((a, b) => a.fecha.getTime() - b.fecha.getTime());
 
   const isDark = useIsDarkTheme();
+  const gridColor = isDark ? "rgba(255,255,255,.08)" : "rgba(0,0,0,.06)";
   const tickColor = isDark ? "#a39e93" : "#75726a"; // --ink-soft de app/globals.css en cada tema
 
   return (
     <>
-      <TodayPanel
-        projects={projects}
-        items={attentionItems(projects, { pendingQuick: summary?.pendingQuickExpenses, fiscalizaciones: fiscalizacionesProximas.length })}
-      />
-
-      <div className="home-stats">
-        <StatCard
-          label="Obras activas"
-          value={projects.filter((p) => p.status !== "finalizado").length}
-          sub={`${active} en curso · ${finished} finalizada${finished === 1 ? "" : "s"}`}
-          href="/rubros"
-        />
-        <StatCard
-          label="Ejecutado"
-          value={`${execPct} %`}
-          tone={budgetState({ budget: totalBudget, spent: totalSpent }).light}
-          bar={{ pct: execPct, light: budgetState({ budget: totalBudget, spent: totalSpent }).light }}
-          sub={<span title={`${fmtMoney(totalSpent)} de ${fmtMoney(totalBudget)}`}>{fmtGsShort(totalSpent)} de {fmtGsShort(totalBudget)}</span>}
-          href="/ejecucion"
-        />
-        <StatCard
-          label="Costos vs. beneficios"
-          value={fmtGsShort(totalBenefit)}
-          title={fmtMoney(totalBenefit)}
-          tone={totalBudget === 0 && generalNet === 0 ? undefined : totalBenefit >= 0 ? "ok" : "crit"}
-          sub={totalBudget === 0 && generalNet === 0 ? "sin obras cargadas" : totalBenefit >= 0 ? "ganancia sobre presupuesto" : "pérdida sobre presupuesto"}
-          href="/movimientos"
-        />
-        <StatCard label="Avance promedio" value={`${avgProgress} %`} bar={{ pct: avgProgress, light: "none" }} sub={`sobre ${projects.length} obra${projects.length === 1 ? "" : "s"}`} />
-      </div>
-      <div className="home-mini">
-        <Link href="/contratistas">👷 {summary?.contractorsActive ?? "—"} contratistas activos</Link>
-        <span>📨 {summary?.pendingCotizaciones ?? "—"} cotizaciones esperando decisión</span>
-        <a href="https://www.contrataciones.gov.py/buscador/licitaciones.html" target="_blank" rel="noopener noreferrer">🏛️ Licitaciones DNCP ↗</a>
+      {/* Accesos directos */}
+      <div className="row g-3 mb-4">
+        <div className="col-md-6">
+          <Link href="/rubros" className="home-module">
+            <CIcon icon={cilListRich} size="xl" />
+            <span>
+              <span className="home-module-title">Todas las obras</span>
+              <span className="home-module-sub">{projects.length} proyecto{projects.length === 1 ? "" : "s"} — clasificadas por rubro</span>
+            </span>
+          </Link>
+        </div>
+        <div className="col-md-6">
+          <Link href="/contratistas" className="home-module">
+            <CIcon icon={cilPeople} size="xl" />
+            <span>
+              <span className="home-module-title">Contratistas</span>
+              <span className="home-module-sub">Directorio global de contratistas</span>
+            </span>
+          </Link>
+        </div>
       </div>
 
-      <ObrasList projects={projects} onUpdated={onUpdated} onSpentChanged={onSpentChanged} />
+      <div className="quick-actions mb-4">
+        <button className="quick-action" onClick={onNewProject}>
+          <CIcon icon={cilPlus} /> Nuevo proyecto
+        </button>
+      </div>
 
-      <Fold id="rubros" title="Análisis por rubro" hint="presupuesto y resultado por tipo de obra">
+      {(overBudget.length > 0 || dueSoon.length > 0) && (
+        <div className="row g-3 mb-4">
+          {dueSoon.length > 0 && (
+            <div className="col-md-6">
+              <CAlert color="warning" className="mb-0">
+                <div className="fw-semibold mb-1">⏰ Vencimientos próximos</div>
+                <ul className="mb-0 ps-3 small">
+                  {dueSoon.map(({ p, daysLeft }) => (
+                    <li key={p.id}>
+                      <Link href={`/project/${p.id}`}>{p.name}</Link> — {daysLeft < 0 ? `vencido hace ${Math.abs(daysLeft)}d` : daysLeft === 0 ? "vence hoy" : `${daysLeft}d restantes`}
+                    </li>
+                  ))}
+                </ul>
+              </CAlert>
+            </div>
+          )}
+          {overBudget.length > 0 && (
+            <div className="col-md-6">
+              <CAlert color="danger" className="mb-0">
+                <div className="fw-semibold mb-1">💸 Sobre presupuesto</div>
+                <ul className="mb-0 ps-3 small">
+                  {overBudget.map((p) => (
+                    <li key={p.id}>
+                      <Link href={`/project/${p.id}`}>{p.name}</Link> — {fmtMoney(p.spent)} / {fmtMoney(p.budget)}
+                    </li>
+                  ))}
+                </ul>
+              </CAlert>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="row row-cols-2 row-cols-md-4 g-3 mb-3">
+        <div className="col"><Kpi label="Proyectos totales" value={projects.length} sub={`${active} en curso · ${finished} finalizados`} icon={cilLightbulb} href="/rubros" /></div>
+        <div className="col"><Kpi label="Presupuesto total" value={fmtMoney(totalBudget)} sub={`${fmtMoney(totalSpent)} ejecutado`} icon={cilCalculator} /></div>
+        <div className="col"><Kpi label="Ejecución presupuestaria" value={`${execPct}%`} sub={execPct > 100 ? "sobre presupuesto" : "del total planificado"} icon={cilCalculator} href="/ejecucion" /></div>
+        <div className="col"><Kpi label="Avance promedio" value={`${avgProgress}%`} sub={`sobre ${projects.length} proyectos`} icon={cilListRich} /></div>
+      </div>
+
+      <div className="row row-cols-2 row-cols-md-4 g-3 mb-4">
+        <div className="col"><Kpi label="Contratistas activos" value={summary?.contractorsActive ?? "—"} sub="en el directorio" icon={cilPeople} href="/contratistas" /></div>
+        <div className="col">
+          <Kpi
+            label="Costos vs. beneficios"
+            value={`${totalBenefit < 0 ? "-" : ""}${fmtMoney(Math.abs(totalBenefit))}`}
+            sub={totalBudget === 0 && generalNet === 0 ? "sin obras cargadas" : totalBenefit >= 0 ? "ganancia sobre presupuesto" : "pérdida sobre presupuesto"}
+            icon={cilBalanceScale}
+            valueColor={totalBudget === 0 && generalNet === 0 ? undefined : totalBenefit >= 0 ? "var(--ok)" : "var(--crit)"}
+            href="/movimientos"
+          />
+        </div>
+        <div className="col"><Kpi label="Cotizaciones pendientes" value={summary?.pendingCotizaciones ?? "—"} sub="esperando decisión" icon={cilFlagAlt} /></div>
+        <div className="col">
+          <Kpi
+            label="Licitaciones"
+            value="DNCP ↗"
+            sub="Buscador de licitaciones públicas"
+            icon={cilExternalLink}
+            href="https://www.contrataciones.gov.py/buscador/licitaciones.html"
+            external
+          />
+        </div>
+      </div>
+
       <div className="row g-3 mb-4">
         <div className="col-lg-4">
           <CCard className="h-100">
@@ -479,8 +528,27 @@ function DashboardView({
             </CCardBody>
           </CCard>
         </div>
-        <div className="col-lg-8">
-      <CCard className="h-100">
+        <div className="col-lg-4">
+          <CCard className="h-100">
+            <CCardHeader className="fw-semibold">Ejecución presupuestaria</CCardHeader>
+            <CCardBody className="d-flex align-items-center justify-content-center">
+              {totalBudget > 0 ? (
+                <PlotlyGauge value={execPct} color={execPct > 100 ? "#a0564d" : "#5c7a99"} />
+              ) : <EmptyMsg />}
+            </CCardBody>
+          </CCard>
+        </div>
+        <div className="col-lg-4">
+          <CCard className="h-100">
+            <CCardHeader className="fw-semibold">Avance promedio</CCardHeader>
+            <CCardBody className="d-flex align-items-center justify-content-center">
+              <PlotlyGauge value={avgProgress} max={100} color="#5f8362" />
+            </CCardBody>
+          </CCard>
+        </div>
+      </div>
+
+      <CCard className="mb-4">
         <CCardHeader className="fw-semibold">Costos vs. beneficios por rubro</CCardHeader>
         <CCardBody>
           {totalBudget === 0 && generalNet === 0 ? (
@@ -519,15 +587,52 @@ function DashboardView({
         </CCardBody>
       </CCard>
 
-        </div>
-      </div>
-      </Fold>
+      <CCard className="mb-4">
+        <CCardHeader className="fw-semibold">Avance por proyecto</CCardHeader>
+        <CCardBody>
+          {sortedByProgress.length > 0 ? (
+            <CChartBar
+              style={{ maxHeight: 240 }}
+              data={{
+                labels: sortedByProgress.map((p) => p.name.length > 18 ? p.name.slice(0, 17) + "…" : p.name),
+                datasets: [{ label: "Avance %", data: sortedByProgress.map((p) => clampPct(p.progress)), backgroundColor: sortedByProgress.map((p) => TYPE_HEX[p.type]) }],
+              }}
+              options={{
+                plugins: { legend: { display: false } },
+                scales: {
+                  y: { beginAtZero: true, max: 100, grid: { color: gridColor }, ticks: { color: tickColor } },
+                  x: { grid: { display: false }, ticks: { color: tickColor } },
+                },
+              }}
+            />
+          ) : <EmptyMsg />}
+        </CCardBody>
+      </CCard>
 
-      <Fold id="postes" title="🏭 Fábrica de Postes" hint={poleLots.length ? `${lotesEnProceso} lotes en proceso · ${postesEnStock} postes en stock` : "sin actividad"}>
       <CCard>
+        <CCardHeader className="fw-semibold">Seguimiento rápido</CCardHeader>
+        <CCardBody>
+          {sortedByProgress.length === 0 && <EmptyMsg />}
+          {sortedByProgress.map((p) => {
+            const pct = clampPct(p.progress);
+            const over = p.spent > p.budget;
+            return (
+              <div className="bar-row" key={p.id}>
+                <Link href={`/project/${p.id}`} title={p.name} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</Link>
+                <div className="bar-track">
+                  <div className="bar-fill" style={{ width: `${pct}%`, background: `var(--${p.type})` }} />
+                </div>
+                <span className="mono" style={{ color: over ? "var(--crit)" : "var(--ink-soft)" }}>{pct}%</span>
+              </div>
+            );
+          })}
+        </CCardBody>
+      </CCard>
+
+      <CCard className="mt-4">
         <CCardHeader className="fw-semibold">
           <div className="d-flex justify-content-between align-items-center">
-            <span>Resumen de la fábrica</span>
+            <span>🏭 Fábrica de Postes</span>
             <Link href="/postes" className="small">Ver módulo →</Link>
           </div>
         </CCardHeader>
@@ -561,25 +666,21 @@ function DashboardView({
         </CCardBody>
       </CCard>
 
-      </Fold>
-
-      <Fold id="gantt" title="📅 Cronograma interactivo" hint="Gantt de todas las obras">
-      <CCard>
+      <CCard className="mt-4">
+        <CCardHeader className="fw-semibold">Cronograma interactivo</CCardHeader>
         <CCardBody>
           <p className="module-desc mb-3">Arrastrá tareas, cambiá la escala (semana/mes) y hacé clic en un proyecto para abrirlo — motor <strong>dhtmlx Gantt</strong>.</p>
           <DhtmlxGanttChart projects={projects} />
         </CCardBody>
       </CCard>
-      </Fold>
 
-      <Fold id="skyline" title="🏙️ Skyline 3D de la cartera" hint="vista 3D de avance y presupuesto">
-      <CCard>
+      <CCard className="mt-4">
+        <CCardHeader className="fw-semibold">Skyline 3D de la cartera</CCardHeader>
         <CCardBody>
           <p className="module-desc mb-3">Cada edificio es un proyecto: la altura es el avance, el color el rubro, y se ilumina en rojo si está sobre presupuesto. Arrastrá para rotar, clic para abrir — <strong>Three.js</strong>.</p>
           <ThreeSkyline projects={projects} />
         </CCardBody>
       </CCard>
-      </Fold>
     </>
   );
 }
