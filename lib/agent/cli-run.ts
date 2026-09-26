@@ -111,8 +111,8 @@ export async function runAgentTurnCli(
     });
     for await (const m of q) {
       if (m.type !== "result") continue;
-      if (m.subtype === "success") text = m.result.trim();
-      else failed = m.subtype;
+      if (m.subtype === "success" && !m.is_error) text = m.result.trim();
+      else failed = m.subtype === "success" ? m.result : m.subtype;
     }
   } catch (err) {
     if (ctx.proposals.length) return { reply: "Te preparé esto 👇 revisalo y confirmá con el código.", proposals: ctx.proposals };
@@ -140,14 +140,17 @@ export async function checkClaudeCli(): Promise<{ ok: boolean; detail: string }>
     });
     for await (const m of q) {
       if (m.type === "result") {
-        return m.subtype === "success"
-          ? { ok: true, detail: "Claude Code responde con la sesión de esta PC." }
-          : { ok: false, detail: `Claude Code no pudo responder (${m.subtype}).` };
+        // Un "Login expired" llega como resultado "success" con is_error: hay que mirar las dos cosas.
+        if (m.subtype === "success" && !m.is_error) return { ok: true, detail: "Claude Code responde con la sesión de esta PC." };
+        const why = m.subtype === "success" ? m.result : m.subtype;
+        return { ok: false, detail: /log ?in|login|expired|auth/i.test(String(why)) ? "La sesión de Claude Code de esta PC venció: hay que iniciar sesión de nuevo (claude auth login)." : `Claude Code no pudo responder (${String(why).slice(0, 120)}).` };
       }
     }
     return { ok: false, detail: "Claude Code no devolvió respuesta." };
   } catch (err) {
-    return { ok: false, detail: `Claude Code no está disponible: ${(err as Error).message.slice(0, 160)}` };
+    const msg = (err as Error).message;
+    if (/log ?in|login|expired/i.test(msg)) return { ok: false, detail: "La sesión de Claude Code de esta PC venció: hay que iniciar sesión de nuevo (claude auth login)." };
+    return { ok: false, detail: `Claude Code no está disponible: ${msg.slice(0, 160)}` };
   } finally {
     clearTimeout(timer);
   }

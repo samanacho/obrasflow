@@ -81,6 +81,10 @@ function cleanMime(m: string): string {
  * administrador, no pedirle al usuario que "pruebe de nuevo".
  */
 function aiAccountProblem(err: unknown): string | null {
+  // Claude Code (modo local): sesión de Claude vencida o sin iniciar en la PC.
+  if (err instanceof Error && /login expired|not logged in|run \/login/i.test(err.message)) {
+    return "⚠️ El asistente está en pausa: la sesión de Claude en la PC del conector venció. Hay que volver a iniciarla (claude auth login).";
+  }
   if (!(err instanceof Anthropic.APIError)) return null;
   const body = ((err as { error?: { error?: { message?: string; details?: { error_code?: string } } } }).error?.error) ?? {};
   const message = String(body.message ?? "");
