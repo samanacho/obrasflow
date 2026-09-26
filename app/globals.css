@@ -536,10 +536,10 @@ a{color:inherit;}
 .memby-pill.is-off .dot{background:var(--crit);}
 @keyframes memby-pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb, var(--ok) 55%, transparent);}70%{box-shadow:0 0 0 8px transparent;}100%{box-shadow:0 0 0 0 transparent;}}
 
-.memby-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
-.memby-stat{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;text-align:center;}
+.memby-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+.memby-stat{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 6px;text-align:center;min-width:0;}
 .memby-stat .n{font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:700;font-size:1.7rem;line-height:1;}
-.memby-stat .l{font-size:.72rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;margin-top:4px;}
+.memby-stat .l{font-size:.66rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
 /* Chat */
 .memby-chat-card{border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--surface);box-shadow:var(--shadow);display:flex;flex-direction:column;}
