@@ -506,3 +506,8 @@ a{color:inherit;}
 /* Ejecución agrupada por rubro (ficha de la obra, app/project/[id]/page.tsx) */
 .rubro-summary-card{cursor:pointer;transition:border-color .15s ease, transform .15s ease;}
 .rubro-summary-card:hover{border-color:var(--accent);transform:translateY(-1px);}
+
+/* SweetAlert2 con la paleta de la app (lib/ui/alerts.ts) */
+.of-swal{background:var(--surface,#fff);color:var(--ink,#2a2622);border-radius:12px;font-family:'IBM Plex Sans',system-ui,sans-serif;}
+.of-swal .swal2-title{font-family:'Barlow Condensed',sans-serif;font-weight:700;}
+.of-swal .swal2-html-container{color:var(--ink-soft,#6f675e);}

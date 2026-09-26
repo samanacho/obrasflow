@@ -34,9 +34,15 @@ Es la práctica habitual en este repositorio (en la app de Claude y en el CLI
 - Producción: https://obrasflow-app.vercel.app (base Neon, se despliega con
   cada push a `main`). El build corre `prisma db push --accept-data-loss`:
   los cambios de esquema tienen que ser aditivos.
-- Librerías de interfaz disponibles: Bootstrap 5 + CoreUI (componentes y
-  estilos), @coreui/icons, Chart.js, Plotly, Leaflet, dhtmlx-gantt, three.
-  Antes de agregar otra, revisá si alguna de estas ya lo resuelve.
+- Librerías de interfaz disponibles (antes de agregar otra, revisá si alguna ya lo resuelve):
+  - Bootstrap 5 + CoreUI (componentes y estilos), @coreui/icons.
+  - Gráficos y mapas: Chart.js, Plotly, Leaflet, dhtmlx-gantt, three.
+  - Diálogos: SweetAlert2 vía `lib/ui/alerts.ts` (`confirmar`, `avisar`, `notificar`).
+  - Animaciones: Animate.css (clases `animate__animated animate__fadeIn`…), cargado global.
+  - Fechas: Day.js vía `lib/dayjs.ts` (español, hora de Paraguay: `fmtFecha`, `haceCuanto`…).
+  - Tablas: TanStack Table v8 (`useReactTable`) para ordenar, filtrar y paginar.
+  - jQuery: SOLO con `lib/ui/useJQuery.ts` sobre contenedores que React no dibuja
+    (plugins). Nunca para modificar elementos de React.
 
 ## Reglas
 

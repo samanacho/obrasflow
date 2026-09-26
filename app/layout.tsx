@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "@coreui/coreui/dist/css/coreui.min.css";
+import "animate.css";
+import "sweetalert2/dist/sweetalert2.min.css";
 import "./globals.css";
 import NumberInputWheelGuard from "@/components/NumberInputWheelGuard";
 
