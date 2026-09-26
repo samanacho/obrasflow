@@ -27,7 +27,7 @@ import makeWASocket, {
   type WAMessage,
   type WASocket,
 } from "@whiskeysockets/baileys";
-import { prisma } from "../lib/prisma";
+import { prisma, isRemoteDb } from "../lib/prisma";
 import { handleInbound } from "../lib/whatsapp/handle";
 import type { InboundMessage } from "../lib/whatsapp/parse";
 import type { Transport } from "../lib/whatsapp/transport";
@@ -39,8 +39,10 @@ import { MAX_AUDIO_SECONDS, transcribeVoiceNote, warmUpTranscriber } from "./tra
 import { avisosActivos, startNotices } from "./notices.mjs";
 
 const SESSION_ID = "baileys";
-/** Sin una URL de Postgres válida el conector arranca solo su página local, para que se la carguen ahí. */
-const DB_OK = /^postgres(ql)?:\/\//.test(process.env.POSTGRES_PRISMA_URL?.trim() ?? "");
+/** Sin una URL de Postgres válida (ni el modo remoto contra Vercel, MEMBY_REMOTE_URL) el conector arranca solo su página local, para que se la carguen ahí. */
+const DB_OK = isRemoteDb || /^postgres(ql)?:\/\//.test(process.env.POSTGRES_PRISMA_URL?.trim() ?? "");
+/** Pantalla de Memby con el QR: siempre la app local (desde Vercel no se llega a esta PC). */
+const PANEL_PAGE = `${process.env.MEMBY_PANEL_URL?.trim() || "http://localhost"}/agente-whatsapp`;
 const AUTH_DIR = process.env.BAILEYS_AUTH_DIR?.trim() || resolve(process.cwd(), ".baileys-auth");
 /** Tiempo máximo por mensaje (acá no hay límite de Vercel). */
 const TURN_BUDGET_MS = 120_000;
@@ -223,7 +225,7 @@ async function connect() {
     if (u.qr) {
       const qr = await QRCode.toDataURL(u.qr, { margin: 1, width: 320 });
       await setSession({ status: "esperando_qr", qr, phone: null, name: null, lastError: null });
-      console.log("📱 QR nuevo: escanealo en http://localhost:3000/agente-whatsapp");
+      console.log(`📱 QR nuevo: escanealo en ${PANEL_PAGE}`);
     }
     if (u.connection === "open") {
       const phone = current.user?.id ? digits(current.user.id) : null;
@@ -433,7 +435,7 @@ async function shutdown() {
 async function main() {
   console.log("ObrasFlow — conector de WhatsApp (Baileys). Ctrl+C para detenerlo.");
   const url = await startLocalPanel({ local, runCommand, reportInfo, sendToSelf, sendMediaToSelf, dbConfigured: DB_OK });
-  console.log("🖥️  Configuración y QR: http://localhost:3000/agente-whatsapp (solo en esta PC)");
+  console.log(`🖥️  Configuración y QR: ${PANEL_PAGE} (solo en esta PC)${isRemoteDb ? ` · registra en ${process.env.MEMBY_REMOTE_URL}` : ""}`);
   void url;
   if (!DB_OK) {
     local.status = "falta_base";

@@ -9,6 +9,7 @@ import { type Transport, cloudTransport, codeInstructions } from "./transport";
 import { isAffirmative, isNegative, parseButtonId } from "./confirm";
 import { acquirePhoneLock, releasePhoneLock } from "./lock";
 import { runAgentTurn, isAgentConfigured } from "../agent/run";
+import { toWhatsApp } from "../agent/format";
 import {
   executePendingAction,
   cancelPendingAction,
@@ -376,7 +377,7 @@ async function agentTurn(
 
   // Desde el 1/10/2026 Meta cobra cada mensaje de respuesta: si la frase del
   // agente entra en la tarjeta (tope de 1024 caracteres), va en el mismo mensaje.
-  let text = turn.reply;
+  let text = turn.reply ? toWhatsApp(turn.reply) : turn.reply;
   if (text && cards.length) {
     const combined = `${text}\n\n${cards[0].body}`;
     if (Array.from(combined).length <= 1024) {

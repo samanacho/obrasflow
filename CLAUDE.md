@@ -32,6 +32,15 @@ Es la práctica habitual en este repositorio (en la app de Claude y en el CLI
 - Modo local completo (`npm run local`, arranca solo con Windows): Postgres
   local en `.local-db/`, app en http://localhost:3000, conector de WhatsApp.
   Pantalla del agente: http://localhost:3000/agente-whatsapp
+- **Memby registra en producción** (desde 26/09/2026): el conector de la PC
+  corre con `MEMBY_REMOTE_URL=https://obrasflow-app.vercel.app` y
+  `MEMBY_CONNECTOR_KEY` (misma clave en Vercel). Así `lib/prisma.ts` usa el
+  cliente remoto (`lib/memby/remote-prisma.ts` → `/api/memby/db`) y confirmar
+  una propuesta corre entero en Vercel (`/api/memby/execute`, usa transacción).
+  El conector no puede usar `$transaction` ni SQL crudo. Lo arranca
+  `E:\Desarrollos\ObrasFlow-versiones\iniciar-memby.cmd` (config en
+  `memby.env`, fuera del repo; log en `logs/memby.log`). El QR se ve en la app
+  local: http://localhost/agente-whatsapp.
 - Memby (conector, `worker/`): notas de voz transcriptas en la PC con Whisper
   (`worker/transcribe.mts`, modelo en `.local-models/`), avisos automáticos
   (`worker/notices.mts`, tabla `WhatsAppNotice`). Opciones en `.env.local`:

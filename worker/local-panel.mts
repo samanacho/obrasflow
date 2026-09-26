@@ -15,7 +15,9 @@ const ENV_FILE = resolve(process.cwd(), ".env.local");
 const ALLOWED_HOSTS = new Set([`localhost:${PORT}`, `127.0.0.1:${PORT}`]);
 const MODELS = ["claude-sonnet-5", "claude-opus-5-5", "claude-haiku-4-5"];
 const CLI_MODELS = ["sonnet", "opus", "haiku"];
-const APP_PAGE = `${process.env.APP_BASE_URL?.trim() || "http://localhost:3000"}/agente-whatsapp`;
+// Pantalla con el QR: la de la app LOCAL. APP_BASE_URL puede ser Vercel (links de
+// los mensajes) y desde Vercel no se llega al conector de esta PC.
+const APP_PAGE = `${process.env.MEMBY_PANEL_URL?.trim() || "http://localhost"}/agente-whatsapp`;
 const EFFORTS = ["low", "medium", "high"];
 const MEDIA_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 
