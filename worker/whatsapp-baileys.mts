@@ -64,7 +64,11 @@ const jidByPhone = new Map<string, string>();
  * al dueño de la cuenta vinculada, en su chat consigo mismo ("Tú"). Nadie
  * más puede hablarle. Sus respuestas llevan 🤖 para distinguirlas.
  */
-const SELF_MODE = !process.env.WHATSAPP_ALLOWED_NUMBERS?.trim();
+// El dueño de la cuenta vinculada siempre usa a Memby en su chat "Tú" (y recibe
+// los avisos automáticos). Además, si hay números en WHATSAPP_ALLOWED_NUMBERS
+// (encargados de obra), Memby les contesta cuando le escriben a este número.
+const SELF_MODE = true;
+const OTHER_USERS = Boolean(process.env.WHATSAPP_ALLOWED_NUMBERS?.trim());
 const BOT_PREFIX = "🤖 ";
 /** Ids de lo que mandó el agente: en el chat propio también llegan como "míos" y no hay que contestarlos. */
 const botSent = new Set<string>();
@@ -170,7 +174,7 @@ const transport: Transport = {
   buttons: false,
   async sendText(to, text) {
     if (!sock) throw new Error("WhatsApp no está conectado");
-    const sent = await sock.sendMessage(jidByPhone.get(to) ?? `${to}@s.whatsapp.net`, { text: SELF_MODE ? BOT_PREFIX + text : text });
+    const sent = await sock.sendMessage(jidByPhone.get(to) ?? `${to}@s.whatsapp.net`, { text: to === ownPhone ? BOT_PREFIX + text : text });
     if (sent?.key.id) {
       botSent.add(sent.key.id);
       if (botSent.size > 500) botSent.delete(botSent.values().next().value!);
@@ -231,13 +235,16 @@ async function connect() {
       const phone = current.user?.id ? digits(current.user.id) : null;
       ownPhone = phone;
       ownLid = current.user?.lid ? digits(current.user.lid) : null;
-      if (SELF_MODE && phone) {
-        // El único usuario autorizado es el dueño de la cuenta vinculada (solo en memoria, no se guarda).
-        process.env.WHATSAPP_ALLOWED_NUMBERS = `${phone}:${(current.user?.name || "Dueño").replace(/[:,]/g, "")}`;
+      if (phone && !getAllowedNumbers().has(phone)) {
+        // El dueño de la cuenta vinculada siempre está autorizado (solo en memoria, no se guarda).
+        const owner = `${phone}:${(current.user?.name || "Dueño").replace(/[:,]/g, "")}`;
+        const rest = process.env.WHATSAPP_ALLOWED_NUMBERS?.trim();
+        process.env.WHATSAPP_ALLOWED_NUMBERS = rest ? `${owner},${rest}` : owner;
       }
       await setSession({ status: "conectado", qr: null, phone, name: current.user?.name ?? null, lastError: null });
       console.log(`✅ Conectado como ${current.user?.name ?? ""} (${phone ?? "?"}).`);
-      if (SELF_MODE) console.log("💬 Modo cuenta propia: escribile al agente en tu chat \"Tú\" (mensaje a vos mismo).");
+      console.log("💬 Escribile al agente en tu chat \"Tú\" (mensaje a vos mismo).");
+      if (OTHER_USERS) console.log(`👷 También contesta a: ${[...getAllowedNumbers().entries()].filter(([p]) => p !== phone).map(([p, n]) => `${n} (${p})`).join(", ")}`);
     }
     if (u.connection === "close") {
       const code = (u.lastDisconnect?.error as { output?: { statusCode?: number } } | undefined)?.output?.statusCode;
@@ -266,17 +273,21 @@ async function connect() {
       const jid = m.key.remoteJid ?? "";
       // Solo chats individuales: grupos, estados y canales no se contestan.
       if (!isPnUser(jid) && !isLidUser(jid)) continue;
-      if (SELF_MODE) {
-        // Solo lo que el dueño se escribe a sí mismo, nunca lo que manda el agente.
-        if (!m.key.fromMe || !isSelfChat(jid) || botSent.has(m.key.id)) continue;
+      let phone: string | null;
+      if (m.key.fromMe) {
+        // Del dueño: solo lo que se escribe a sí mismo, nunca lo que manda el agente
+        // (ni lo que el dueño les escribe a otros desde su teléfono).
+        if (!isSelfChat(jid) || botSent.has(m.key.id)) continue;
         const t = m.message?.conversation ?? m.message?.extendedTextMessage?.text ?? "";
         if (t.startsWith(BOT_PREFIX.trim())) continue;
         // Mensajes viejos (sincronización al vincular): no se procesan.
         if (Date.now() / 1000 - timestampOf(m) > 300) continue;
+        phone = ownPhone;
       } else {
-        if (type !== "notify" || m.key.fromMe) continue;
+        // De otra persona: solo mensajes nuevos, y handleInbound ignora a quien no esté autorizado.
+        if (!OTHER_USERS || type !== "notify") continue;
+        phone = senderPhone(m);
       }
-      const phone = SELF_MODE ? ownPhone : senderPhone(m);
       if (!phone) {
         console.warn("WhatsApp: mensaje sin número de teléfono (solo id interno) ignorado");
         continue;
@@ -417,7 +428,7 @@ export async function reportInfo() {
     startedAt: new Date().toISOString(),
   };
   local.info = info;
-  console.log(`IA: ${ai.detail} · ${SELF_MODE ? "modo cuenta propia (chat \"Tú\")" : `${info.allowedCount} número(s) autorizado(s)`}.`);
+  console.log(`IA: ${ai.detail} · chat "Tú" del dueño${OTHER_USERS ? ` + ${getAllowedNumbers().size - (ownPhone && getAllowedNumbers().has(ownPhone) ? 1 : 0)} encargado(s) autorizado(s)` : ""}.`);
   await prisma.whatsAppSession
     .upsert({ where: { id: SESSION_ID }, create: { id: SESSION_ID, status: "conectando", info, heartbeatAt: new Date() }, update: { info } })
     .catch(() => {});
