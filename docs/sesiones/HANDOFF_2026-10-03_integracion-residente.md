@@ -33,7 +33,7 @@
 3. Se construye nuestra parte de la integración sin esperarlos (hecho, ver abajo).
 4. Sin decidir (lo hablan Ignacio y Matias): dueño de los datos, cuál sistema manda en cada dato y el modelo comercial.
 
-## Lo que se construyó (probado en local, SIN commit ni deploy)
+## Lo que se construyó (en producción desde el 03/10/2026)
 
 | Pieza | Dónde |
 | --- | --- |
