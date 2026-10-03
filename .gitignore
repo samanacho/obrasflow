@@ -1,5 +1,8 @@
 node_modules
 .next
+# compilación del modo dev local (server/local-server.mjs)
+.next-dev/
+.next-*/
 .env
 .env*.local
 dist
@@ -20,3 +23,5 @@ logs/
 # Prompts de trabajo locales (no se publican)
 docs/prompt-*.md
 .local-models/
+
+.env*

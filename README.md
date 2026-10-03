@@ -100,6 +100,24 @@ prisma/
 
 Otros comandos útiles: `npm run db:studio` (explorador visual de la base) y `npm run build` (build de producción, corre `prisma generate` antes).
 
+## Modo local completo (esta PC)
+
+Levanta todo sin Vercel ni base en la nube: PostgreSQL embebido (`.local-db/`, puerto 5433), la app en http://localhost:3000 (Fastify + Next como custom server, `server/local-server.mjs`) y el conector de WhatsApp (http://localhost:3099). Todo escucha solo en 127.0.0.1.
+
+| Comando | Qué hace |
+|---|---|
+| `npm run local` | Modo **dev**: recarga en caliente; los cambios de pantalla se ven al guardar. Compila en `.next-dev/` para no pisar el build de `.next/`. |
+| `npm run local:prod` | Modo **prod**: compila (`npm run build`) solo si el código cambió y sirve lo compilado. |
+| `npm run local:web -- --dev --port=3100` | Solo el servidor web (con la base ya corriendo). Útil para pruebas en otro puerto. |
+
+Opciones de `scripts/local.mjs`: `--dev` / `--prod` (o `OBRASFLOW_MODO=dev|prod`), `--port=3000`, `--sin-conector`.
+
+- **Salud**: `GET /__salud` devuelve el estado de la app, la base y el conector (JSON; 200 si la app y la base andan).
+- **Logs**: una línea por evento, con hora y origen (`local`, `web`, `whatsapp`).
+- **Conector**: se reinicia solo cuando cambian archivos de `worker/` o de `lib/` que el conector importa; la sesión vinculada (`.baileys-auth/`) se conserva.
+- **Apagado**: Ctrl+C apaga en orden la app, el conector y la base (en Windows se les pide por IPC y, si no responden en 8 s, se cortan con `taskkill /T`). Si el orquestador muere de golpe, la app y el conector se apagan solos; si la base queda corriendo, el próximo arranque la reutiliza.
+- **Arranque con Windows**: `scripts/start-local.cmd [dev|prod]` en un bucle que reinicia todo si se cae, con log en `logs/conector-whatsapp.log` (rota a `.anterior` al pasar 10 MB).
+
 ## Deploy en Vercel
 
 1. Subí este repo a GitHub/GitLab y hacé "Import Project" en [vercel.com](https://vercel.com).
