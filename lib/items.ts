@@ -2,11 +2,13 @@ import type { Prisma, ProjectItem } from "@prisma/client";
 import { prisma } from "./prisma";
 import { ITEM_KINDS } from "./itemKinds";
 import { recomputeProjectSpent } from "./spent";
+import { logChanges, sourceFromData } from "./history";
+import { fmtGs } from "./agent/format";
 
 // Servidor únicamente (usa Prisma). Único camino para crear un ProjectItem:
 // lo usan la API (app/api/projects/[id]/items/route.ts) y el agente de
 // WhatsApp (lib/agent/actions.ts), así los dos dejan exactamente el mismo
-// rastro (feed de actividad + Ejecutado recalculado).
+// rastro (feed de actividad + Ejecutado recalculado + historial de cambios).
 
 export async function createProjectItem(
   input: {
@@ -15,6 +17,9 @@ export async function createProjectItem(
     title: string;
     status?: string | null;
     data?: Prisma.InputJsonValue;
+    /** Solo para registros que vienen de otro sistema (ver lib/integraciones/). */
+    externalSource?: string;
+    externalId?: string;
   },
   /** Pasos extra dentro de la MISMA transacción (el agente marca ahí la captura rápida que clasifica). */
   alsoInTx?: (tx: Prisma.TransactionClient, created: ProjectItem) => Promise<void>
@@ -24,7 +29,7 @@ export async function createProjectItem(
 
   // Todo o nada: si algo falla, no queda un movimiento sin su Ejecutado
   // recalculado (ni uno que el agente reporte como "no registrado").
-  return prisma.$transaction(async (tx) => {
+  const created = await prisma.$transaction(async (tx) => {
     const created = await tx.projectItem.create({
       data: {
         projectId: input.projectId,
@@ -32,6 +37,8 @@ export async function createProjectItem(
         title: input.title,
         status: input.status ? String(input.status) : config.defaultStatus ?? null,
         data: input.data ?? {},
+        externalSource: input.externalSource ?? null,
+        externalId: input.externalId ?? null,
       },
     });
 
@@ -54,4 +61,24 @@ export async function createProjectItem(
     if (alsoInTx) await alsoInTx(tx, created);
     return created;
   });
+
+  // Historial de cambios de la obra — se anota recién cuando el guardado ya
+  // quedó firme (fuera de la transacción), así un problema con el historial
+  // nunca puede deshacer el registro. logChanges no tira error.
+  if (input.kind !== "activity") {
+    const data = (input.data ?? {}) as Record<string, unknown>;
+    const monto = input.kind === "change_order" && data.monto !== undefined && data.monto !== null && data.monto !== "" ? Number(data.monto) : NaN;
+    await logChanges(
+      prisma,
+      input.projectId,
+      [
+        {
+          action: "registro_agregado",
+          detail: `${config.icon} ${config.singular}: "${input.title}"` + (Number.isFinite(monto) ? ` · ${fmtGs(monto)}` : ""),
+        },
+      ],
+      sourceFromData(input.data)
+    );
+  }
+  return created;
 }

@@ -8,16 +8,18 @@ import {
   CButton, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
   CForm, CFormLabel, CFormInput, CFormSelect,
   CBadge, CAlert, CListGroup, CListGroupItem, CRow, CCol,
+  CDropdown, CDropdownToggle, CDropdownMenu, CDropdownItem,
 } from "@coreui/react";
 import { CChartDoughnut, CChartLine } from "@coreui/react-chartjs";
-import CIcon from "@coreui/icons-react";
-import { cilPlus, cilPencil, cilTrash } from "@coreui/icons";
+import { PencilSimple, Trash, Plus, MapPin, CalendarBlank, FilePdf, Check, DotsThree, ArrowBendDownRight } from "@phosphor-icons/react";
+import Icon from "@/components/ui/Icon";
+import ImageViewer from "@/components/ui/ImageViewer";
+import { kindIcon, TIPO_INSUMO_ICON } from "@/components/ui/kindIcons";
+import { ITEMS_CHANGED } from "@/components/GastoObraButton";
 import AppShell from "@/components/AppShell";
 import NewProjectWizard from "@/components/NewProjectWizard";
-import ConfirmDialog from "@/components/ConfirmDialog";
+import { confirmarAccion, notificar } from "@/lib/ui/alerts";
 import ItemFormModal from "@/components/ItemFormModal";
-import Toast from "@/components/Toast";
-import { useToast } from "@/lib/useToast";
 import { useIsDarkTheme } from "@/lib/useIsDarkTheme";
 import type { ProjectDTO, ProjectItemDTO } from "@/lib/types";
 import { ITEM_KINDS, ITEM_KIND_ORDER, ItemKindConfig } from "@/lib/itemKinds";
@@ -37,15 +39,6 @@ const SECTOR_LABEL: Record<string, string> = { privado: "Obra privada", publico:
 // vacío (datos viejos de antes de que existiera).
 const TIPO_INSUMO_ORDER: string[] =
   ITEM_KINDS.change_order.fields.find((f) => f.key === "tipoInsumo")?.options ?? [];
-const TIPO_INSUMO_ICON: Record<string, string> = {
-  "Materiales": "🧱",
-  "Mano de obra": "👷",
-  "Maquinaria / Alquileres": "🚜",
-  "Servicios varios": "🧹",
-  "Subcontrato": "🤝",
-  "Gastos administrativos / Varios": "🗂️",
-  "Sin clasificar": "❔",
-};
 const TIPO_INSUMO_COLOR: Record<string, string> = {
   "Materiales": "info",
   "Mano de obra": "warning",
@@ -110,11 +103,12 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<string>("rfi");
+  useEffect(() => {
+    const pedido = new URLSearchParams(window.location.search).get("tab");
+    if (pedido && ITEM_KIND_ORDER.includes(pedido)) setTab(pedido);
+  }, []);
   const [editOpen, setEditOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  const { toast, showToast } = useToast();
 
   // Edición rápida del presupuesto — atajo al lado del "Editar" general,
   // que abre el wizard completo. El presupuesto es la única fuente de
@@ -196,16 +190,23 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
 
   async function handleDelete() {
     if (!project) return;
-    setDeleting(true);
-    setDeleteError(null);
-    try {
-      const res = await fetch(`/api/projects/${project.id}`, { method: "DELETE" });
-      if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
-      router.push(`/rubros/${project.type}`);
-    } catch {
-      setDeleting(false);
-      setDeleteError("No se pudo eliminar el proyecto. Probá de nuevo.");
-    }
+    const ok = await confirmarAccion({
+      titulo: "Eliminar proyecto",
+      texto: `¿Eliminar "${project.name}"? Esta acción no se puede deshacer.`,
+      confirmar: "Eliminar",
+      peligro: true,
+      accion: async () => {
+        setDeleting(true);
+        try {
+          const res = await fetch(`/api/projects/${project.id}`, { method: "DELETE" });
+          if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
+        } catch {
+          setDeleting(false);
+          throw new Error("No se pudo eliminar el proyecto. Probá de nuevo.");
+        }
+      },
+    });
+    if (ok) router.push(`/rubros/${project.type}`);
   }
 
   if (loading) return <AppShell crumbs={[{ label: "Obras por rubro", href: "/rubros" }]}><p className="state-message">Cargando proyecto…</p></AppShell>;
@@ -223,12 +224,19 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
       ]}
       headerActions={
         <>
-          <CButton color="secondary" variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-            <CIcon icon={cilPencil} className="me-1" /> Editar
+          <CButton color="secondary" variant="outline" size="sm" className="d-inline-flex align-items-center gap-1" onClick={() => setEditOpen(true)}>
+            <Icon icon={PencilSimple} size={18} /> Editar
           </CButton>
-          <CButton color="danger" variant="outline" size="sm" onClick={() => { setDeleteError(null); setConfirmDeleteOpen(true); }} disabled={deleting}>
-            <CIcon icon={cilTrash} className="me-1" /> {deleting ? "Eliminando…" : "Eliminar"}
-          </CButton>
+          <CDropdown alignment="end">
+            <CDropdownToggle color="secondary" variant="outline" size="sm" caret={false} title="Más acciones" disabled={deleting}>
+              <Icon icon={DotsThree} size={18} weight="bold" label="Más acciones" />
+            </CDropdownToggle>
+            <CDropdownMenu>
+              <CDropdownItem as="button" className="text-danger d-flex align-items-center gap-2" onClick={handleDelete}>
+                <Icon icon={Trash} size={18} /> {deleting ? "Eliminando…" : "Eliminar obra"}
+              </CDropdownItem>
+            </CDropdownMenu>
+          </CDropdown>
         </>
       }
     >
@@ -255,7 +263,7 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  📍 Ver ubicación en el mapa ↗
+                  <Icon icon={MapPin} size={16} /> Ver ubicación en el mapa ↗
                 </a>
               ) : null;
             })()}
@@ -269,7 +277,7 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
               title="Editar presupuesto"
               onClick={openBudgetEdit}
             >
-              <CIcon icon={cilPencil} size="sm" />
+              <Icon icon={PencilSimple} size={16} label="Editar presupuesto" />
             </CButton>
             <CCardBody>
               <div className="label">Presupuesto</div>
@@ -317,7 +325,7 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        📍 Ver ubicación en el mapa ↗
+                        <Icon icon={MapPin} size={16} /> Ver ubicación en el mapa ↗
                       </a>
                     </div>
                   </CCol>
@@ -354,15 +362,15 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
           const cfg = ITEM_KINDS[k];
           return (
             <CNavItem key={k}>
-              <CNavLink active={tab === k} onClick={() => setTab(k)} style={{ cursor: "pointer", whiteSpace: "nowrap" }}>
-                {cfg.icon} {cfg.label}
+              <CNavLink active={tab === k} onClick={() => setTab(k)} className="d-inline-flex align-items-center gap-2" style={{ cursor: "pointer", whiteSpace: "nowrap" }}>
+                <Icon icon={kindIcon(k)} size={18} /> {cfg.label}
               </CNavLink>
             </CNavItem>
           );
         })}
       </CNav>
 
-      <ModuleView key={tab} projectId={id} kind={tab} project={project} onProjectChanged={refreshProject} showToast={showToast} />
+      <ModuleView key={tab} projectId={id} kind={tab} project={project} onProjectChanged={refreshProject} showToast={(m) => notificar(m, "error")} />
 
       <NewProjectWizard
         visible={editOpen}
@@ -394,17 +402,6 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
           </CModalFooter>
         </CForm>
       </CModal>
-
-      <ConfirmDialog
-        open={confirmDeleteOpen}
-        title="Eliminar proyecto"
-        message={`¿Eliminar "${project.name}"? Esta acción no se puede deshacer.`}
-        busy={deleting}
-        error={deleteError}
-        onConfirm={handleDelete}
-        onCancel={() => setConfirmDeleteOpen(false)}
-      />
-      <Toast message={toast} />
     </AppShell>
   );
 }
@@ -454,6 +451,16 @@ function ModuleView({
     }
   }
   useEffect(() => { load(); }, [projectId, kind]);
+  useEffect(() => {
+    const onChanged = (e: Event) => {
+      if ((e as CustomEvent<{ projectId: string }>).detail?.projectId !== projectId) return;
+      load();
+      onProjectChanged();
+    };
+    window.addEventListener(ITEMS_CHANGED, onChanged);
+    return () => window.removeEventListener(ITEMS_CHANGED, onChanged);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, kind]);
 
   // Contratistas: "Rubro a cargo" sugiere también los rubros ya cargados en
   // Ejecución de esta misma obra (no solo los ya asignados acá) — así desde
@@ -625,46 +632,42 @@ function ModuleView({
     setSearch(""); setFilterTipo(""); setFilterEstado(""); setDateFrom(""); setDateTo("");
   }
 
-  // Modal de confirmación propio en vez de window.confirm(): el diálogo
-  // nativo del navegador puede quedar silenciado (extensiones, o Chrome
-  // lo bloquea solo después de varios usos seguidos) y ahí el botón
-  // "no hace nada" sin ningún error visible — esto es inmune a eso, y
-  // además muestra un error real si la eliminación falla en el servidor.
-  const [confirmTarget, setConfirmTarget] = useState<ProjectItemDTO | null>(null);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
-
   async function performDelete(item: ProjectItemDTO) {
-    setDeleting(true);
-    setDeleteError(null);
-    try {
-      const res = await fetch(`/api/items/${item.id}`, { method: "DELETE" });
-      if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
-      setItems((cur) => cur.filter((i) => i.id !== item.id));
-      if (kind === "change_order") onProjectChanged();
-      setConfirmTarget(null);
-    } catch {
-      setDeleteError("No se pudo eliminar. Probá de nuevo.");
-    } finally {
-      setDeleting(false);
-    }
+    const ok = await confirmarAccion({
+      titulo: `Eliminar ${cfg.singular}`,
+      texto: `¿Eliminar "${item.title}"? Esta acción no se puede deshacer.`,
+      confirmar: "Eliminar",
+      peligro: true,
+      accion: async () => {
+        try {
+          const res = await fetch(`/api/items/${item.id}`, { method: "DELETE" });
+          if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
+        } catch {
+          throw new Error("No se pudo eliminar. Probá de nuevo.");
+        }
+      },
+    });
+    if (!ok) return;
+    setItems((cur) => cur.filter((i) => i.id !== item.id));
+    if (kind === "change_order") onProjectChanged();
   }
 
   return (
     <CCard>
       <CCardHeader className="module-panel-head">
         <div>
-          <span className="fw-semibold fs-5">{cfg.icon} {cfg.label}</span>
+          <span className="fw-semibold fs-5 d-inline-flex align-items-center gap-2"><Icon icon={kindIcon(kind)} size={22} /> {cfg.label}</span>
           <p className="module-desc mb-0">{cfg.description}</p>
           {kind === "daily_log" && (
             <p className="module-desc mb-0 fw-semibold">
-              📅 Hoy: {new Date().toLocaleDateString("es-PY", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+              <Icon icon={CalendarBlank} size={16} /> Hoy: {new Date().toLocaleDateString("es-PY", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
             </p>
           )}
         </div>
-        {!cfg.readOnly && !(isMovimientos && openRubro) && (
+        {/* Con la lista vacía, el botón vive en el estado vacío (uno solo, no dos). */}
+        {!cfg.readOnly && !(isMovimientos && openRubro) && (loading || items.length > 0) && (
           <CButton color="primary" size="sm" onClick={() => { setEditing(null); setPrefillTitle(null); setShowForm(true); }}>
-            <CIcon icon={cilPlus} className="me-1" /> Agregar {cfg.singular}
+            <Icon icon={Plus} size={16} weight="bold" className="me-1" /> Agregar {cfg.singular}
           </CButton>
         )}
       </CCardHeader>
@@ -678,7 +681,7 @@ function ModuleView({
             onBack={() => setOpenRubro(null)}
             onAdd={() => { setEditing(null); setPrefillTitle(openRubro); setShowForm(true); }}
             onEdit={(item) => { setEditing(item); setPrefillTitle(null); setShowForm(true); }}
-            onDelete={(item) => { setDeleteError(null); setConfirmTarget(item); }}
+            onDelete={(item) => performDelete(item)}
           />
         )}
         {!(isMovimientos && openRubro) && isCotizacion && !loading && (
@@ -820,7 +823,17 @@ function ModuleView({
         )}
 
         {!(isMovimientos && openRubro) && loading && <p className="empty-col">Cargando…</p>}
-        {!(isMovimientos && openRubro) && !loading && items.length === 0 && <p className="empty-col">Sin registros todavía.</p>}
+        {!(isMovimientos && openRubro) && !loading && items.length === 0 && (
+          <div className="of-empty">
+            <Icon icon={kindIcon(kind)} size={40} />
+            <p className="of-empty-title">Todavía no hay {cfg.label.toLowerCase()} en esta obra</p>
+            {!cfg.readOnly && (
+              <CButton color="primary" variant="outline" size="sm" onClick={() => { setEditing(null); setPrefillTitle(null); setShowForm(true); }}>
+                <Icon icon={Plus} size={16} weight="bold" className="me-1" /> Agregar {cfg.singular}
+              </CButton>
+            )}
+          </div>
+        )}
         {!openRubro && !loading && items.length > 0 && isMovimientos && rubroGroups.length === 0 && (
           <p className="empty-col">Ningún rubro coincide con estos filtros.</p>
         )}
@@ -843,11 +856,11 @@ function ModuleView({
                     </div>
                     <div className="d-flex gap-1 flex-wrap mt-2">
                       {TIPO_INSUMO_ORDER.filter((t) => g.typeCounts[t]).map((t) => (
-                        <CBadge key={t} color={TIPO_INSUMO_COLOR[t]}>{TIPO_INSUMO_ICON[t]} {g.typeCounts[t]}</CBadge>
+                        <CBadge key={t} color={TIPO_INSUMO_COLOR[t]}><Icon icon={TIPO_INSUMO_ICON[t] ?? TIPO_INSUMO_ICON["Sin clasificar"]} size={14} weight="bold" label={t} /> {g.typeCounts[t]}</CBadge>
                       ))}
                       {g.typeCounts["Sin clasificar"] > 0 && (
                         <CBadge color={TIPO_INSUMO_COLOR["Sin clasificar"]} className="text-dark">
-                          {TIPO_INSUMO_ICON["Sin clasificar"]} {g.typeCounts["Sin clasificar"]} sin clasificar
+                          <Icon icon={TIPO_INSUMO_ICON["Sin clasificar"]} size={14} weight="bold" /> {g.typeCounts["Sin clasificar"]} sin clasificar
                         </CBadge>
                       )}
                     </div>
@@ -867,7 +880,7 @@ function ModuleView({
                 isMovimientos={isMovimientos}
                 isWinner={isCotizacion && item.status === "Seleccionada"}
                 onEdit={() => { setEditing(item); setPrefillTitle(null); setShowForm(true); }}
-                onDelete={() => { setDeleteError(null); setConfirmTarget(item); }}
+                onDelete={() => performDelete(item)}
               />
             ))}
           </CListGroup>
@@ -894,16 +907,6 @@ function ModuleView({
           }}
         />
       )}
-
-      <ConfirmDialog
-        open={confirmTarget !== null}
-        title={`Eliminar ${cfg.singular}`}
-        message={`¿Eliminar "${confirmTarget?.title}"? Esta acción no se puede deshacer.`}
-        busy={deleting}
-        error={deleteError}
-        onConfirm={() => confirmTarget && performDelete(confirmTarget)}
-        onCancel={() => setConfirmTarget(null)}
-      />
     </CCard>
   );
 }
@@ -926,11 +929,16 @@ function ItemRow({
   const comprobante = item.data?.comprobante as string | undefined;
   const comprobanteEsImagen = comprobante && /^https?:\/\//i.test(comprobante);
   const coords = parseCoords(item.data?.coordenadas);
+  // Visor con zoom para la foto del comprobante / de avance (en vez de abrir otra pestaña).
+  const [viewing, setViewing] = useState<string | null>(null);
+  // Registros que llegan de otra app (hoy: partes de Residente de Obra): solo lectura acá.
+  const externo = item.data?.origen === "residente-de-obra";
   return (
     <CListGroupItem className={"item-row border-0 border-bottom rounded-0 px-0" + (isWinner ? " item-row-winner" : "")}>
       <div className="item-row-main">
-        {isWinner && <span className="item-row-winner-badge" title="Cotización ganadora">✓</span>}
+        {isWinner && <span className="item-row-winner-badge" title="Cotización ganadora"><Icon icon={Check} size={12} weight="bold" label="Cotización ganadora" /></span>}
         <span className="item-title">{item.title}</span>
+        {externo && <span className="status-chip status-generic" title="Llegó de la app Residente de Obra; se corrige allá">Residente de Obra</span>}
         {item.status && <span className={"status-chip status-generic status-" + item.status.toLowerCase().replace(/\s+/g, "_")}>{item.status}</span>}
       </div>
       {item.data?.contratistaId && (
@@ -948,7 +956,7 @@ function ItemRow({
             target="_blank"
             rel="noopener noreferrer"
           >
-            📍 Ver ubicación en el mapa ↗
+            <Icon icon={MapPin} size={16} /> Ver ubicación en el mapa ↗
           </a>
         </div>
       )}
@@ -966,38 +974,46 @@ function ItemRow({
       {isMovimientos && item.data?.tipoInsumo === "Mano de obra" && item.data?.cantidadEjecutada && (
         <div className="item-row-sub">Cantidad ejecutada: {item.data.cantidadEjecutada} {item.data.unidadMedida || ""}</div>
       )}
-      {item.data?.notas && <div className="item-row-notes">{item.data.notas}</div>}
-      {item.data?.respuesta && <div className="item-row-notes">↳ {item.data.respuesta}</div>}
+      {item.data?.notas && <div className="item-row-notes" style={externo ? { whiteSpace: "pre-line" } : undefined}>{item.data.notas}</div>}
+      {externo && item.data?.urlExterna && (
+        <div className="item-row-sub">
+          <a href={item.data.urlExterna} target="_blank" rel="noopener noreferrer">Ver el parte en Residente de Obra ↗</a>
+        </div>
+      )}
+      {item.data?.respuesta && <div className="item-row-notes"><Icon icon={ArrowBendDownRight} size={14} /> {item.data.respuesta}</div>}
       {item.data?.motivo && <div className="item-row-notes">{item.data.motivo}</div>}
       {item.attachment ? (
-        <a href={`/api/attachments/${item.attachment.id}`} target="_blank" rel="noopener noreferrer" className="item-row-notes d-inline-block">
-          {item.attachment.mimeType.startsWith("image/") ? (
+        item.attachment.mimeType.startsWith("image/") ? (
+          <button type="button" className="of-thumb-btn item-row-notes" onClick={() => setViewing(`/api/attachments/${item.attachment!.id}`)} title="Ver el comprobante en grande">
             <img src={`/api/attachments/${item.attachment.id}`} alt={item.attachment.filename} className="item-receipt-thumb" />
-          ) : (
-            <span>📄 {item.attachment.filename}</span>
-          )}
-        </a>
+          </button>
+        ) : (
+          <a href={`/api/attachments/${item.attachment.id}`} target="_blank" rel="noopener noreferrer" className="item-row-notes d-inline-flex align-items-center gap-1">
+            <Icon icon={FilePdf} size={18} /> {item.attachment.filename}
+          </a>
+        )
       ) : comprobante && (
         comprobanteEsImagen ? (
-          <a href={comprobante} target="_blank" rel="noopener noreferrer" className="item-row-notes d-inline-block">
+          <button type="button" className="of-thumb-btn item-row-notes" onClick={() => setViewing(comprobante)} title="Ver el comprobante en grande">
             <img src={comprobante} alt="Comprobante" className="item-receipt-thumb" />
-          </a>
+          </button>
         ) : (
           <div className="item-row-notes">Comprobante: {comprobante}</div>
         )
       )}
       {kind === "photo" && item.data?.url && (
-        <a href={item.data.url} target="_blank" rel="noopener noreferrer" className="item-row-notes d-inline-block">
+        <button type="button" className="of-thumb-btn item-row-notes" onClick={() => setViewing(item.data.url)} title="Ver la foto en grande">
           <img src={item.data.url} alt={item.title} className="item-receipt-thumb" />
-        </a>
+        </button>
       )}
+      <ImageViewer images={viewing ? [{ src: viewing, title: item.title }] : []} index={viewing ? 0 : null} onClose={() => setViewing(null)} />
       {(!cfg.readOnly || !isMovimientos) && (
         <div className="item-row-actions">
           <div className="item-row-actions-buttons">
-            {!cfg.readOnly && (
+            {!cfg.readOnly && !externo && (
               <>
-                <CButton size="sm" color="secondary" variant="outline" onClick={onEdit}><CIcon icon={cilPencil} size="sm" /></CButton>
-                <CButton size="sm" color="danger" variant="outline" onClick={onDelete}><CIcon icon={cilTrash} size="sm" /></CButton>
+                <CButton size="sm" color="secondary" variant="outline" onClick={onEdit} title="Editar"><Icon icon={PencilSimple} size={16} label="Editar" /></CButton>
+                <CButton size="sm" color="danger" variant="outline" onClick={onDelete} title="Eliminar"><Icon icon={Trash} size={16} label="Eliminar" /></CButton>
               </>
             )}
           </div>
@@ -1061,7 +1077,7 @@ function RubroFicha({
       </div>
 
       <CButton color="primary" size="sm" className="mb-4" onClick={onAdd}>
-        <CIcon icon={cilPlus} className="me-1" /> Agregar insumo a este rubro
+        <Icon icon={Plus} size={16} weight="bold" className="me-1" /> Agregar insumo a este rubro
       </CButton>
 
       {items.length === 0 && <p className="empty-col">Este rubro todavía no tiene insumos cargados.</p>}
@@ -1069,7 +1085,7 @@ function RubroFicha({
       {sections.map((s) => (
         <div className="mb-4" key={s.tipo}>
           <div className="d-flex align-items-center gap-2 mb-2">
-            <span className="fw-semibold">{TIPO_INSUMO_ICON[s.tipo]} {s.tipo}</span>
+            <span className="fw-semibold d-inline-flex align-items-center gap-2"><Icon icon={TIPO_INSUMO_ICON[s.tipo] ?? TIPO_INSUMO_ICON["Sin clasificar"]} size={18} /> {s.tipo}</span>
             <CBadge color={TIPO_INSUMO_COLOR[s.tipo]}>{s.items.length}</CBadge>
             <span className="mono item-row-sub">{fmtMoney(s.items.reduce((sum, i) => sum + Number(i.data?.monto ?? 0), 0))}</span>
           </div>
@@ -1084,7 +1100,7 @@ function RubroFicha({
       {sinClasificar.length > 0 && (
         <div className="mb-2">
           <div className="d-flex align-items-center gap-2 mb-2">
-            <span className="fw-semibold">{TIPO_INSUMO_ICON["Sin clasificar"]} Sin clasificar</span>
+            <span className="fw-semibold d-inline-flex align-items-center gap-2"><Icon icon={TIPO_INSUMO_ICON["Sin clasificar"]} size={18} /> Sin clasificar</span>
             <CBadge color={TIPO_INSUMO_COLOR["Sin clasificar"]} className="text-dark">{sinClasificar.length}</CBadge>
             <span className="mono item-row-sub">{fmtMoney(sinClasificar.reduce((sum, i) => sum + Number(i.data?.monto ?? 0), 0))}</span>
           </div>

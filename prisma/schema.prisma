@@ -62,6 +62,10 @@ model Project {
   /// presupuesto) — ej. "Sucursal Norte", "Lote 3", "Fase 2". Puramente
   /// identificatoria, no afecta ningún cálculo.
   reference   String?
+  /// Código único de la obra para emparejarla con sistemas externos (hoy:
+  /// Residente de Obra, que usa `obra.codigo`). Opcional: solo hace falta
+  /// en las obras que se integran. Ver docs/RESPUESTA_HANDOFF_RESIDENTE_DE_OBRA.md.
+  code        String?        @unique
   /// Sitio al que pertenece esta obra como frente (civil/eléctrico/etc.) de
   /// un mismo lugar — null en la inmensa mayoría de las obras, que son un
   /// sitio en sí mismas. Ver model Sitio.
@@ -97,7 +101,9 @@ model Project {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
-  items ProjectItem[]
+  items   ProjectItem[]
+  /// Historial de cambios de la obra (ver model ProjectChange).
+  changes ProjectChange[]
 
   @@index([status])
   @@index([sitioId])
@@ -118,12 +124,71 @@ model ProjectItem {
   title     String
   status    String?
   data      Json     @default("{}")
+  /// Registros que vienen de otro sistema (ej. partes de Residente de Obra):
+  /// de dónde vienen y su id allá. null en todo lo cargado en ObrasFlow. El
+  /// índice único hace que reintentar el mismo envío no duplique nada.
+  externalSource String?
+  externalId     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   attachments Attachment[]
 
   @@index([projectId, kind])
+  @@unique([externalSource, externalId])
+}
+
+/// Eventos recibidos de sistemas externos (webhooks). Sirve para no procesar
+/// dos veces el mismo envío (`deliveryId` único), para ver qué llegó y para
+/// reprocesar lo que quedó pendiente (ej. llegó un parte de una obra cuyo
+/// código todavía no está cargado en ObrasFlow).
+model IntegrationEvent {
+  id          String    @id @default(cuid())
+  /// "residente-de-obra"
+  source      String
+  /// Id del envío según el emisor (header X-Delivery-Id o el id del evento).
+  deliveryId  String
+  /// Ej. "parte.cerrado"
+  event       String
+  payload     Json
+  /// "recibido" | "procesado" | "sin_obra" | "ignorado" | "error"
+  status      String    @default("recibido")
+  error       String?
+  /// Obra a la que se aplicó, cuando se pudo emparejar.
+  projectId   String?
+  createdAt   DateTime  @default(now())
+  processedAt DateTime?
+
+  @@unique([source, deliveryId])
+  @@index([source, status])
+}
+
+/// Historial de cambios de una obra ("Historial de cambios" en la ficha):
+/// una fila por cada cosa que cambió — un campo de la obra (Estado,
+/// Presupuesto, Avance…), un registro agregado/editado/borrado (gasto,
+/// hito, etc.) o un archivo subido. Se escribe desde lib/history.ts y
+/// nunca frena un guardado: si anotar falla, el cambio se guarda igual.
+/// Todavía no hay usuarios con contraseña, así que no se guarda QUIÉN
+/// hizo el cambio sino DESDE DÓNDE (`source`).
+model ProjectChange {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  /// "campo" | "registro_agregado" | "registro_editado" | "registro_borrado" | "archivo"
+  action    String
+  /// Nombre legible del campo cambiado (ej. "Estado") — solo para action "campo".
+  field     String?
+  /// Valor anterior, ya formateado para mostrar (ej. "Planificado").
+  before    String?
+  /// Valor nuevo, ya formateado para mostrar (ej. "En curso").
+  after     String?
+  /// Descripción para los cambios que no son de un campo (ej. un gasto agregado con su monto).
+  detail    String?
+  /// Desde dónde se hizo: "Desde la app" o "WhatsApp · Nombre".
+  source    String
+  createdAt DateTime @default(now())
+
+  @@index([projectId, createdAt])
 }
 
 /// Archivo adjunto real (foto o PDF de un comprobante, por ahora) — un

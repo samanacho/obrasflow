@@ -1,0 +1,107 @@
+/* Historial de cambios de la obra — components/project/HistoryPanel.tsx */
+
+.hist-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.hist-sub{font-size:.85rem;color:var(--ink-soft);margin-top:2px;}
+
+.hist-refresh{
+  border:1px solid var(--line);background:var(--surface);color:var(--ink);
+  border-radius:10px;padding:5px 12px;font-size:.85rem;cursor:pointer;
+  transition:border-color .15s ease, background .15s ease;
+}
+.hist-refresh:hover:not(:disabled){border-color:var(--accent);color:var(--accent-ink);}
+.hist-refresh:disabled{opacity:.6;cursor:default;}
+
+.hist-note{
+  font-size:.82rem;color:var(--ink-soft);background:var(--paper);
+  border:1px dashed var(--line);border-radius:10px;padding:8px 12px;margin:0 0 14px;
+}
+
+/* Filtros */
+.hist-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;}
+.hist-chip{
+  display:inline-flex;align-items:center;gap:6px;
+  border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);
+  border-radius:999px;padding:5px 12px;font-size:.85rem;cursor:pointer;
+  transition:border-color .15s ease, background .15s ease, color .15s ease;
+}
+.hist-chip:hover{border-color:var(--accent);color:var(--ink);}
+.hist-chip.is-active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink);font-weight:600;}
+.hist-chip-count{
+  font-size:.75rem;min-width:20px;text-align:center;padding:0 6px;border-radius:999px;
+  background:var(--paper);color:var(--ink-soft);font-weight:500;
+}
+.hist-chip.is-active .hist-chip-count{background:var(--surface);color:var(--accent-ink);}
+
+/* Días */
+.hist-day{margin-bottom:18px;}
+.hist-day:last-child{margin-bottom:0;}
+.hist-day-label{
+  font-size:.78rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--ink-soft);margin:0 0 8px;
+}
+
+/* Línea de tiempo vertical */
+.hist-list{list-style:none;margin:0;padding:0 0 0 4px;position:relative;}
+.hist-list::before{
+  content:"";position:absolute;left:19px;top:8px;bottom:8px;width:2px;
+  background:var(--line);border-radius:2px;
+}
+.hist-item{position:relative;display:flex;gap:12px;align-items:flex-start;padding:6px 0;}
+.hist-icon{
+  position:relative;z-index:1;flex:0 0 32px;height:32px;
+  display:inline-flex;align-items:center;justify-content:center;
+  border-radius:10px;border:1px solid var(--line);background:var(--surface);
+  font-size:.95rem;line-height:1;
+}
+.hist-campo .hist-icon{background:var(--accent-soft);border-color:color-mix(in srgb, var(--accent) 25%, var(--line));}
+.hist-registro_agregado .hist-icon{background:var(--ok-soft);border-color:color-mix(in srgb, var(--ok) 25%, var(--line));}
+.hist-registro_editado .hist-icon{background:var(--warn-soft);border-color:color-mix(in srgb, var(--warn) 25%, var(--line));}
+.hist-registro_borrado .hist-icon{background:var(--crit-soft);border-color:color-mix(in srgb, var(--crit) 25%, var(--line));}
+.hist-archivo .hist-icon{background:var(--paper);}
+
+.hist-body{
+  flex:1;min-width:0;background:var(--surface);border:1px solid var(--line);
+  border-radius:12px;padding:8px 12px;box-shadow:var(--shadow);
+}
+.hist-text{color:var(--ink);font-size:.92rem;overflow-wrap:anywhere;}
+.hist-field{font-weight:600;}
+.hist-before{color:var(--ink-soft);text-decoration:line-through;text-decoration-color:color-mix(in srgb, var(--ink-soft) 50%, transparent);}
+.hist-arrow{color:var(--ink-soft);}
+.hist-after{font-weight:600;color:var(--accent-ink);}
+
+.hist-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;font-size:.78rem;color:var(--ink-soft);}
+.hist-meta time{font-variant-numeric:tabular-nums;}
+.hist-source{
+  display:inline-block;padding:1px 8px;border-radius:999px;
+  background:var(--paper);border:1px solid var(--line);color:var(--ink-soft);
+}
+.hist-source.is-wa{background:var(--ok-soft);border-color:color-mix(in srgb, var(--ok) 30%, var(--line));color:var(--ok);}
+
+/* Estados */
+.hist-empty{
+  text-align:center;color:var(--ink-soft);font-size:.9rem;
+  border:1px dashed var(--line);border-radius:12px;padding:22px 16px;background:var(--paper);
+}
+.hist-error{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  background:var(--crit-soft);color:var(--crit);border:1px solid color-mix(in srgb, var(--crit) 25%, var(--line));
+  border-radius:12px;padding:10px 14px;font-size:.9rem;
+}
+
+/* Esqueleto de carga */
+.hist-sk{
+  background:linear-gradient(90deg,var(--line) 0%,color-mix(in srgb, var(--line) 40%, var(--surface)) 50%,var(--line) 100%);
+  background-size:200% 100%;animation:hist-sk 1.4s ease-in-out infinite;border-radius:10px;
+}
+.hist-sk-day{height:12px;width:90px;margin-bottom:12px;}
+.hist-sk-row{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+.hist-sk-dot{flex:0 0 32px;height:32px;}
+.hist-sk-line{height:44px;border-radius:12px;}
+@keyframes hist-sk{0%{background-position:100% 0;}100%{background-position:-100% 0;}}
+@media (prefers-reduced-motion: reduce){.hist-sk{animation:none;}}
+
+@media (max-width: 575.98px){
+  .hist-list::before{left:17px;}
+  .hist-icon{flex-basis:28px;height:28px;font-size:.85rem;}
+  .hist-sk-dot{flex-basis:28px;height:28px;}
+}
