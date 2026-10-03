@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { CCard, CCardBody, CCardHeader, CBadge, CButton, CForm, CFormInput, CAlert, CSpinner } from "@coreui/react";
-import ConfirmDialog from "@/components/ConfirmDialog";
+import { confirmarAccion } from "@/lib/ui/alerts";
 import type { PanelData } from "./page";
 
 // Vista de la conexión por QR (Baileys): estado de la conexión, el QR para
@@ -73,7 +73,6 @@ export default function BaileysView({
   const [keyError, setKeyError] = useState<string | null>(null);
   const [unlocking, setUnlocking] = useState(false);
   const [panelSecret, setPanelSecret] = useState<string | null>(null);
-  const [confirmLogout, setConfirmLogout] = useState(false);
   const [commandBusy, setCommandBusy] = useState<string | null>(null);
   const [commandMsg, setCommandMsg] = useState<string | null>(null);
 
@@ -121,6 +120,16 @@ export default function BaileysView({
     } finally {
       setCommandBusy(null);
     }
+  }
+
+  async function askLogout() {
+    await confirmarAccion({
+      titulo: "Desvincular WhatsApp",
+      texto: "El agente deja de responder hasta que vuelvas a escanear un QR. La cuenta de WhatsApp del teléfono no se toca. ¿Seguimos?",
+      confirmar: "Desvincular",
+      peligro: true,
+      accion: () => sendCommand("logout"),
+    });
   }
 
   const s = session;
@@ -205,7 +214,7 @@ export default function BaileysView({
               <CButton size="sm" color="secondary" variant="outline" disabled={commandBusy !== null} onClick={() => sendCommand("restart")}>
                 {commandBusy === "restart" ? <CSpinner size="sm" /> : "Reiniciar conexión"}
               </CButton>
-              <CButton size="sm" color="danger" variant="outline" disabled={commandBusy !== null} onClick={() => setConfirmLogout(true)}>
+              <CButton size="sm" color="danger" variant="outline" disabled={commandBusy !== null} onClick={askLogout}>
                 Desvincular
               </CButton>
             </div>
@@ -389,19 +398,6 @@ export default function BaileysView({
           )}
         </div>
       </div>
-
-      <ConfirmDialog
-        open={confirmLogout}
-        title="Desvincular WhatsApp"
-        message="El agente deja de responder hasta que vuelvas a escanear un QR. La cuenta de WhatsApp del teléfono no se toca. ¿Seguimos?"
-        confirmLabel="Desvincular"
-        busy={commandBusy === "logout"}
-        onCancel={() => setConfirmLogout(false)}
-        onConfirm={async () => {
-          setConfirmLogout(false);
-          await sendCommand("logout");
-        }}
-      />
     </>
   );
 }

@@ -7,6 +7,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CModal, CModalBody } from "@coreui/react";
 import { NAV_ITEMS } from "@/lib/navItems";
+import { MagnifyingGlass } from "@phosphor-icons/react";
+import Icon from "@/components/ui/Icon";
 import type { ProjectDTO } from "@/lib/types";
 
 interface Entry {
@@ -119,20 +121,14 @@ export default function QuickSearch() {
   return (
     <>
       <button type="button" className="of-search-btn" onClick={() => setOpen(true)} title="Buscar (Ctrl+K)">
-        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <circle cx="11" cy="11" r="7" />
-          <path d="M20 20l-3.5-3.5" />
-        </svg>
-        <span className="t">Buscar…</span>
+        <Icon icon={MagnifyingGlass} size={16} weight="bold" />
+        <span className="t">Buscar obra, proveedor…</span>
         <kbd>Ctrl K</kbd>
       </button>
       <CModal visible={open} onClose={() => setOpen(false)} alignment="top" className="of-search-modal" onShow={() => input.current?.focus()}>
         <CModalBody className="p-0">
           <div className="of-search-input">
-            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <circle cx="11" cy="11" r="7" />
-              <path d="M20 20l-3.5-3.5" />
-            </svg>
+            <Icon icon={MagnifyingGlass} size={18} weight="bold" />
             <input
               ref={input}
               autoFocus

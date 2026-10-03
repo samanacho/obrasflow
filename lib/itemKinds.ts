@@ -342,7 +342,11 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
     titleLabel: "Nombre del documento",
     statusOptions: null,
     fields: [
-      { key: "url", label: "URL", type: "text", required: true },
+      // El enlace ya no es obligatorio: se puede subir el archivo directo
+      // (se guarda como Attachment del item, igual que el comprobante de
+      // Ejecución) y cargar un link solo si el documento vive en otro lado.
+      { key: "url", label: "Enlace (opcional si subís el archivo)", type: "text" },
+      { key: "archivo", label: "Archivo (foto o PDF)", type: "file" },
       { key: "tipo", label: "Tipo (plano, contrato, permiso...)", type: "text" },
     ],
     summary: (d) => d.tipo || "",
@@ -356,7 +360,8 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
     titleLabel: "Descripción breve",
     statusOptions: null,
     fields: [
-      { key: "url", label: "URL de la imagen", type: "text", required: true },
+      { key: "url", label: "Enlace a la imagen (opcional si subís el archivo)", type: "text" },
+      { key: "archivo", label: "Archivo (foto o PDF)", type: "file" },
       { key: "etapa", label: "Etapa de la obra", type: "select", options: ["Inicio", "Medio", "Final"] },
       { key: "fecha", label: "Fecha", type: "date" },
       { key: "notas", label: "Comentario / contexto de la foto", type: "textarea" },

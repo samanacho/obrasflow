@@ -10,9 +10,7 @@ import {
 import CIcon from "@coreui/icons-react";
 import { cilPlus, cilBriefcase, cilCalendar, cilUser, cilCloudDownload } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
-import ConfirmDialog from "@/components/ConfirmDialog";
-import Toast from "@/components/Toast";
-import { useToast } from "@/lib/useToast";
+import { confirmarAccion } from "@/lib/ui/alerts";
 import type { ToolDTO, ToolInput, ToolStatus, SupplierDTO } from "@/lib/types";
 
 const ESTADO_LABEL: Record<ToolStatus, string> = {
@@ -62,9 +60,6 @@ export default function InventarioPage() {
   const [form, setForm] = useState<ToolInput>(EMPTY_FORM);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [confirmTarget, setConfirmTarget] = useState<ToolDTO | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const { toast, showToast } = useToast();
 
   async function load() {
     setLoading(true);
@@ -141,19 +136,23 @@ export default function InventarioPage() {
   }
 
   async function deleteTool(t: ToolDTO) {
-    setDeleting(true);
-    const prev = tools;
-    setTools((cur) => cur.filter((x) => x.id !== t.id));
-    try {
-      const res = await fetch(`/api/tools/${t.id}`, { method: "DELETE" });
-      if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
-      setConfirmTarget(null);
-    } catch {
-      setTools(prev);
-      showToast("No se pudo eliminar la herramienta.");
-    } finally {
-      setDeleting(false);
-    }
+    await confirmarAccion({
+      titulo: "Eliminar herramienta",
+      texto: `¿Eliminar "${t.nombre}"? ${t.generalMovementId ? "También se elimina el movimiento general que generó. " : ""}Esta acción no se puede deshacer.`,
+      confirmar: "Eliminar",
+      peligro: true,
+      accion: async () => {
+        const prev = tools;
+        setTools((cur) => cur.filter((x) => x.id !== t.id));
+        try {
+          const res = await fetch(`/api/tools/${t.id}`, { method: "DELETE" });
+          if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
+        } catch {
+          setTools(prev);
+          throw new Error("No se pudo eliminar la herramienta.");
+        }
+      },
+    });
   }
 
   const totalCosto = Number(form.costoUnitarioGs ?? 0) * Number(form.cantidad || 0);
@@ -224,7 +223,7 @@ export default function InventarioPage() {
                 )}
                 <div className="d-flex gap-2 mt-1">
                   <CButton size="sm" color="secondary" variant="outline" onClick={() => openModal(t)}>Editar</CButton>
-                  <CButton size="sm" color="danger" variant="outline" onClick={() => setConfirmTarget(t)}>Eliminar</CButton>
+                  <CButton size="sm" color="danger" variant="outline" onClick={() => deleteTool(t)}>Eliminar</CButton>
                 </div>
               </CCardBody>
             </CCard>
@@ -320,16 +319,6 @@ export default function InventarioPage() {
           </CModalFooter>
         </CForm>
       </CModal>
-
-      <ConfirmDialog
-        open={confirmTarget !== null}
-        title="Eliminar herramienta"
-        message={`¿Eliminar "${confirmTarget?.nombre}"? ${confirmTarget?.generalMovementId ? "También se elimina el movimiento general que generó. " : ""}Esta acción no se puede deshacer.`}
-        busy={deleting}
-        onConfirm={() => confirmTarget && deleteTool(confirmTarget)}
-        onCancel={() => setConfirmTarget(null)}
-      />
-      <Toast message={toast} />
     </AppShell>
   );
 }

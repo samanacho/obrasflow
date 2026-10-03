@@ -6,8 +6,8 @@ import {
   CButton, CBadge, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
   CForm, CFormLabel, CFormInput, CFormSelect, CAlert,
 } from "@coreui/react";
-import CIcon from "@coreui/icons-react";
-import { cilBolt } from "@coreui/icons";
+import { Lightning, CheckCircle } from "@phosphor-icons/react";
+import Icon from "@/components/ui/Icon";
 import { MEDIO_PAGO_OPTIONS } from "@/components/GeneralMovementFormModal";
 import type { QuickExpenseDTO } from "@/lib/types";
 import { todayLocal } from "@/lib/dates";
@@ -27,6 +27,9 @@ import { todayLocal } from "@/lib/dates";
  * hasta recargar la página).
  */
 export const QUICK_EXPENSES_CHANGED = "obrasflow:quick-expenses-changed";
+/** Evento para abrir el formulario de Registro rápido desde otro lado (atajo "G"). */
+export const OPEN_QUICK_EXPENSE = "obrasflow:open-quick-expense";
+
 export function notifyQuickExpensesChanged() {
   window.dispatchEvent(new Event(QUICK_EXPENSES_CHANGED));
 }
@@ -52,6 +55,14 @@ export default function QuickExpenseButton() {
     refreshCount();
     window.addEventListener(QUICK_EXPENSES_CHANGED, refreshCount);
     return () => window.removeEventListener(QUICK_EXPENSES_CHANGED, refreshCount);
+  }, []);
+
+  // Atajo de teclado "G" (ver lib/ui/shortcuts.ts): abre este mismo formulario.
+  useEffect(() => {
+    const open = () => openModal();
+    window.addEventListener(OPEN_QUICK_EXPENSE, open);
+    return () => window.removeEventListener(OPEN_QUICK_EXPENSE, open);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function openModal() {
@@ -93,18 +104,18 @@ export default function QuickExpenseButton() {
 
   return (
     <>
-      <CButton color="warning" variant={savedFlash ? undefined : "outline"} size="sm" onClick={openModal} title="Anotar un pago rápido, sin elegir obra todavía">
-        <CIcon icon={cilBolt} className="me-1" />
-        {savedFlash ? "¡Guardado! ✓" : "Registro rápido"}
+      <CButton color={savedFlash ? "success" : "primary"} variant="outline" size="sm" className="d-inline-flex align-items-center gap-1" onClick={openModal} title="Anotar un pago rápido, sin elegir obra todavía">
+        <Icon icon={savedFlash ? CheckCircle : Lightning} size={18} />
+        {savedFlash ? "Guardado" : "Registro rápido"}
         {!savedFlash && pendingCount !== null && pendingCount > 0 && (
-          <CBadge color="danger" className="ms-1">{pendingCount}</CBadge>
+          <CBadge color="warning" className="ms-1" title={`${pendingCount} sin clasificar`}>{pendingCount}</CBadge>
         )}
       </CButton>
 
       {open && (
         <CModal visible onClose={() => setOpen(false)} alignment="center">
           <CModalHeader>
-            <CModalTitle>⚡ Registro rápido</CModalTitle>
+            <CModalTitle className="d-flex align-items-center gap-2"><Icon icon={Lightning} size={22} />Registro rápido</CModalTitle>
           </CModalHeader>
           <CForm onSubmit={handleSubmit}>
             <CModalBody>

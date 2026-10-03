@@ -12,7 +12,7 @@ const PIN_ZOOM = 15;
 
 /**
  * Selector de ubicación con Leaflet (BSD-2-Clause, open source) + tiles de
- * OpenStreetMap — igual criterio que ThreeSkyline.tsx/DhtmlxGanttChart.tsx:
+ * OpenStreetMap — igual criterio que DhtmlxGanttChart.tsx:
  * la librería se usa de forma imperativa dentro de un useEffect en vez de
  * con el wrapper "react-leaflet" (licencia Hippocratic, no es open source
  * en sentido estricto). Clic en el mapa = marca/mueve el pin y devuelve

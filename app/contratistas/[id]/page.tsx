@@ -9,7 +9,7 @@ import {
 import CIcon from "@coreui/icons-react";
 import { cilPlus, cilTrash } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
-import ConfirmDialog from "@/components/ConfirmDialog";
+import { confirmarAccion } from "@/lib/ui/alerts";
 import type { ContractorDTO, ContractorHistoryDTO, ContractorHistoryInput, ProjectDTO, ProjectType } from "@/lib/types";
 
 const RUBRO_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
@@ -47,8 +47,6 @@ export default function ContractorDetail({ params }: { params: { id: string } })
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -98,16 +96,23 @@ export default function ContractorDetail({ params }: { params: { id: string } })
 
   async function handleDelete() {
     if (!contractor) return;
-    setDeleting(true);
-    setDeleteError(null);
-    try {
-      const res = await fetch(`/api/contractors/${contractor.id}`, { method: "DELETE" });
-      if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
-      router.push("/contratistas");
-    } catch {
-      setDeleting(false);
-      setDeleteError("No se pudo eliminar el contratista. Probá de nuevo.");
-    }
+    const ok = await confirmarAccion({
+      titulo: "Eliminar contratista",
+      texto: `¿Eliminar "${contractor.name}"? Esta acción también borra su historial de calificaciones y no se puede deshacer.`,
+      confirmar: "Eliminar",
+      peligro: true,
+      accion: async () => {
+        setDeleting(true);
+        try {
+          const res = await fetch(`/api/contractors/${contractor.id}`, { method: "DELETE" });
+          if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
+        } catch {
+          setDeleting(false);
+          throw new Error("No se pudo eliminar el contratista. Probá de nuevo.");
+        }
+      },
+    });
+    if (ok) router.push("/contratistas");
   }
 
   if (loading) return <AppShell crumbs={[{ label: "Contratistas", href: "/contratistas" }]}><p className="state-message">Cargando…</p></AppShell>;
@@ -117,7 +122,7 @@ export default function ContractorDetail({ params }: { params: { id: string } })
     <AppShell
       crumbs={[{ label: "Contratistas", href: "/contratistas" }, { label: contractor.name }]}
       headerActions={
-        <CButton color="danger" variant="outline" size="sm" onClick={() => { setDeleteError(null); setConfirmDeleteOpen(true); }} disabled={deleting}>
+        <CButton color="danger" variant="outline" size="sm" onClick={handleDelete} disabled={deleting}>
           <CIcon icon={cilTrash} className="me-1" /> {deleting ? "Eliminando…" : "Eliminar"}
         </CButton>
       }
@@ -219,16 +224,6 @@ export default function ContractorDetail({ params }: { params: { id: string } })
           </CModal>
         )}
       </CCard>
-
-      <ConfirmDialog
-        open={confirmDeleteOpen}
-        title="Eliminar contratista"
-        message={`¿Eliminar "${contractor.name}"? Esta acción también borra su historial de calificaciones y no se puede deshacer.`}
-        busy={deleting}
-        error={deleteError}
-        onConfirm={handleDelete}
-        onCancel={() => setConfirmDeleteOpen(false)}
-      />
     </AppShell>
   );
 }

@@ -9,9 +9,7 @@ import {
 import CIcon from "@coreui/icons-react";
 import { cilPlus, cilLocationPin, cilPhone, cilUser } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
-import ConfirmDialog from "@/components/ConfirmDialog";
-import Toast from "@/components/Toast";
-import { useToast } from "@/lib/useToast";
+import { confirmarAccion } from "@/lib/ui/alerts";
 import { PARAGUAY_DEPARTMENTS } from "@/lib/departments";
 import type { SupplierDTO, SupplierInput, SupplierCategory, ContractorStatus } from "@/lib/types";
 
@@ -34,9 +32,6 @@ export default function ProveedoresPage() {
   const [form, setForm] = useState<SupplierInput>(EMPTY_FORM);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [confirmTarget, setConfirmTarget] = useState<SupplierDTO | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const { toast, showToast } = useToast();
 
   const cityDepartmentMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -110,19 +105,23 @@ export default function ProveedoresPage() {
   }
 
   async function deleteSupplier(s: SupplierDTO) {
-    setDeleting(true);
-    const prev = suppliers;
-    setSuppliers((cur) => cur.filter((x) => x.id !== s.id));
-    try {
-      const res = await fetch(`/api/suppliers/${s.id}`, { method: "DELETE" });
-      if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
-      setConfirmTarget(null);
-    } catch {
-      setSuppliers(prev);
-      showToast("No se pudo eliminar el proveedor.");
-    } finally {
-      setDeleting(false);
-    }
+    await confirmarAccion({
+      titulo: "Eliminar proveedor",
+      texto: `¿Eliminar "${s.name}"? Esta acción no se puede deshacer.`,
+      confirmar: "Eliminar",
+      peligro: true,
+      accion: async () => {
+        const prev = suppliers;
+        setSuppliers((cur) => cur.filter((x) => x.id !== s.id));
+        try {
+          const res = await fetch(`/api/suppliers/${s.id}`, { method: "DELETE" });
+          if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
+        } catch {
+          setSuppliers(prev);
+          throw new Error("No se pudo eliminar el proveedor.");
+        }
+      },
+    });
   }
 
   return (
@@ -180,7 +179,7 @@ export default function ProveedoresPage() {
                 </div>
                 <div className="d-flex gap-2 mt-1">
                   <CButton size="sm" color="secondary" variant="outline" onClick={() => openModal(s)}>Editar</CButton>
-                  <CButton size="sm" color="danger" variant="outline" onClick={() => setConfirmTarget(s)}>Eliminar</CButton>
+                  <CButton size="sm" color="danger" variant="outline" onClick={() => deleteSupplier(s)}>Eliminar</CButton>
                 </div>
               </CCardBody>
             </CCard>
@@ -255,16 +254,6 @@ export default function ProveedoresPage() {
           </CModalFooter>
         </CForm>
       </CModal>
-
-      <ConfirmDialog
-        open={confirmTarget !== null}
-        title="Eliminar proveedor"
-        message={`¿Eliminar "${confirmTarget?.name}"? Esta acción no se puede deshacer.`}
-        busy={deleting}
-        onConfirm={() => confirmTarget && deleteSupplier(confirmTarget)}
-        onCancel={() => setConfirmTarget(null)}
-      />
-      <Toast message={toast} />
     </AppShell>
   );
 }

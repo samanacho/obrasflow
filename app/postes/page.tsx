@@ -13,9 +13,7 @@ import { CChartDoughnut } from "@coreui/react-chartjs";
 import CIcon from "@coreui/icons-react";
 import { cilPlus, cilPencil, cilTrash } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
-import ConfirmDialog from "@/components/ConfirmDialog";
-import Toast from "@/components/Toast";
-import { useToast } from "@/lib/useToast";
+import { confirmarAccion, notificar } from "@/lib/ui/alerts";
 import { useIsDarkTheme } from "@/lib/useIsDarkTheme";
 import { LOT_STATUS_ORDER, LOT_STATUS_LABEL, LOT_STATUS_COLOR, COMMON_UNITS, PURCHASE_DOC_TYPE_ORDER, PURCHASE_DOC_TYPE_LABEL } from "@/lib/poleFields";
 import { fmtGs } from "@/lib/currency";
@@ -77,7 +75,6 @@ export default function PostesPage() {
   const [materials, setMaterials] = useState<RawMaterialDTO[]>([]);
   const [purchases, setPurchases] = useState<MaterialPurchaseDTO[]>([]);
   const [loading, setLoading] = useState(true);
-  const { toast, showToast } = useToast();
 
   async function loadAll() {
     setLoading(true);
@@ -116,12 +113,10 @@ export default function PostesPage() {
       {loading && <p className="state-message">Cargando…</p>}
 
       {!loading && tab === "resumen" && <ResumenView specs={specs} lots={lots} />}
-      {!loading && tab === "specs" && <SpecsView specs={specs} onChanged={loadAll} showToast={showToast} />}
-      {!loading && tab === "materiales" && <MaterialesView materials={materials} onChanged={loadAll} showToast={showToast} />}
-      {!loading && tab === "compras" && <PurchasesView purchases={purchases} materials={materials} onChanged={loadAll} showToast={showToast} />}
-      {!loading && tab === "lotes" && <LotesView lots={lots} specs={specs} onChanged={loadAll} showToast={showToast} />}
-
-      <Toast message={toast} />
+      {!loading && tab === "specs" && <SpecsView specs={specs} onChanged={loadAll} showToast={(m) => notificar(m, "error")} />}
+      {!loading && tab === "materiales" && <MaterialesView materials={materials} onChanged={loadAll} showToast={(m) => notificar(m, "error")} />}
+      {!loading && tab === "compras" && <PurchasesView purchases={purchases} materials={materials} onChanged={loadAll} showToast={(m) => notificar(m, "error")} />}
+      {!loading && tab === "lotes" && <LotesView lots={lots} specs={specs} onChanged={loadAll} showToast={(m) => notificar(m, "error")} />}
     </AppShell>
   );
 }
@@ -215,9 +210,6 @@ function SpecsView({
   const [form, setForm] = useState<PoleSpecInput>(EMPTY_SPEC);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [confirmTarget, setConfirmTarget] = useState<PoleSpecDTO | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   function openModal(s: PoleSpecDTO | null) {
     setFormError(null);
@@ -258,21 +250,24 @@ function SpecsView({
   }
 
   async function performDelete(s: PoleSpecDTO) {
-    setDeleting(true);
-    setDeleteError(null);
-    try {
-      const res = await fetch(`/api/postes/specs/${s.id}`, { method: "DELETE" });
-      if (!res.ok && res.status !== 204) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `HTTP ${res.status}`);
-      }
-      setConfirmTarget(null);
-      onChanged();
-    } catch (err: any) {
-      setDeleteError(err.message || "No se pudo eliminar.");
-    } finally {
-      setDeleting(false);
-    }
+    const ok = await confirmarAccion({
+      titulo: "Eliminar especificación",
+      texto: `¿Eliminar "${s.nombre}"? Esta acción no se puede deshacer.`,
+      confirmar: "Eliminar",
+      peligro: true,
+      accion: async () => {
+        try {
+          const res = await fetch(`/api/postes/specs/${s.id}`, { method: "DELETE" });
+          if (!res.ok && res.status !== 204) {
+            const body = await res.json().catch(() => ({}));
+            throw new Error(body.error || `HTTP ${res.status}`);
+          }
+        } catch (err: any) {
+          throw new Error(err.message || "No se pudo eliminar.");
+        }
+      },
+    });
+    if (ok) onChanged();
   }
 
   return (
@@ -317,7 +312,7 @@ function SpecsView({
                     <CTableDataCell><CBadge color={s.activo ? "success" : "secondary"}>{s.activo ? "Activa" : "Inactiva"}</CBadge></CTableDataCell>
                     <CTableDataCell className="text-end">
                       <CButton size="sm" color="secondary" variant="outline" className="me-1" onClick={() => openModal(s)}><CIcon icon={cilPencil} size="sm" /></CButton>
-                      <CButton size="sm" color="danger" variant="outline" onClick={() => { setDeleteError(null); setConfirmTarget(s); }}><CIcon icon={cilTrash} size="sm" /></CButton>
+                      <CButton size="sm" color="danger" variant="outline" onClick={() => performDelete(s)}><CIcon icon={cilTrash} size="sm" /></CButton>
                     </CTableDataCell>
                   </CTableRow>
                 ))}
@@ -376,16 +371,6 @@ function SpecsView({
           </CModalFooter>
         </CForm>
       </CModal>
-
-      <ConfirmDialog
-        open={confirmTarget !== null}
-        title="Eliminar especificación"
-        message={`¿Eliminar "${confirmTarget?.nombre}"? Esta acción no se puede deshacer.`}
-        busy={deleting}
-        error={deleteError}
-        onConfirm={() => confirmTarget && performDelete(confirmTarget)}
-        onCancel={() => setConfirmTarget(null)}
-      />
     </CCard>
   );
 }
@@ -402,9 +387,6 @@ function MaterialesView({
   const [form, setForm] = useState<RawMaterialInput>(EMPTY_MATERIAL);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [confirmTarget, setConfirmTarget] = useState<RawMaterialDTO | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   function openModal(m: RawMaterialDTO | null) {
     setFormError(null);
@@ -445,21 +427,24 @@ function MaterialesView({
   }
 
   async function performDelete(m: RawMaterialDTO) {
-    setDeleting(true);
-    setDeleteError(null);
-    try {
-      const res = await fetch(`/api/postes/materials/${m.id}`, { method: "DELETE" });
-      if (!res.ok && res.status !== 204) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `HTTP ${res.status}`);
-      }
-      setConfirmTarget(null);
-      onChanged();
-    } catch (err: any) {
-      setDeleteError(err.message || "No se pudo eliminar.");
-    } finally {
-      setDeleting(false);
-    }
+    const ok = await confirmarAccion({
+      titulo: "Eliminar materia prima",
+      texto: `¿Eliminar "${m.nombre}"? Esta acción no se puede deshacer.`,
+      confirmar: "Eliminar",
+      peligro: true,
+      accion: async () => {
+        try {
+          const res = await fetch(`/api/postes/materials/${m.id}`, { method: "DELETE" });
+          if (!res.ok && res.status !== 204) {
+            const body = await res.json().catch(() => ({}));
+            throw new Error(body.error || `HTTP ${res.status}`);
+          }
+        } catch (err: any) {
+          throw new Error(err.message || "No se pudo eliminar.");
+        }
+      },
+    });
+    if (ok) onChanged();
   }
 
   return (
@@ -506,7 +491,7 @@ function MaterialesView({
                     <CTableDataCell><CBadge color={m.activo ? "success" : "secondary"}>{m.activo ? "Activa" : "Inactiva"}</CBadge></CTableDataCell>
                     <CTableDataCell className="text-end">
                       <CButton size="sm" color="secondary" variant="outline" className="me-1" onClick={() => openModal(m)}><CIcon icon={cilPencil} size="sm" /></CButton>
-                      <CButton size="sm" color="danger" variant="outline" onClick={() => { setDeleteError(null); setConfirmTarget(m); }}><CIcon icon={cilTrash} size="sm" /></CButton>
+                      <CButton size="sm" color="danger" variant="outline" onClick={() => performDelete(m)}><CIcon icon={cilTrash} size="sm" /></CButton>
                     </CTableDataCell>
                   </CTableRow>
                 ))}
@@ -562,16 +547,6 @@ function MaterialesView({
           </CModalFooter>
         </CForm>
       </CModal>
-
-      <ConfirmDialog
-        open={confirmTarget !== null}
-        title="Eliminar materia prima"
-        message={`¿Eliminar "${confirmTarget?.nombre}"? Esta acción no se puede deshacer.`}
-        busy={deleting}
-        error={deleteError}
-        onConfirm={() => confirmTarget && performDelete(confirmTarget)}
-        onCancel={() => setConfirmTarget(null)}
-      />
     </CCard>
   );
 }
@@ -589,9 +564,6 @@ function PurchasesView({
   const [form, setForm] = useState<MaterialPurchaseInput>(EMPTY_PURCHASE);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [confirmTarget, setConfirmTarget] = useState<MaterialPurchaseDTO | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const visiblePurchases = materialFilter ? purchases.filter((p) => p.materialId === materialFilter) : purchases;
 
@@ -629,21 +601,24 @@ function PurchasesView({
   }
 
   async function performDelete(p: MaterialPurchaseDTO) {
-    setDeleting(true);
-    setDeleteError(null);
-    try {
-      const res = await fetch(`/api/postes/purchases/${p.id}`, { method: "DELETE" });
-      if (!res.ok && res.status !== 204) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `HTTP ${res.status}`);
-      }
-      setConfirmTarget(null);
-      onChanged();
-    } catch (err: any) {
-      setDeleteError(err.message || "No se pudo eliminar.");
-    } finally {
-      setDeleting(false);
-    }
+    const ok = await confirmarAccion({
+      titulo: "Eliminar compra",
+      texto: `¿Eliminar esta compra de "${p.materialNombre}"? Esta acción no se puede deshacer.`,
+      confirmar: "Eliminar",
+      peligro: true,
+      accion: async () => {
+        try {
+          const res = await fetch(`/api/postes/purchases/${p.id}`, { method: "DELETE" });
+          if (!res.ok && res.status !== 204) {
+            const body = await res.json().catch(() => ({}));
+            throw new Error(body.error || `HTTP ${res.status}`);
+          }
+        } catch (err: any) {
+          throw new Error(err.message || "No se pudo eliminar.");
+        }
+      },
+    });
+    if (ok) onChanged();
   }
 
   return (
@@ -700,7 +675,7 @@ function PurchasesView({
                     <CTableDataCell className="mono">{fmtGs(p.costoUnitarioGs)}</CTableDataCell>
                     <CTableDataCell className="mono">{fmtGs(p.costoTotalGs)}</CTableDataCell>
                     <CTableDataCell className="text-end">
-                      <CButton size="sm" color="danger" variant="outline" onClick={() => { setDeleteError(null); setConfirmTarget(p); }}><CIcon icon={cilTrash} size="sm" /></CButton>
+                      <CButton size="sm" color="danger" variant="outline" onClick={() => performDelete(p)}><CIcon icon={cilTrash} size="sm" /></CButton>
                     </CTableDataCell>
                   </CTableRow>
                 ))}
@@ -765,16 +740,6 @@ function PurchasesView({
           </CModalFooter>
         </CForm>
       </CModal>
-
-      <ConfirmDialog
-        open={confirmTarget !== null}
-        title="Eliminar compra"
-        message={`¿Eliminar esta compra de "${confirmTarget?.materialNombre}"? Esta acción no se puede deshacer.`}
-        busy={deleting}
-        error={deleteError}
-        onConfirm={() => confirmTarget && performDelete(confirmTarget)}
-        onCancel={() => setConfirmTarget(null)}
-      />
     </CCard>
   );
 }
@@ -793,8 +758,6 @@ function LotesView({
   const [form, setForm] = useState<PoleLotInput>(emptyLot());
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [confirmTarget, setConfirmTarget] = useState<PoleLotDTO | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
   const visibleLots = estadoFilter ? lots.filter((l) => l.estado === estadoFilter) : lots;
 
@@ -838,17 +801,21 @@ function LotesView({
   }
 
   async function performDelete(l: PoleLotDTO) {
-    setDeleting(true);
-    try {
-      const res = await fetch(`/api/postes/lots/${l.id}`, { method: "DELETE" });
-      if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
-      setConfirmTarget(null);
-      onChanged();
-    } catch {
-      showToast("No se pudo eliminar el lote.");
-    } finally {
-      setDeleting(false);
-    }
+    const ok = await confirmarAccion({
+      titulo: "Eliminar lote",
+      texto: `¿Eliminar el lote "${l.codigo}"? Esta acción no se puede deshacer.`,
+      confirmar: "Eliminar",
+      peligro: true,
+      accion: async () => {
+        try {
+          const res = await fetch(`/api/postes/lots/${l.id}`, { method: "DELETE" });
+          if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
+        } catch {
+          throw new Error("No se pudo eliminar el lote.");
+        }
+      },
+    });
+    if (ok) onChanged();
   }
 
   return (
@@ -908,7 +875,7 @@ function LotesView({
                     <CTableDataCell>{l.andeAprobado ? <CBadge color="success">Aprobado</CBadge> : <span className="text-body-secondary">—</span>}</CTableDataCell>
                     <CTableDataCell className="text-end">
                       <CButton size="sm" color="secondary" variant="outline" className="me-1" onClick={() => openModal(l)}><CIcon icon={cilPencil} size="sm" /></CButton>
-                      <CButton size="sm" color="danger" variant="outline" onClick={() => setConfirmTarget(l)}><CIcon icon={cilTrash} size="sm" /></CButton>
+                      <CButton size="sm" color="danger" variant="outline" onClick={() => performDelete(l)}><CIcon icon={cilTrash} size="sm" /></CButton>
                     </CTableDataCell>
                   </CTableRow>
                 ))}
@@ -1009,15 +976,6 @@ function LotesView({
           </CModalFooter>
         </CForm>
       </CModal>
-
-      <ConfirmDialog
-        open={confirmTarget !== null}
-        title="Eliminar lote"
-        message={`¿Eliminar el lote "${confirmTarget?.codigo}"? Esta acción no se puede deshacer.`}
-        busy={deleting}
-        onConfirm={() => confirmTarget && performDelete(confirmTarget)}
-        onCancel={() => setConfirmTarget(null)}
-      />
     </CCard>
   );
 }

@@ -1,24 +1,46 @@
 // Config del sidebar persistente (patrón Odoo: los módulos viven a la
-// izquierda, siempre visibles, en vez de pestañas por página).
+// izquierda, siempre visibles, en vez de pestañas por página). Ordenado por
+// uso: arriba lo del día a día, abajo (después del separador) los listados
+// de consulta.
+
+import {
+  SquaresFour, Buildings, ArrowsLeftRight, Factory, UsersThree, Truck, Package,
+  IdentificationBadge, ChatCircleDots, type Icon,
+} from "@phosphor-icons/react";
+
+export type NavFlagKey = "obras" | "movimientos" | "postes";
 
 export interface NavItem {
   key: string;
   label: string;
   href: string;
-  icon: string; // nombre del ícono en @coreui/icons (cil*)
+  icon: Icon;
+  /** Otras rutas que pertenecen a este ítem (se marca activo también ahí). */
+  also?: string[];
+  /** Muestra el semáforo del menú (ver AppShell). */
+  flag?: NavFlagKey;
   /** Resalta la primera letra del label (ver AppShell) — pedido puntual para "Personal". */
   highlightFirstLetter?: boolean;
+  /** Dibuja un separador antes de este ítem. */
+  groupStart?: boolean;
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { key: "proyectos", label: "Proyectos", href: "/", icon: "cilSpeedometer" },
-  { key: "contratistas", label: "Contratistas", href: "/contratistas", icon: "cilPeople" },
-  { key: "proveedores", label: "Proveedores", href: "/proveedores", icon: "cilTruck" },
-  { key: "inventario", label: "Inventario", href: "/inventario", icon: "cilSettings" },
-  { key: "postes", label: "Fábrica de Postes", href: "/postes", icon: "cilFactory" },
+  { key: "inicio", label: "Inicio", href: "/", icon: SquaresFour },
+  { key: "obras", label: "Obras", href: "/rubros", icon: Buildings, also: ["/project", "/sitios", "/ejecucion"], flag: "obras" },
+  { key: "movimientos", label: "Movimientos", href: "/movimientos", icon: ArrowsLeftRight, also: ["/registro-rapido"], flag: "movimientos" },
+  { key: "postes", label: "Fábrica de postes", href: "/postes", icon: Factory, flag: "postes" },
+  { key: "contratistas", label: "Contratistas", href: "/contratistas", icon: UsersThree, groupStart: true },
+  { key: "proveedores", label: "Proveedores", href: "/proveedores", icon: Truck },
+  { key: "inventario", label: "Inventario", href: "/inventario", icon: Package },
   // Módulo todavía sin funcionalidad propia a propósito — el usuario va a
   // dar el contexto/requerimientos para desarrollarlo en un paso aparte.
-  { key: "personal", label: "Personal", href: "/personal", icon: "cilBadge", highlightFirstLetter: true },
-  // Configuración y control del agente de WhatsApp (docs/WHATSAPP_AGENT.md).
-  { key: "agente", label: "Memby", href: "/agente-whatsapp", icon: "cilChatBubble" },
+  { key: "personal", label: "Personal", href: "/personal", icon: IdentificationBadge, highlightFirstLetter: true },
+  // Asistente de WhatsApp (docs/WHATSAPP_AGENT.md).
+  { key: "agente", label: "Memby", href: "/agente-whatsapp", icon: ChatCircleDots, also: ["/memby"] },
 ];
+
+export function isNavActive(item: NavItem, pathname: string) {
+  if (item.href === "/") return pathname === "/";
+  return [item.href, ...(item.also ?? [])].some((p) => pathname === p || pathname.startsWith(p + "/"));
+}

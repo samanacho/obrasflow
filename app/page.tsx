@@ -20,9 +20,7 @@ import AppShell from "@/components/AppShell";
 import ProjectsTable from "@/components/home/ProjectsTable";
 import PlotlyGauge from "@/components/PlotlyGauge";
 import NewProjectWizard from "@/components/NewProjectWizard";
-import ConfirmDialog from "@/components/ConfirmDialog";
-import Toast from "@/components/Toast";
-import { useToast } from "@/lib/useToast";
+import { confirmarAccion, notificar } from "@/lib/ui/alerts";
 import { useIsDarkTheme } from "@/lib/useIsDarkTheme";
 
 const ThreeSkyline = dynamic(() => import("@/components/ThreeSkyline"), {
@@ -101,7 +99,6 @@ function HomeInner() {
   const initialTab = (searchParams.get("tab") as TabKey) || "dashboard";
   const [tab, setTabState] = useState<TabKey>(TABS.some((t) => t.key === initialTab) ? initialTab : "dashboard");
   const [saveState, setSaveState] = useState<string>("");
-  const { toast, showToast } = useToast();
 
   function setTab(next: TabKey) {
     setTabState(next);
@@ -110,8 +107,6 @@ function HomeInner() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<ProjectDTO | null>(null);
-  const [confirmTarget, setConfirmTarget] = useState<ProjectDTO | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => { loadProjects(); loadSummary(); loadPostesSummary(); loadGeneralMovements(); }, []);
 
@@ -191,20 +186,24 @@ function HomeInner() {
   }
 
   async function deleteProject(p: ProjectDTO) {
-    setDeleting(true);
-    const prev = projects;
-    setProjects((cur) => cur.filter((x) => x.id !== p.id));
-    try {
-      const res = await fetch(`/api/projects/${p.id}`, { method: "DELETE" });
-      if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
-      setSaveState("Guardado");
-      setConfirmTarget(null);
-    } catch (err) {
-      setProjects(prev);
-      showToast("No se pudo eliminar el proyecto.");
-    } finally {
-      setDeleting(false);
-    }
+    await confirmarAccion({
+      titulo: "Eliminar proyecto",
+      texto: `¿Eliminar "${p.name}"? Esta acción no se puede deshacer.`,
+      confirmar: "Eliminar",
+      peligro: true,
+      accion: async () => {
+        const prev = projects;
+        setProjects((cur) => cur.filter((x) => x.id !== p.id));
+        try {
+          const res = await fetch(`/api/projects/${p.id}`, { method: "DELETE" });
+          if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
+          setSaveState("Guardado");
+        } catch (err) {
+          setProjects(prev);
+          throw new Error("No se pudo eliminar el proyecto.");
+        }
+      },
+    });
   }
 
   async function moveStatus(p: ProjectDTO, dir: 1 | -1) {
@@ -228,7 +227,7 @@ function HomeInner() {
       setSaveState("Guardado");
     } catch (err) {
       setProjects(prev);
-      showToast("No se pudo actualizar el estado.");
+      notificar("No se pudo actualizar el estado.", "error");
     }
   }
 
@@ -312,7 +311,7 @@ function HomeInner() {
         <div className="panel tab-panel">
           {tab === "dashboard" && <DashboardView projects={projects} metrics={metrics} summary={summary} poleLots={poleLots} poleSpecs={poleSpecs} onNewProject={() => openModal(null)} />}
           {tab === "kanban" && <BoardView projects={projects} onEdit={openModal} onMove={moveStatus} />}
-          {tab === "tabla" && <ProjectsTable projects={projects} onEdit={openModal} onDelete={setConfirmTarget} onUpdated={replaceProject} onSpentChanged={refreshProjects} />}
+          {tab === "tabla" && <ProjectsTable projects={projects} onEdit={openModal} onDelete={deleteProject} onUpdated={replaceProject} onSpentChanged={refreshProjects} />}
         </div>
       )}
 
@@ -323,15 +322,6 @@ function HomeInner() {
         onSaved={handleWizardSaved}
       />
 
-      <ConfirmDialog
-        open={confirmTarget !== null}
-        title="Eliminar proyecto"
-        message={`¿Eliminar "${confirmTarget?.name}"? Esta acción no se puede deshacer.`}
-        busy={deleting}
-        onConfirm={() => confirmTarget && deleteProject(confirmTarget)}
-        onCancel={() => setConfirmTarget(null)}
-      />
-      <Toast message={toast} />
     </AppShell>
   );
 }

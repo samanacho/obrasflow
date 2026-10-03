@@ -1,10 +1,13 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { Paperclip, FilePdf } from "@phosphor-icons/react";
 import type { AttachmentDTO } from "@/lib/types";
+import Icon from "@/components/ui/Icon";
+import ImageViewer from "@/components/ui/ImageViewer";
 
-const MAX_SIZE_MB = 4;
-const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"];
+export const MAX_SIZE_MB = 4;
+export const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"];
 const ACCEPT_ATTR = ".jpg,.jpeg,.png,.webp,.heic,.heif,.pdf,image/*,application/pdf";
 
 function fmtSize(bytes: number): string {
@@ -40,6 +43,7 @@ export default function FileDropZone({
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<number | null>(null);
 
   const objectUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
   // No hace falta revocar el object URL con useEffect acá: el componente
@@ -86,7 +90,7 @@ export default function FileDropZone({
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
         >
-          <div className="of-dropzone-icon">📎</div>
+          <div className="of-dropzone-icon"><Icon icon={Paperclip} size={30} /></div>
           <div className="of-dropzone-text">
             <strong>Arrastrá y soltá</strong> una foto o PDF acá, o hacé clic para elegir el archivo.
           </div>
@@ -95,9 +99,11 @@ export default function FileDropZone({
       ) : (
         <div className="of-dropzone-preview">
           {previewIsImage ? (
-            <img src={previewUrl} alt={displayName ?? "Comprobante"} className="of-dropzone-thumb" />
+            <button type="button" className="of-thumb-btn" onClick={() => setViewing(0)} title="Ver en grande">
+              <img src={previewUrl} alt={displayName ?? "Comprobante"} className="of-dropzone-thumb" />
+            </button>
           ) : (
-            <div className="of-dropzone-file-icon">📄</div>
+            <a className="of-dropzone-file-icon" href={previewUrl} target="_blank" rel="noreferrer" title="Abrir el PDF"><Icon icon={FilePdf} size={34} /></a>
           )}
           <div className="of-dropzone-meta">
             <div className="fw-semibold">{displayName}</div>
@@ -113,6 +119,9 @@ export default function FileDropZone({
         </div>
       )}
       {error && <div className="form-error mt-1">{error}</div>}
+      {previewIsImage && previewUrl && (
+        <ImageViewer images={[{ src: previewUrl, title: displayName ?? "Comprobante" }]} index={viewing} onClose={() => setViewing(null)} />
+      )}
       <input
         ref={inputRef}
         type="file"

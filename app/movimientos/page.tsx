@@ -7,14 +7,14 @@ import {
   CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell,
   CBadge, CNav, CNavItem, CNavLink,
 } from "@coreui/react";
-import CIcon from "@coreui/icons-react";
-import { cilCloudDownload, cilDescription, cilPlus, cilPencil, cilTrash } from "@coreui/icons";
+import { ArrowsLeftRight, DownloadSimple, FilePdf, FileText, Lightning, LockSimple, LockSimpleOpen, PencilSimple, Plus, Trash } from "@phosphor-icons/react";
+import Icon from "@/components/ui/Icon";
+import DataTable, { celdas } from "@/components/ui/DataTable";
+import ImageViewer from "@/components/ui/ImageViewer";
 import AppShell from "@/components/AppShell";
-import ConfirmDialog from "@/components/ConfirmDialog";
+import { confirmarAccion, notificar } from "@/lib/ui/alerts";
 import ItemFormModal from "@/components/ItemFormModal";
 import GeneralMovementFormModal from "@/components/GeneralMovementFormModal";
-import Toast from "@/components/Toast";
-import { useToast } from "@/lib/useToast";
 import { MOVIMIENTO_TIPOS } from "@/lib/movimientos";
 import type { MovimientoDTO, ProjectItemDTO, ProjectType, GeneralMovementDTO, GeneralMovementTipo } from "@/lib/types";
 import { todayLocal } from "@/lib/dates";
@@ -326,12 +326,11 @@ export default function MovimientosPage() {
   const [filterEstado, setFilterEstado] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [verComprobante, setVerComprobante] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"fecha_desc" | "fecha_asc" | "monto_desc" | "monto_asc">("fecha_desc");
 
   const [showGeneralForm, setShowGeneralForm] = useState(false);
   const [editingGeneral, setEditingGeneral] = useState<GeneralMovementDTO | null>(null);
-  const [confirmGeneralTarget, setConfirmGeneralTarget] = useState<GeneralMovementDTO | null>(null);
-  const [deletingGeneral, setDeletingGeneral] = useState(false);
 
   // Toggle temporal para editar/eliminar movimientos de OBRA directo desde
   // acá (por defecto solo se puede desde la Ejecución de la obra) — pedido
@@ -342,10 +341,6 @@ export default function MovimientosPage() {
   const [obraEditEnabled, setObraEditEnabled] = useState(false);
   const [showObraForm, setShowObraForm] = useState(false);
   const [editingObraItem, setEditingObraItem] = useState<MovimientoDTO | null>(null);
-  const [confirmObraTarget, setConfirmObraTarget] = useState<MovimientoDTO | null>(null);
-  const [deletingObra, setDeletingObra] = useState(false);
-
-  const { toast, showToast } = useToast();
 
   useEffect(() => {
     setLoading(true);
@@ -447,19 +442,23 @@ export default function MovimientosPage() {
   }
 
   async function deleteGeneral(g: GeneralMovementDTO) {
-    setDeletingGeneral(true);
-    const prev = generalMovements;
-    setGeneralMovements((cur) => cur.filter((x) => x.id !== g.id));
-    try {
-      const res = await fetch(`/api/general-movements/${g.id}`, { method: "DELETE" });
-      if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
-      setConfirmGeneralTarget(null);
-    } catch {
-      setGeneralMovements(prev);
-      showToast("No se pudo eliminar el movimiento.");
-    } finally {
-      setDeletingGeneral(false);
-    }
+    await confirmarAccion({
+      titulo: "Eliminar movimiento",
+      texto: `¿Eliminar "${g.concepto}"? Esta acción no se puede deshacer.`,
+      confirmar: "Eliminar",
+      peligro: true,
+      accion: async () => {
+        const prev = generalMovements;
+        setGeneralMovements((cur) => cur.filter((x) => x.id !== g.id));
+        try {
+          const res = await fetch(`/api/general-movements/${g.id}`, { method: "DELETE" });
+          if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
+        } catch {
+          setGeneralMovements(prev);
+          throw new Error("No se pudo eliminar el movimiento.");
+        }
+      },
+    });
   }
 
   // ItemFormModal devuelve un ProjectItemDTO (sin projectName/projectType,
@@ -482,19 +481,23 @@ export default function MovimientosPage() {
   }
 
   async function deleteObraItem(item: MovimientoDTO) {
-    setDeletingObra(true);
-    const prev = movimientos;
-    setMovimientos((cur) => cur.filter((x) => x.id !== item.id));
-    try {
-      const res = await fetch(`/api/items/${item.id}`, { method: "DELETE" });
-      if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
-      setConfirmObraTarget(null);
-    } catch {
-      setMovimientos(prev);
-      showToast("No se pudo eliminar el movimiento de obra.");
-    } finally {
-      setDeletingObra(false);
-    }
+    await confirmarAccion({
+      titulo: "Eliminar movimiento de obra",
+      texto: `¿Eliminar "${item.title}" de ${item.projectName}? Esta acción no se puede deshacer.`,
+      confirmar: "Eliminar",
+      peligro: true,
+      accion: async () => {
+        const prev = movimientos;
+        setMovimientos((cur) => cur.filter((x) => x.id !== item.id));
+        try {
+          const res = await fetch(`/api/items/${item.id}`, { method: "DELETE" });
+          if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
+        } catch {
+          setMovimientos(prev);
+          throw new Error("No se pudo eliminar el movimiento de obra.");
+        }
+      },
+    });
   }
 
   // Sugerencias de "Nombre del rubro" para el modal de edición de un
@@ -506,11 +509,9 @@ export default function MovimientosPage() {
 
   return (
     <AppShell crumbs={[{ label: "Movimientos" }]}>
-      <h1 className="of-page-title">📒 Movimientos</h1>
+      <h1 className="of-page-title d-flex align-items-center gap-2"><Icon icon={ArrowsLeftRight} size={30} /> Movimientos</h1>
       <p className="module-desc mb-4">
-        Todos los movimientos de todas las obras y rubros, en un solo lugar. Los movimientos de obra se cargan y
-        editan normalmente desde la Ejecución de la obra correspondiente (podés habilitarlo temporalmente acá abajo);
-        los movimientos generales (sin obra) se cargan, editan y eliminan siempre acá mismo.
+        Todas las obras en un solo lugar. Los gastos de obra se editan desde su obra; los generales (sin obra), acá.
       </p>
 
       <CNav variant="underline" className="mb-4">
@@ -536,12 +537,12 @@ export default function MovimientosPage() {
             <p className="module-desc mb-0">{rows.length} movimiento{rows.length === 1 ? "" : "s"} cargados — total {fmtMoney(totalMonto)}.</p>
           </div>
           <div className="d-flex gap-2">
-            <Link href="/registro-rapido" className="btn btn-outline-warning btn-sm">⚡ Registro rápido</Link>
+            <Link href="/registro-rapido" className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1"><Icon icon={Lightning} size={16} /> Clasificar registros rápidos</Link>
             <CButton color="primary" size="sm" onClick={() => { setEditingGeneral(null); setShowGeneralForm(true); }}>
-              <CIcon icon={cilPlus} className="me-1" /> Agregar movimiento general
+              <Icon icon={Plus} size={16} weight="bold" className="me-1" /> Agregar movimiento general
             </CButton>
             <CButton color="secondary" variant="outline" size="sm" onClick={() => exportCSV(visible)} disabled={visible.length === 0}>
-              <CIcon icon={cilCloudDownload} className="me-1" /> Exportar CSV
+              <Icon icon={DownloadSimple} size={16} className="me-1" /> Exportar CSV
             </CButton>
           </div>
         </CCardHeader>
@@ -554,7 +555,7 @@ export default function MovimientosPage() {
             }}
           >
             <CFormSwitch
-              label={obraEditEnabled ? "🔓 Edición de movimientos de obra habilitada" : "🔒 Habilitar edición de movimientos de obra"}
+              label={<span className="d-inline-flex align-items-center gap-1"><Icon icon={obraEditEnabled ? LockSimpleOpen : LockSimple} size={16} />{obraEditEnabled ? "Edición de movimientos de obra habilitada" : "Habilitar edición de movimientos de obra"}</span>}
               checked={obraEditEnabled}
               onChange={toggleObraEdit}
             />
@@ -566,7 +567,16 @@ export default function MovimientosPage() {
           </div>
           {loading && <p className="state-message">Cargando movimientos…</p>}
           {!loading && loadError && <p className="state-message form-error">{loadError}</p>}
-          {!loading && !loadError && rows.length === 0 && <p className="empty-col">Todavía no hay movimientos cargados.</p>}
+          {!loading && !loadError && rows.length === 0 && (
+            <div className="of-empty">
+              <Icon icon={ArrowsLeftRight} size={40} />
+              <p className="of-empty-title">Todavía no hay movimientos</p>
+              <p className="of-empty-sub">Los gastos de obra se cargan con "Gasto de obra" (arriba). Los generales, acá.</p>
+              <CButton color="primary" variant="outline" size="sm" onClick={() => { setEditingGeneral(null); setShowGeneralForm(true); }}>
+                <Icon icon={Plus} size={16} weight="bold" className="me-1" /> Agregar movimiento general
+              </CButton>
+            </div>
+          )}
 
           {!loading && !loadError && rows.length > 0 && (
             <>
@@ -610,14 +620,6 @@ export default function MovimientosPage() {
                 </CCol>
                 <CCol md={2}><CFormInput type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} title="Desde" /></CCol>
                 <CCol md={2}><CFormInput type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} title="Hasta" /></CCol>
-                <CCol md={2}>
-                  <CFormSelect value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}>
-                    <option value="fecha_desc">Recientes primero</option>
-                    <option value="fecha_asc">Antiguos primero</option>
-                    <option value="monto_desc">Mayor monto</option>
-                    <option value="monto_asc">Menor monto</option>
-                  </CFormSelect>
-                </CCol>
                 {filtersActive && (
                   <CCol md={3} className="d-flex align-items-center">
                     <button type="button" className="btn btn-sm btn-link px-0" onClick={clearFilters}>Limpiar filtros</button>
@@ -627,140 +629,109 @@ export default function MovimientosPage() {
 
               {visible.length === 0 && <p className="empty-col">Ningún movimiento coincide con estos filtros.</p>}
               {visible.length > 0 && (
+                // key: al cambiar el candado se redibujan las celdas de acciones.
                 <div className="table-wrap">
-                  <CTable hover responsive>
-                    <CTableHead>
-                      <CTableRow>
-                        <CTableHeaderCell>Fecha</CTableHeaderCell>
-                        <CTableHeaderCell>Obra</CTableHeaderCell>
-                        <CTableHeaderCell>Rubro</CTableHeaderCell>
-                        <CTableHeaderCell>Concepto</CTableHeaderCell>
-                        <CTableHeaderCell>Categoría</CTableHeaderCell>
-                        <CTableHeaderCell>Contratista / Proveedor</CTableHeaderCell>
-                        <CTableHeaderCell>Monto (Gs)</CTableHeaderCell>
-                        <CTableHeaderCell>Medio de pago</CTableHeaderCell>
-                        <CTableHeaderCell>Estado</CTableHeaderCell>
-                        <CTableHeaderCell>Procesado por</CTableHeaderCell>
-                        <CTableHeaderCell>Responsable</CTableHeaderCell>
-                        <CTableHeaderCell>Comprobante</CTableHeaderCell>
-                        <CTableHeaderCell>Acciones</CTableHeaderCell>
-                      </CTableRow>
-                    </CTableHead>
-                    <CTableBody>
-                      {visible.map((row) => (
-                        <CTableRow key={`${row.source}-${row.id}`}>
-                          <CTableDataCell className="mono">{row.fechaLabel}</CTableDataCell>
-                          <CTableDataCell>
-                            {row.source === "obra" ? (
-                              <Link href={`/project/${row.obraId}`}>{row.obraNombre} ↗</Link>
-                            ) : (
-                              <span className="text-body-secondary">General (sin obra)</span>
-                            )}
-                          </CTableDataCell>
-                          <CTableDataCell>
-                            {row.source === "obra" && row.obraTipo ? (
-                              <CBadge color={TYPE_COLOR[row.obraTipo]}>{TYPE_LABEL[row.obraTipo]}</CBadge>
-                            ) : "—"}
-                          </CTableDataCell>
-                          <CTableDataCell>{row.concepto}</CTableDataCell>
-                          <CTableDataCell>{row.categoria || "—"}</CTableDataCell>
-                          <CTableDataCell>
-                            {row.source === "obra" ? (
-                              row.contratistaId ? (
-                                <Link href={`/contratistas/${row.contratistaId}`}>{row.contratistaProveedorLabel || "Ver contratista"} ↗</Link>
-                              ) : row.contratistaProveedorLabel ? (
-                                row.contratistaProveedorLabel
-                              ) : "—"
-                            ) : "—"}
-                          </CTableDataCell>
-                          <CTableDataCell
-                            className="mono"
-                            style={row.source === "general" ? { color: row.ingresoEgreso === "egreso" ? "var(--crit)" : "var(--ok)" } : undefined}
-                          >
-                            {row.source === "general" ? `${row.ingresoEgreso === "egreso" ? "-" : "+"} ${fmtMoney(row.monto)}` : fmtMoney(row.monto)}
-                          </CTableDataCell>
-                          <CTableDataCell>{row.medioPago || "—"}</CTableDataCell>
-                          <CTableDataCell>{row.estado && <span className={"status-chip status-generic status-" + row.estado.toLowerCase().replace(/\s+/g, "_")}>{row.estado}</span>}</CTableDataCell>
-                          <CTableDataCell>{row.procesadoPor || "—"}</CTableDataCell>
-                          <CTableDataCell>{row.responsable || "—"}</CTableDataCell>
-                          <CTableDataCell>
-                            {row.source === "obra" ? (
-                              row.attachment ? (
-                                <a href={`/api/attachments/${row.attachment.id}`} target="_blank" rel="noopener noreferrer">
-                                  {row.attachment.mimeType.startsWith("image/") ? (
-                                    <img src={`/api/attachments/${row.attachment.id}`} alt={row.attachment.filename} className="item-receipt-thumb" />
-                                  ) : (
-                                    <span><CIcon icon={cilDescription} size="sm" className="me-1" />{row.attachment.filename}</span>
-                                  )}
-                                </a>
-                              ) : row.comprobanteTexto ? (
-                                /^https?:\/\//i.test(row.comprobanteTexto) ? (
-                                  <a href={row.comprobanteTexto} target="_blank" rel="noopener noreferrer">
-                                    <img src={row.comprobanteTexto} alt="Comprobante" className="item-receipt-thumb" />
-                                  </a>
-                                ) : (
-                                  <span>{row.comprobanteTexto}</span>
-                                )
-                              ) : "—"
-                            ) : (row.raw as GeneralMovementDTO).comprobanteMediaId ? (
-                              // Comprobante recibido por WhatsApp (movimiento general cargado por el agente).
-                              <a href={`/api/inbound-media/${(row.raw as GeneralMovementDTO).comprobanteMediaId}`} target="_blank" rel="noopener noreferrer">
-                                <CIcon icon={cilDescription} size="sm" className="me-1" />Ver
-                              </a>
-                            ) : "—"}
-                          </CTableDataCell>
-                          <CTableDataCell>
-                            {row.source === "general" && (
-                              <div className="d-flex gap-1">
-                                <CButton
-                                  size="sm"
-                                  color="secondary"
-                                  variant="outline"
-                                  title="Editar"
-                                  onClick={() => { setEditingGeneral(row.raw as GeneralMovementDTO); setShowGeneralForm(true); }}
-                                >
-                                  <CIcon icon={cilPencil} size="sm" />
-                                </CButton>
-                                <CButton
-                                  size="sm"
-                                  color="danger"
-                                  variant="outline"
-                                  title="Eliminar"
-                                  onClick={() => setConfirmGeneralTarget(row.raw as GeneralMovementDTO)}
-                                >
-                                  <CIcon icon={cilTrash} size="sm" />
-                                </CButton>
-                              </div>
-                            )}
-                            {row.source === "obra" && obraEditEnabled && (
-                              <div className="d-flex gap-1">
-                                <CButton
-                                  size="sm"
-                                  color="secondary"
-                                  variant="outline"
-                                  title="Editar"
-                                  onClick={() => { setEditingObraItem(row.raw as MovimientoDTO); setShowObraForm(true); }}
-                                >
-                                  <CIcon icon={cilPencil} size="sm" />
-                                </CButton>
-                                <CButton
-                                  size="sm"
-                                  color="danger"
-                                  variant="outline"
-                                  title="Eliminar"
-                                  onClick={() => setConfirmObraTarget(row.raw as MovimientoDTO)}
-                                >
-                                  <CIcon icon={cilTrash} size="sm" />
-                                </CButton>
-                              </div>
-                            )}
-                          </CTableDataCell>
-                        </CTableRow>
-                      ))}
-                    </CTableBody>
-                  </CTable>
+                <DataTable
+                  key={obraEditEnabled ? "edit" : "ro"}
+                  data={visible}
+                  columns={[
+                    { data: "fecha", title: "Fecha", className: "mono text-nowrap" },
+                    { data: "obraNombre", title: "Obra", defaultContent: "" },
+                    { data: "obraTipo", title: "Rubro", defaultContent: "" },
+                    { data: "concepto", title: "Concepto" },
+                    { data: "categoria", title: "Categoría", defaultContent: "" },
+                    { data: "contratistaProveedorLabel", title: "Contratista / Proveedor", defaultContent: "" },
+                    { data: "monto", title: "Monto (Gs)", className: "mono text-end text-nowrap" },
+                    { data: "medioPago", title: "Medio de pago", defaultContent: "" },
+                    { data: "estado", title: "Estado", defaultContent: "" },
+                    { data: "procesadoPor", title: "Procesado por", defaultContent: "" },
+                    { data: "responsable", title: "Responsable", defaultContent: "" },
+                    { data: null, title: "Comprobante", orderable: false },
+                    { data: null, title: "Acciones", orderable: false },
+                  ]}
+                  options={{ order: [[0, "desc"]], searching: false }}
+                  slots={celdas<LedgerRow>({
+                    0: (_: unknown, row: LedgerRow) => <>{row.fechaLabel}</>,
+                    1: (_: unknown, row: LedgerRow) =>
+                      row.source === "obra" ? (
+                        <Link href={`/project/${row.obraId}`}>{row.obraNombre} ↗</Link>
+                      ) : (
+                        <span className="text-body-secondary">General (sin obra)</span>
+                      ),
+                    2: (_: unknown, row: LedgerRow) =>
+                      row.source === "obra" && row.obraTipo ? <CBadge color={TYPE_COLOR[row.obraTipo]}>{TYPE_LABEL[row.obraTipo]}</CBadge> : <>—</>,
+                    4: (_: unknown, row: LedgerRow) => <>{row.categoria || "—"}</>,
+                    5: (_: unknown, row: LedgerRow) =>
+                      row.source === "obra" && row.contratistaId ? (
+                        <Link href={`/contratistas/${row.contratistaId}`}>{row.contratistaProveedorLabel || "Ver contratista"} ↗</Link>
+                      ) : (
+                        <>{(row.source === "obra" && row.contratistaProveedorLabel) || "—"}</>
+                      ),
+                    6: (_: unknown, row: LedgerRow) =>
+                      row.source === "general" ? (
+                        <span style={{ color: row.ingresoEgreso === "egreso" ? "var(--crit)" : "var(--ok)" }}>
+                          {`${row.ingresoEgreso === "egreso" ? "-" : "+"} ${fmtMoney(row.monto)}`}
+                        </span>
+                      ) : (
+                        <>{fmtMoney(row.monto)}</>
+                      ),
+                    7: (_: unknown, row: LedgerRow) => <>{row.medioPago || "—"}</>,
+                    8: (_: unknown, row: LedgerRow) =>
+                      row.estado ? <span className={"status-chip status-generic status-" + row.estado.toLowerCase().replace(/\s+/g, "_")}>{row.estado}</span> : <></>,
+                    9: (_: unknown, row: LedgerRow) => <>{row.procesadoPor || "—"}</>,
+                    10: (_: unknown, row: LedgerRow) => <>{row.responsable || "—"}</>,
+                    11: (_: unknown, row: LedgerRow) =>
+                      row.source === "obra" ? (
+                        row.attachment ? (
+                          row.attachment.mimeType.startsWith("image/") ? (
+                            <button type="button" className="of-thumb-btn" onClick={() => setVerComprobante(`/api/attachments/${row.attachment!.id}`)} title="Ver el comprobante en grande">
+                              <img src={`/api/attachments/${row.attachment.id}`} alt={row.attachment.filename} className="item-receipt-thumb" />
+                            </button>
+                          ) : (
+                            <a href={`/api/attachments/${row.attachment.id}`} target="_blank" rel="noopener noreferrer" className="d-inline-flex align-items-center gap-1">
+                              <Icon icon={FilePdf} size={16} />{row.attachment.filename}
+                            </a>
+                          )
+                        ) : row.comprobanteTexto ? (
+                          /^https?:\/\//i.test(row.comprobanteTexto) ? (
+                            <button type="button" className="of-thumb-btn" onClick={() => setVerComprobante(row.comprobanteTexto)} title="Ver el comprobante en grande">
+                              <img src={row.comprobanteTexto} alt="Comprobante" className="item-receipt-thumb" />
+                            </button>
+                          ) : (
+                            <span>{row.comprobanteTexto}</span>
+                          )
+                        ) : <>—</>
+                      ) : (row.raw as GeneralMovementDTO).comprobanteMediaId ? (
+                        // Comprobante recibido por WhatsApp (movimiento general cargado por el agente).
+                        <a href={`/api/inbound-media/${(row.raw as GeneralMovementDTO).comprobanteMediaId}`} target="_blank" rel="noopener noreferrer" className="d-inline-flex align-items-center gap-1">
+                          <Icon icon={FileText} size={16} />Ver
+                        </a>
+                      ) : <>—</>,
+                    12: (_: unknown, row: LedgerRow) =>
+                      row.source === "general" ? (
+                        <div className="d-flex gap-1">
+                          <CButton size="sm" color="secondary" variant="outline" title="Editar" onClick={() => { setEditingGeneral(row.raw as GeneralMovementDTO); setShowGeneralForm(true); }}>
+                            <Icon icon={PencilSimple} size={16} label="Editar" />
+                          </CButton>
+                          <CButton size="sm" color="danger" variant="outline" title="Eliminar" onClick={() => deleteGeneral(row.raw as GeneralMovementDTO)}>
+                            <Icon icon={Trash} size={16} label="Eliminar" />
+                          </CButton>
+                        </div>
+                      ) : obraEditEnabled ? (
+                        <div className="d-flex gap-1">
+                          <CButton size="sm" color="secondary" variant="outline" title="Editar" onClick={() => { setEditingObraItem(row.raw as MovimientoDTO); setShowObraForm(true); }}>
+                            <Icon icon={PencilSimple} size={16} label="Editar" />
+                          </CButton>
+                          <CButton size="sm" color="danger" variant="outline" title="Eliminar" onClick={() => deleteObraItem(row.raw as MovimientoDTO)}>
+                            <Icon icon={Trash} size={16} label="Eliminar" />
+                          </CButton>
+                        </div>
+                      ) : <></>,
+                  })}
+                />
                 </div>
               )}
+              <ImageViewer images={verComprobante ? [{ src: verComprobante, title: "Comprobante" }] : []} index={verComprobante ? 0 : null} onClose={() => setVerComprobante(null)} />
             </>
           )}
         </CCardBody>
@@ -775,14 +746,6 @@ export default function MovimientosPage() {
           onSaved={handleGeneralSaved}
         />
       )}
-      <ConfirmDialog
-        open={confirmGeneralTarget !== null}
-        title="Eliminar movimiento"
-        message={`¿Eliminar "${confirmGeneralTarget?.concepto}"? Esta acción no se puede deshacer.`}
-        busy={deletingGeneral}
-        onConfirm={() => confirmGeneralTarget && deleteGeneral(confirmGeneralTarget)}
-        onCancel={() => setConfirmGeneralTarget(null)}
-      />
 
       {showObraForm && editingObraItem && (
         <ItemFormModal
@@ -790,20 +753,11 @@ export default function MovimientosPage() {
           kind="change_order"
           existing={editingObraItem}
           existingRubros={existingRubrosForObraEdit}
-          showToast={showToast}
+          showToast={(m) => notificar(m, "error")}
           onClose={() => { setShowObraForm(false); setEditingObraItem(null); }}
           onSaved={handleObraSaved}
         />
       )}
-      <ConfirmDialog
-        open={confirmObraTarget !== null}
-        title="Eliminar movimiento de obra"
-        message={`¿Eliminar "${confirmObraTarget?.title}" de ${confirmObraTarget?.projectName}? Esta acción no se puede deshacer.`}
-        busy={deletingObra}
-        onConfirm={() => confirmObraTarget && deleteObraItem(confirmObraTarget)}
-        onCancel={() => setConfirmObraTarget(null)}
-      />
-      <Toast message={toast} />
     </AppShell>
   );
 }

@@ -10,9 +10,7 @@ import {
 import CIcon from "@coreui/icons-react";
 import { cilPlus, cilPencil, cilTrash } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
-import ConfirmDialog from "@/components/ConfirmDialog";
-import Toast from "@/components/Toast";
-import { useToast } from "@/lib/useToast";
+import { confirmarAccion } from "@/lib/ui/alerts";
 import { fmtGs } from "@/lib/currency";
 import type { PoleSpecDetailDTO, PoleSpecInput, RawMaterialDTO, PoleRecipeItemDTO, PoleRecipeItemInput } from "@/lib/types";
 
@@ -31,16 +29,13 @@ export default function PoleSpecDetailPage({ params }: { params: { id: string } 
   const [materials, setMaterials] = useState<RawMaterialDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { toast, showToast } = useToast();
 
   // Edición de la especificación
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState<PoleSpecInput | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Receta de producción
   const [recipeModalOpen, setRecipeModalOpen] = useState(false);
@@ -48,8 +43,6 @@ export default function PoleSpecDetailPage({ params }: { params: { id: string } 
   const [recipeForm, setRecipeForm] = useState<PoleRecipeItemInput>(EMPTY_RECIPE);
   const [recipeError, setRecipeError] = useState<string | null>(null);
   const [savingRecipe, setSavingRecipe] = useState(false);
-  const [confirmRecipeTarget, setConfirmRecipeTarget] = useState<PoleRecipeItemDTO | null>(null);
-  const [deletingRecipe, setDeletingRecipe] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -125,19 +118,27 @@ export default function PoleSpecDetailPage({ params }: { params: { id: string } 
   }
 
   async function handleDelete() {
-    setDeleting(true);
-    setDeleteError(null);
-    try {
-      const res = await fetch(`/api/postes/specs/${id}`, { method: "DELETE" });
-      if (!res.ok && res.status !== 204) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `HTTP ${res.status}`);
-      }
-      router.push("/postes?tab=specs");
-    } catch (err: any) {
-      setDeleting(false);
-      setDeleteError(err.message || "No se pudo eliminar la especificación. Probá de nuevo.");
-    }
+    if (!spec) return;
+    const ok = await confirmarAccion({
+      titulo: "Eliminar especificación",
+      texto: `¿Eliminar "${spec.nombre}"? Esta acción no se puede deshacer.`,
+      confirmar: "Eliminar",
+      peligro: true,
+      accion: async () => {
+        setDeleting(true);
+        try {
+          const res = await fetch(`/api/postes/specs/${id}`, { method: "DELETE" });
+          if (!res.ok && res.status !== 204) {
+            const body = await res.json().catch(() => ({}));
+            throw new Error(body.error || `HTTP ${res.status}`);
+          }
+        } catch (err: any) {
+          setDeleting(false);
+          throw new Error(err.message || "No se pudo eliminar la especificación. Probá de nuevo.");
+        }
+      },
+    });
+    if (ok) router.push("/postes?tab=specs");
   }
 
   // ── Receta de producción ──────────────────────────────────────────────
@@ -190,17 +191,21 @@ export default function PoleSpecDetailPage({ params }: { params: { id: string } 
   }
 
   async function performDeleteRecipe(item: PoleRecipeItemDTO) {
-    setDeletingRecipe(true);
-    try {
-      const res = await fetch(`/api/postes/recipe/${item.id}`, { method: "DELETE" });
-      if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
-      setConfirmRecipeTarget(null);
-      await reloadSpec();
-    } catch {
-      showToast("No se pudo eliminar el material de la receta.");
-    } finally {
-      setDeletingRecipe(false);
-    }
+    const ok = await confirmarAccion({
+      titulo: "Quitar material de la receta",
+      texto: `¿Quitar "${item.materialNombre}" de la receta de esta especificación? Esta acción no se puede deshacer.`,
+      confirmar: "Eliminar",
+      peligro: true,
+      accion: async () => {
+        try {
+          const res = await fetch(`/api/postes/recipe/${item.id}`, { method: "DELETE" });
+          if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
+        } catch {
+          throw new Error("No se pudo eliminar el material de la receta.");
+        }
+      },
+    });
+    if (ok) await reloadSpec();
   }
 
   if (loading) return <AppShell crumbs={[{ label: "Fábrica de Postes", href: "/postes" }]}><p className="state-message">Cargando…</p></AppShell>;
@@ -221,7 +226,7 @@ export default function PoleSpecDetailPage({ params }: { params: { id: string } 
           <CButton color="secondary" variant="outline" size="sm" onClick={openEdit}>
             <CIcon icon={cilPencil} className="me-1" /> Editar
           </CButton>
-          <CButton color="danger" variant="outline" size="sm" onClick={() => { setDeleteError(null); setConfirmDeleteOpen(true); }} disabled={deleting}>
+          <CButton color="danger" variant="outline" size="sm" onClick={handleDelete} disabled={deleting}>
             <CIcon icon={cilTrash} className="me-1" /> {deleting ? "Eliminando…" : "Eliminar"}
           </CButton>
         </>
@@ -300,7 +305,7 @@ export default function PoleSpecDetailPage({ params }: { params: { id: string } 
                       <CTableDataCell className="mono">{fmtGs(r.subtotalGs)}</CTableDataCell>
                       <CTableDataCell className="text-end">
                         <CButton size="sm" color="secondary" variant="outline" className="me-1" onClick={() => openRecipeEdit(r)}><CIcon icon={cilPencil} size="sm" /></CButton>
-                        <CButton size="sm" color="danger" variant="outline" onClick={() => setConfirmRecipeTarget(r)}><CIcon icon={cilTrash} size="sm" /></CButton>
+                        <CButton size="sm" color="danger" variant="outline" onClick={() => performDeleteRecipe(r)}><CIcon icon={cilTrash} size="sm" /></CButton>
                       </CTableDataCell>
                     </CTableRow>
                   ))}
@@ -399,25 +404,6 @@ export default function PoleSpecDetailPage({ params }: { params: { id: string } 
           </CModalFooter>
         </CForm>
       </CModal>
-
-      <ConfirmDialog
-        open={confirmDeleteOpen}
-        title="Eliminar especificación"
-        message={`¿Eliminar "${spec.nombre}"? Esta acción no se puede deshacer.`}
-        busy={deleting}
-        error={deleteError}
-        onConfirm={handleDelete}
-        onCancel={() => setConfirmDeleteOpen(false)}
-      />
-      <ConfirmDialog
-        open={confirmRecipeTarget !== null}
-        title="Quitar material de la receta"
-        message={`¿Quitar "${confirmRecipeTarget?.materialNombre}" de la receta de esta especificación? Esta acción no se puede deshacer.`}
-        busy={deletingRecipe}
-        onConfirm={() => confirmRecipeTarget && performDeleteRecipe(confirmRecipeTarget)}
-        onCancel={() => setConfirmRecipeTarget(null)}
-      />
-      <Toast message={toast} />
     </AppShell>
   );
 }

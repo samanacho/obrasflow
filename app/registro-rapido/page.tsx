@@ -5,12 +5,10 @@ import { CCard, CCardBody, CBadge, CButton, CFormSelect } from "@coreui/react";
 import CIcon from "@coreui/icons-react";
 import { cilCheckCircle, cilTrash } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
-import ConfirmDialog from "@/components/ConfirmDialog";
+import { confirmarAccion, notificar } from "@/lib/ui/alerts";
 import ItemFormModal from "@/components/ItemFormModal";
 import GeneralMovementFormModal from "@/components/GeneralMovementFormModal";
 import { notifyQuickExpensesChanged, QUICK_EXPENSES_CHANGED } from "@/components/QuickExpenseButton";
-import Toast from "@/components/Toast";
-import { useToast } from "@/lib/useToast";
 import type { QuickExpenseDTO, ProjectDTO, ProjectItemDTO, GeneralMovementDTO } from "@/lib/types";
 
 function fmtMoney(n: number) {
@@ -41,14 +39,11 @@ export default function RegistroRapidoPage() {
   const [projects, setProjects] = useState<ProjectDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [showResolved, setShowResolved] = useState(false);
-  const { toast, showToast } = useToast();
 
   const [obraPickerFor, setObraPickerFor] = useState<string | null>(null);
   const [obraPickerValue, setObraPickerValue] = useState("");
   const [obraFormFor, setObraFormFor] = useState<{ quickExpense: QuickExpenseDTO; projectId: string } | null>(null);
   const [generalFormFor, setGeneralFormFor] = useState<QuickExpenseDTO | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<QuickExpenseDTO | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
   function load() {
     setLoading(true);
@@ -90,7 +85,7 @@ export default function RegistroRapidoPage() {
       setItems((cur) => cur.map((i) => (i.id === id ? { ...i, resuelto: true } : i)));
       notifyQuickExpensesChanged();
     } catch {
-      showToast("Se cargó el movimiento, pero no se pudo marcar esta captura como resuelta — hacelo a mano si querés.");
+      notificar("Se cargó el movimiento, pero no se pudo marcar esta captura como resuelta — hacelo a mano si querés.", "error");
     }
   }
 
@@ -105,7 +100,7 @@ export default function RegistroRapidoPage() {
       const cur = fresh.find((i) => i.id === item.id);
       if (cur && !cur.resuelto) return true;
       setItems(fresh);
-      showToast(cur ? "Esta captura ya se clasificó (quizás por WhatsApp) — no hace falta cargarla de nuevo." : "Esta captura ya no existe.");
+      notificar(cur ? "Esta captura ya se clasificó (quizás por WhatsApp) — no hace falta cargarla de nuevo." : "Esta captura ya no existe.", "info");
       return false;
     } catch {
       return true; // sin conexión con el servidor, el guardado igual va a avisar si falla
@@ -123,34 +118,39 @@ export default function RegistroRapidoPage() {
         body: JSON.stringify({ mediaId }),
       })
         .then((r) => { if (!r.ok) throw new Error(); })
-        .catch(() => showToast("El movimiento se cargó, pero no se pudo adjuntar el comprobante — subilo desde la ficha de la obra."));
+        .catch(() => notificar("El movimiento se cargó, pero no se pudo adjuntar el comprobante — subilo desde la ficha de la obra.", "error"));
     }
     if (obraFormFor) markResolved(obraFormFor.quickExpense.id);
     setObraFormFor(null);
     setObraPickerFor(null);
     setObraPickerValue("");
-    showToast("Movimiento cargado en la obra ✓");
+    notificar("Movimiento cargado en la obra ✓", "success");
   }
 
   function handleGeneralSaved(_saved: GeneralMovementDTO) {
     if (generalFormFor) markResolved(generalFormFor.id);
     setGeneralFormFor(null);
-    showToast("Gasto general cargado ✓");
+    notificar("Gasto general cargado ✓", "success");
   }
 
   async function handleDelete(item: QuickExpenseDTO) {
-    setDeleting(true);
-    try {
-      const res = await fetch(`/api/quick-expenses/${item.id}`, { method: "DELETE" });
-      if (!res.ok && res.status !== 204) throw new Error();
-      setItems((cur) => cur.filter((i) => i.id !== item.id));
-      setConfirmDelete(null);
-      notifyQuickExpensesChanged();
-    } catch {
-      showToast("No se pudo descartar el registro.");
-    } finally {
-      setDeleting(false);
-    }
+    const ok = await confirmarAccion({
+      titulo: "Descartar registro",
+      texto: `¿Descartar la captura de ${fmtMoney(item.monto)}? No se puede deshacer.`,
+      confirmar: "Eliminar",
+      peligro: true,
+      accion: async () => {
+        try {
+          const res = await fetch(`/api/quick-expenses/${item.id}`, { method: "DELETE" });
+          if (!res.ok && res.status !== 204) throw new Error();
+        } catch {
+          throw new Error("No se pudo descartar el registro.");
+        }
+      },
+    });
+    if (!ok) return;
+    setItems((cur) => cur.filter((i) => i.id !== item.id));
+    notifyQuickExpensesChanged();
   }
 
   function renderCard(item: QuickExpenseDTO) {
@@ -211,7 +211,7 @@ export default function RegistroRapidoPage() {
                   <CButton size="sm" color="secondary" variant="outline" onClick={async () => { if (await stillPending(item)) setGeneralFormFor(item); }}>
                     Cargar como gasto general
                   </CButton>
-                  <CButton size="sm" color="danger" variant="ghost" onClick={() => setConfirmDelete(item)}>
+                  <CButton size="sm" color="danger" variant="ghost" onClick={() => handleDelete(item)}>
                     <CIcon icon={cilTrash} size="sm" />
                   </CButton>
                 </div>
@@ -276,7 +276,7 @@ export default function RegistroRapidoPage() {
             medioPago: obraFormFor.quickExpense.medioPago,
             notas: obraFormFor.quickExpense.nota ?? "",
           }}
-          showToast={showToast}
+          showToast={(m) => notificar(m, "error")}
           onClose={() => setObraFormFor(null)}
           onSaved={handleObraSaved}
         />
@@ -299,17 +299,6 @@ export default function RegistroRapidoPage() {
           onSaved={handleGeneralSaved}
         />
       )}
-
-      <ConfirmDialog
-        open={Boolean(confirmDelete)}
-        title="Descartar registro"
-        message={`¿Descartar la captura de ${confirmDelete ? fmtMoney(confirmDelete.monto) : ""}? No se puede deshacer.`}
-        busy={deleting}
-        onConfirm={() => confirmDelete && handleDelete(confirmDelete)}
-        onCancel={() => setConfirmDelete(null)}
-      />
-
-      {toast && <Toast message={toast} />}
     </AppShell>
   );
 }

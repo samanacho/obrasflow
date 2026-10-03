@@ -5,9 +5,7 @@ import {
   CCard, CCardBody, CCardHeader, CBadge, CButton, CForm, CFormInput, CFormSelect, CAlert, CSpinner,
 } from "@coreui/react";
 import AppShell from "@/components/AppShell";
-import ConfirmDialog from "@/components/ConfirmDialog";
-import Toast from "@/components/Toast";
-import { useToast } from "@/lib/useToast";
+import { confirmarAccion, notificar } from "@/lib/ui/alerts";
 import BaileysView from "./BaileysView";
 import LocalConnector, { useLocalConnector } from "./LocalConnector";
 
@@ -102,13 +100,11 @@ export default function AgenteWhatsAppPage() {
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [result, setResult] = useState<(ActionResult & { action: string }) | null>(null);
   const [pin, setPin] = useState("");
-  const [confirmRegister, setConfirmRegister] = useState(false);
   const [testTo, setTestTo] = useState("");
   const [showCloud, setShowCloud] = useState(false);
   // App corriendo en la misma PC que el conector: conexión y configuración completas acá.
   const { state: localState, refresh: refreshLocal } = useLocalConnector();
   const localMode = Boolean(localState?.available);
-  const { toast, showToast } = useToast();
 
   const load = useCallback(async (panelKey: string | null) => {
     const res = await fetch("/api/whatsapp/panel", { headers: panelKey ? { "x-panel-key": panelKey } : {}, cache: "no-store" });
@@ -175,7 +171,7 @@ export default function AgenteWhatsAppPage() {
     try {
       if ((await load(key)) === "denied") lock();
     } catch {
-      showToast("No se pudo actualizar.");
+      notificar("No se pudo actualizar.", "error");
     } finally {
       setChecking(false);
     }
@@ -205,12 +201,23 @@ export default function AgenteWhatsAppPage() {
     }
   }
 
+  async function askRegister() {
+    const ok = await confirmarAccion({
+      titulo: "Registrar el número",
+      texto: "Esto registra el número configurado en WHATSAPP_PHONE_NUMBER_ID con ese PIN. Meta permite 10 intentos cada 72 horas y el PIN queda como verificación en dos pasos: guardalo. ¿Seguimos?",
+      confirmar: "Registrar",
+      peligro: false,
+      accion: () => runAction("register", { pin }),
+    });
+    if (ok) setPin("");
+  }
+
   async function copy(text: string, what: string) {
     try {
       await navigator.clipboard.writeText(text);
-      showToast(`${what} copiado ✓`);
+      notificar(`${what} copiado ✓`, "success");
     } catch {
-      showToast("No se pudo copiar: seleccioná el texto y copialo a mano.");
+      notificar("No se pudo copiar: seleccioná el texto y copialo a mano.", "error");
     }
   }
 
@@ -579,7 +586,7 @@ export default function AgenteWhatsAppPage() {
                             onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
                             style={{ maxWidth: 160 }}
                           />
-                          <CButton size="sm" color="primary" variant="outline" disabled={pin.length !== 6 || busyAction !== null} onClick={() => setConfirmRegister(true)}>
+                          <CButton size="sm" color="primary" variant="outline" disabled={pin.length !== 6 || busyAction !== null} onClick={askRegister}>
                             {busyAction === "register" ? <CSpinner size="sm" /> : "Registrar número"}
                           </CButton>
                         </div>
@@ -598,22 +605,6 @@ export default function AgenteWhatsAppPage() {
           </div>
         </>
       )}
-
-      <ConfirmDialog
-        open={confirmRegister}
-        title="Registrar el número"
-        message="Esto registra el número configurado en WHATSAPP_PHONE_NUMBER_ID con ese PIN. Meta permite 10 intentos cada 72 horas y el PIN queda como verificación en dos pasos: guardalo. ¿Seguimos?"
-        confirmLabel="Registrar"
-        confirmColor="primary"
-        busy={busyAction === "register"}
-        onCancel={() => setConfirmRegister(false)}
-        onConfirm={async () => {
-          setConfirmRegister(false);
-          await runAction("register", { pin });
-          setPin("");
-        }}
-      />
-      <Toast message={toast} />
     </AppShell>
   );
 }

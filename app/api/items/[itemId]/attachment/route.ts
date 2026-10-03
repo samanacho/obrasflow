@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { serializeAttachmentMeta } from "@/lib/serialize";
+import { ITEM_KINDS } from "@/lib/itemKinds";
+import { APP_SOURCE, logChanges } from "@/lib/history";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +54,14 @@ export async function POST(req: NextRequest, { params }: Params) {
         },
       });
     });
+
+    const cfg = ITEM_KINDS[item.kind];
+    await logChanges(
+      prisma,
+      item.projectId,
+      [{ action: "archivo", detail: `Se subió "${created.filename}" en ${cfg?.singular ?? "registro"} "${item.title}"` }],
+      APP_SOURCE
+    );
 
     return NextResponse.json(serializeAttachmentMeta(created), { status: 201 });
   } catch (err) {

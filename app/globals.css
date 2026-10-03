@@ -5,30 +5,37 @@
    bruscos de contraste, misma familia tonal cálida en todo el sitio.
    ========================================================================== */
 :root{
-  --ink:#33312c;
-  --ink-soft:#75726a;
-  --paper:#f5f3ee;
+  --ink:#2f2e2a;
+  --ink-soft:#69665e;
+  --paper:#f4f2ec;
   --surface:#fbfaf6;
-  --line:#e1ddd3;
-  --accent:#5c7a99;
-  --accent-ink:#3f5870;
-  --accent-soft:#e4eaf0;
+  --line:#dedad0;
+  --accent:#3f5e7a;
+  --accent-ink:#2f4a63;
+  --accent-soft:#e3e9ee;
   --civil:#4a6b85;
   --civil-soft:#e3eaef;
-  --electrico:#a9803d;
+  --electrico:#85611f;
   --electrico-soft:#f2e9d6;
-  --vial:#726c61;
+  --vial:#645f55;
   --vial-soft:#ebe7df;
-  --otro:#8172a3;
+  --otro:#6a5a8c;
   --otro-soft:#ece7f2;
-  --ok:#5f8362;
+  --ok:#4d6e50;
   --ok-soft:#e6ede4;
-  --warn:#a67d3f;
+  --warn:#8a6224;
   --warn-soft:#f3e9d8;
   --crit:#a0564d;
   --crit-soft:#f4e3e0;
-  --shadow: 0 1px 2px rgba(51,49,44,0.05), 0 4px 14px -6px rgba(51,49,44,0.12);
-  --shadow-hover: 0 4px 16px -4px rgba(51,49,44,0.18);
+  /* Plano técnico: superficies planas. La separación la dan el borde fino
+     y el espacio, no las sombras. */
+  --shadow: none;
+  --shadow-hover: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, var(--line));
+  /* Cuadrícula de plano (solo en la barra superior y estados vacíos). */
+  --grid-line: rgba(63,94,122,.07);
+  --on-accent: #f7f5f0;
+  /* Lo único que flota (menús desplegables) sí lleva una sombra corta. */
+  --shadow-pop: 0 6px 20px -8px rgba(47,46,42,.25);
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-coreui-theme="light"]){
@@ -54,12 +61,10 @@
     --warn-soft:#3c3020;
     --crit:#c98980;
     --crit-soft:#3c2a26;
-    /* Sombra con matiz naranja cálido en vez de negro puro — un "glow" tenue,
-       no un naranja saturado/llamativo: la capa cercana es un marrón oscuro
-       apenas cálido (ancla el volumen de la tarjeta), y el halo más grande
-       lleva el tono naranja/terracota, discreto por la baja opacidad. */
-    --shadow: 0 1px 2px rgba(38,22,12,0.35), 0 4px 18px -6px rgba(194,121,58,0.3);
-    --shadow-hover: 0 6px 22px -4px rgba(194,121,58,0.4);
+    --shadow: none;
+    --shadow-hover: 0 0 0 1px color-mix(in srgb, var(--accent) 40%, var(--line));
+  --grid-line: rgba(140,166,194,.07);
+  --on-accent: #1d1c19;
   }
 }
 :root[data-coreui-theme="dark"]{
@@ -85,8 +90,10 @@
   --warn-soft:#3c3020;
   --crit:#c98980;
   --crit-soft:#3c2a26;
-  --shadow: 0 1px 2px rgba(38,22,12,0.35), 0 4px 18px -6px rgba(194,121,58,0.3);
-  --shadow-hover: 0 6px 22px -4px rgba(194,121,58,0.4);
+  --shadow: none;
+  --shadow-hover: 0 0 0 1px color-mix(in srgb, var(--accent) 40%, var(--line));
+  --grid-line: rgba(140,166,194,.07);
+  --on-accent: #1d1c19;
 }
 
 /* Puente hacia las variables de Bootstrap/CoreUI: así CBadge, CAlert,
@@ -109,11 +116,11 @@
   --cui-emphasis-color: var(--ink);
   --cui-secondary-color: var(--ink-soft);
 
-  --cui-primary:#4f6b85; --cui-primary-rgb:79,107,133;
+  --cui-primary:#3f5e7a; --cui-primary-rgb:63,94,122;
   --cui-secondary:#726c61; --cui-secondary-rgb:114,108,97;
-  --cui-success:#5f8362; --cui-success-rgb:95,131,98;
+  --cui-success:#4d6e50; --cui-success-rgb:77,110,80;
   --cui-danger:#a0564d; --cui-danger-rgb:160,86,77;
-  --cui-warning:#9c7238; --cui-warning-rgb:156,114,56;
+  --cui-warning:#8a6224; --cui-warning-rgb:138,98,36;
   --cui-info:#4c7a82; --cui-info-rgb:76,122,130;
   --cui-dark:#5c5270; --cui-dark-rgb:92,82,112;
   --cui-light:#8b8478; --cui-light-rgb:139,132,120;
@@ -167,9 +174,12 @@ h1,h2,h3,.display{font-family:'Barlow Condensed',system-ui,sans-serif;font-weigh
 /* ---------- Shell (sidebar + header persistentes, estilo Odoo) ---------- */
 .of-shell{display:flex;min-height:100vh;background:var(--paper);}
 .of-content-wrap{flex:1;min-width:0;display:flex;flex-direction:column;}
-.of-header{background:var(--surface) !important;--cui-header-bg:var(--surface);}
+.of-header{--cui-header-bg:var(--paper);background-color:var(--paper) !important;
+  background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px) !important;
+  background-size:16px 16px !important;}
+.of-icon{flex:none;vertical-align:-0.2em;}
 .of-main{padding:20px 24px 48px;max-width:1320px;}
-.of-brand-mark{font-size:1.4rem;margin-right:8px;}
+.of-brand-mark{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:6px;background:var(--accent);color:var(--surface);margin-right:10px;}
 .of-brand-text{font-family:'Barlow Condensed';font-weight:700;font-size:1.15rem;letter-spacing:.02em;}
 .sidebar-brand{color:var(--ink) !important;text-decoration:none;display:flex;align-items:center;}
 .of-shell .sidebar{--cui-sidebar-bg:var(--surface);--cui-sidebar-color:var(--ink);}
@@ -184,7 +194,13 @@ h1,h2,h3,.display{font-family:'Barlow Condensed',system-ui,sans-serif;font-weigh
 .of-shell .sidebar .nav-link{color:var(--ink-soft);}
 .of-shell .sidebar .nav-link.active,
 .of-shell .sidebar .nav-item.active .nav-link{color:var(--accent-ink);background:color-mix(in srgb, var(--accent) 12%, transparent);font-weight:600;}
-.of-shell .nav-icon{color:inherit;opacity:.85;}
+.of-shell .nav-icon{color:inherit;opacity:.9;margin-right:10px;}
+.of-shell .sidebar .nav-link.active{box-shadow:inset 3px 0 0 var(--accent);}
+.of-nav-sep{height:1px;background:var(--line);margin:10px 12px;}
+/* Semáforo del menú: número + color (nunca solo color). */
+.of-nav-flag{margin-left:auto;min-width:22px;padding:0 7px;border-radius:999px;font-size:.74rem;font-weight:700;line-height:1.55;text-align:center;font-variant-numeric:tabular-nums;}
+.of-nav-flag.is-crit{background:var(--crit-soft);color:var(--crit);}
+.of-nav-flag.is-warn{background:var(--warn-soft);color:var(--warn);}
 /* Pedido puntual: resaltar la primera letra de un ítem del menú (ver "highlightFirstLetter" en lib/navItems.ts). */
 .nav-label-highlight{font-weight:700;color:var(--accent-ink);}
 /* El link del menú es flex: sin este wrapper la letra resaltada y el resto
@@ -214,20 +230,24 @@ nav.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px
 @media (prefers-reduced-motion: reduce){.view.active{animation:none;}}
 @keyframes fade{from{opacity:0;transform:translateY(3px);}to{opacity:1;transform:none;}}
 
-button.btn{
-  appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);
-  font-family:'IBM Plex Sans';font-weight:500;font-size:.85rem;padding:8px 14px;border-radius:6px;
-  cursor:pointer;box-shadow:var(--shadow);
-}
-button.btn:hover{border-color:var(--ink-soft);}
-button.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
-button.btn:disabled{opacity:.55;cursor:not-allowed;}
-button.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
-button.btn.primary:hover{filter:brightness(1.06);}
-button.btn.ghost{background:transparent;box-shadow:none;border-color:transparent;color:var(--ink-soft);}
-button.btn.ghost:hover{color:var(--ink);text-decoration:underline;}
-button.btn.small{padding:4px 9px;font-size:.75rem;}
-button.btn.danger{color:var(--crit);}
+/* Botones de CoreUI con la paleta (CoreUI trae sus colores fijos: violeta y rojo
+   saturado). Relleno = acción principal; contorno = secundaria. El ":root"
+   es para ganarle a [data-coreui-theme="dark"] .btn-* de CoreUI. */
+:root .btn-primary,:root .btn-danger,:root .btn-success,:root .btn-warning{--cui-btn-color:var(--on-accent);--cui-btn-hover-color:var(--on-accent);--cui-btn-active-color:var(--on-accent);--cui-btn-disabled-color:var(--on-accent);}
+:root .btn-primary{--cui-btn-bg:var(--accent);--cui-btn-border-color:var(--accent);--cui-btn-hover-bg:var(--accent-ink);--cui-btn-hover-border-color:var(--accent-ink);--cui-btn-active-bg:var(--accent-ink);--cui-btn-active-border-color:var(--accent-ink);--cui-btn-disabled-bg:var(--accent);--cui-btn-disabled-border-color:var(--accent);}
+:root .btn-danger{--cui-btn-bg:var(--crit);--cui-btn-border-color:var(--crit);--cui-btn-hover-bg:color-mix(in srgb, var(--crit) 85%, var(--ink));--cui-btn-hover-border-color:var(--crit);--cui-btn-active-bg:color-mix(in srgb, var(--crit) 80%, var(--ink));--cui-btn-active-border-color:var(--crit);--cui-btn-disabled-bg:var(--crit);--cui-btn-disabled-border-color:var(--crit);}
+:root .btn-success{--cui-btn-bg:var(--ok);--cui-btn-border-color:var(--ok);--cui-btn-hover-bg:color-mix(in srgb, var(--ok) 85%, var(--ink));--cui-btn-hover-border-color:var(--ok);--cui-btn-active-bg:color-mix(in srgb, var(--ok) 80%, var(--ink));--cui-btn-disabled-bg:var(--ok);--cui-btn-disabled-border-color:var(--ok);}
+:root .btn-warning{--cui-btn-bg:var(--warn);--cui-btn-border-color:var(--warn);--cui-btn-hover-bg:color-mix(in srgb, var(--warn) 85%, var(--ink));--cui-btn-hover-border-color:var(--warn);--cui-btn-active-bg:color-mix(in srgb, var(--warn) 80%, var(--ink));--cui-btn-disabled-bg:var(--warn);--cui-btn-disabled-border-color:var(--warn);}
+:root .btn-outline-primary{--cui-btn-color:var(--accent-ink);--cui-btn-border-color:color-mix(in srgb, var(--accent) 55%, var(--line));--cui-btn-hover-color:var(--accent-ink);--cui-btn-hover-bg:var(--accent-soft);--cui-btn-hover-border-color:var(--accent);--cui-btn-active-color:var(--accent-ink);--cui-btn-active-bg:var(--accent-soft);--cui-btn-active-border-color:var(--accent);--cui-btn-disabled-color:var(--accent-ink);--cui-btn-disabled-border-color:var(--line);}
+:root .btn-outline-secondary{--cui-btn-color:var(--ink);--cui-btn-border-color:var(--line);--cui-btn-hover-color:var(--ink);--cui-btn-hover-bg:var(--paper);--cui-btn-hover-border-color:color-mix(in srgb, var(--ink) 30%, var(--line));--cui-btn-active-color:var(--ink);--cui-btn-active-bg:var(--line);--cui-btn-active-border-color:var(--line);--cui-btn-disabled-color:var(--ink-soft);--cui-btn-disabled-border-color:var(--line);background-color:var(--surface);}
+:root .btn-outline-danger{--cui-btn-color:var(--crit);--cui-btn-border-color:color-mix(in srgb, var(--crit) 45%, var(--line));--cui-btn-hover-color:var(--crit);--cui-btn-hover-bg:var(--crit-soft);--cui-btn-hover-border-color:var(--crit);--cui-btn-active-color:var(--crit);--cui-btn-active-bg:var(--crit-soft);--cui-btn-active-border-color:var(--crit);--cui-btn-disabled-color:var(--crit);}
+:root .btn-outline-success{--cui-btn-color:var(--ok);--cui-btn-border-color:color-mix(in srgb, var(--ok) 45%, var(--line));--cui-btn-hover-color:var(--ok);--cui-btn-hover-bg:var(--ok-soft);--cui-btn-hover-border-color:var(--ok);--cui-btn-active-color:var(--ok);--cui-btn-active-bg:var(--ok-soft);}
+:root .btn-outline-warning{--cui-btn-color:var(--warn);--cui-btn-border-color:color-mix(in srgb, var(--warn) 45%, var(--line));--cui-btn-hover-color:var(--warn);--cui-btn-hover-bg:var(--warn-soft);--cui-btn-hover-border-color:var(--warn);--cui-btn-active-color:var(--warn);--cui-btn-active-bg:var(--warn-soft);}
+:root .btn-ghost-secondary{--cui-btn-color:var(--ink-soft);--cui-btn-hover-color:var(--ink);--cui-btn-hover-bg:var(--line);--cui-btn-hover-border-color:transparent;--cui-btn-active-color:var(--ink);--cui-btn-active-bg:var(--line);--cui-btn-disabled-color:var(--ink-soft);}
+:root .btn-ghost-danger{--cui-btn-color:var(--crit);--cui-btn-hover-color:var(--crit);--cui-btn-hover-bg:var(--crit-soft);--cui-btn-hover-border-color:transparent;--cui-btn-active-color:var(--crit);--cui-btn-active-bg:var(--crit-soft);}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px;box-shadow:none;}
+/* (Las reglas "button.btn" de antes de CoreUI se sacaron: pisaban el color
+   de TODOS los botones de CoreUI y ningún botón principal se distinguía.) */
 
 .type-pill{display:inline-flex;align-items:center;gap:5px;font-size:.72rem;font-weight:600;letter-spacing:.03em;text-transform:uppercase;padding:2px 8px;border-radius:999px;}
 .type-civil{background:var(--civil-soft);color:var(--civil);}
@@ -259,7 +279,8 @@ button.btn.danger{color:var(--crit);}
 .kanban-col{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;min-height:120px;}
 .kanban-col h3{font-size:1.05rem;margin:0 0 10px;display:flex;justify-content:space-between;align-items:center;color:var(--ink-soft);}
 .kanban-col h3 .count{font-family:'IBM Plex Mono';font-size:.8rem;background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:1px 8px;}
-.card{background:var(--paper);border:1px solid var(--line);border-left:4px solid var(--civil);border-radius:8px;padding:10px 12px;margin-bottom:10px;box-shadow:var(--shadow);}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:10px;box-shadow:var(--shadow);}
+.card[class*="type-border-"]{border-left-width:3px;}
 .card.type-border-civil{border-left-color:var(--civil);}
 .card.type-border-electrico{border-left-color:var(--electrico);}
 .card.type-border-vial{border-left-color:var(--vial);}
@@ -304,8 +325,8 @@ table.projects tr:hover td{background:var(--paper);}
 .quick-actions{display:flex;gap:10px;flex-wrap:wrap;}
 .quick-action{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:.85rem;font-weight:500;text-decoration:none;cursor:pointer;box-shadow:var(--shadow);}
 .quick-action:hover{border-color:var(--accent);color:var(--accent-ink);}
-.kpi-card{transition:box-shadow .15s ease, transform .15s ease;}
-a:has(> .kpi-card):hover .kpi-card{box-shadow:var(--shadow-hover);transform:translateY(-1px);}
+.kpi-card{transition:box-shadow .15s ease;}
+a:has(> .kpi-card):hover .kpi-card{box-shadow:var(--shadow-hover);}
 .due-badge{white-space:nowrap;flex-shrink:0;}
 
 /* OJO: acá NO van reglas ".modal"/".modal-backdrop" propias — son los
@@ -317,8 +338,6 @@ a:has(> .kpi-card):hover .kpi-card{box-shadow:var(--shadow-hover);transform:tran
    centrado/tamaño (size="lg", alignment="center") por su cuenta. */
 .form-error{color:var(--crit);font-size:.8rem;margin:0 0 12px;}
 
-.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:8px 16px;border-radius:999px;font-size:.82rem;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .2s ease;z-index:60;}
-.toast.show{opacity:1;}
 .save-state{font-size:.72rem;color:var(--ink-soft);}
 
 footer.credit{margin-top:30px;color:var(--ink-soft);font-size:.72rem;text-align:center;}
@@ -458,9 +477,6 @@ a{color:inherit;}
 .gantt_row,.gantt_cell{background:var(--surface);color:var(--ink);}
 .gantt_row.odd,.gantt_task_row.odd{background:var(--paper);}
 
-/* Three.js skyline (Dashboard) */
-.of-skyline{height:320px;border:1px solid var(--line);border-radius:8px;overflow:hidden;cursor:grab;}
-.of-skyline canvas{display:block;}
 
 /* Wizard "Nuevo proyecto" */
 .wizard-steps{font-size:.78rem;color:var(--ink-soft);}
@@ -476,7 +492,7 @@ a{color:inherit;}
 
 /* Módulos de acceso rápido en el Dashboard (ej. "Todas las obras") */
 .home-module{display:flex;align-items:center;gap:16px;width:100%;padding:20px 22px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);text-decoration:none;box-shadow:var(--shadow);transition:border-color .15s ease, transform .15s ease;}
-.home-module:hover{border-color:var(--accent);transform:translateY(-1px);color:var(--ink);}
+.home-module:hover{border-color:var(--accent);color:var(--ink);}
 .home-module-title{font-family:'Barlow Condensed';font-weight:700;font-size:1.3rem;display:block;}
 .home-module-sub{font-size:.8rem;color:var(--ink-soft);display:block;}
 
@@ -486,7 +502,7 @@ a{color:inherit;}
 .city-chip{display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);color:var(--accent-ink);border-radius:999px;padding:3px 6px 3px 12px;font-size:.8rem;}
 .city-chip button{appearance:none;border:none;background:none;color:inherit;font-size:1rem;line-height:1;cursor:pointer;padding:0 4px;border-radius:999px;}
 .city-chip button:hover{background:rgba(0,0,0,.08);}
-.city-dropdown{position:absolute;z-index:20;top:calc(100% + 4px);left:0;right:0;max-height:280px;overflow-y:auto;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);padding:6px 0;}
+.city-dropdown{position:absolute;z-index:20;top:calc(100% + 4px);left:0;right:0;max-height:280px;overflow-y:auto;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow-pop);padding:6px 0;}
 .city-dropdown-empty{padding:10px 14px;color:var(--ink-soft);font-size:.85rem;}
 .city-dropdown-group-label{padding:6px 14px 2px;font-size:.7rem;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-soft);}
 .city-dropdown-item{display:flex;align-items:center;gap:8px;padding:5px 14px;font-size:.85rem;cursor:pointer;}
@@ -505,12 +521,26 @@ a{color:inherit;}
 
 /* Ejecución agrupada por rubro (ficha de la obra, app/project/[id]/page.tsx) */
 .rubro-summary-card{cursor:pointer;transition:border-color .15s ease, transform .15s ease;}
-.rubro-summary-card:hover{border-color:var(--accent);transform:translateY(-1px);}
+.rubro-summary-card:hover{border-color:var(--accent);}
 
 /* SweetAlert2 con la paleta de la app (lib/ui/alerts.ts) */
 .of-swal{background:var(--surface,#fff);color:var(--ink,#2a2622);border-radius:12px;font-family:'IBM Plex Sans',system-ui,sans-serif;}
 .of-swal .swal2-title{font-family:'Barlow Condensed',sans-serif;font-weight:700;}
 .of-swal .swal2-html-container{color:var(--ink-soft,#6f675e);}
+.of-swal{border:1px solid var(--line);}
+.of-swal .swal2-icon{transform:scale(.8);margin-bottom:0;}
+.of-swal .swal2-icon.swal2-warning{border-color:var(--warn);color:var(--warn);}
+.of-swal .swal2-icon.swal2-question,.of-swal .swal2-icon.swal2-info{border-color:var(--accent);color:var(--accent);}
+.of-swal .swal2-icon.swal2-error{border-color:var(--crit);color:var(--crit);}
+.of-swal .swal2-icon.swal2-error [class^=swal2-x-mark-line]{background-color:var(--crit);}
+.of-swal .swal2-icon.swal2-success{border-color:var(--ok);color:var(--ok);}
+.of-swal .swal2-icon.swal2-success [class^=swal2-success-line]{background-color:var(--ok);}
+.of-swal .swal2-icon.swal2-success .swal2-success-ring{border-color:color-mix(in srgb, var(--ok) 35%, transparent);}
+.of-swal .swal2-loader{border-color:var(--accent) transparent var(--accent) transparent;}
+.of-swal-error{background:var(--crit-soft) !important;color:var(--crit) !important;font-size:.9rem;}
+.of-swal-error::before{background-color:var(--crit) !important;}
+.swal2-container.swal2-backdrop-show{background:rgba(34,31,27,.45);}
+.swal2-popup.swal2-toast.of-swal{box-shadow:var(--shadow-pop);}
 
 /* ==========================================================================
    Memby — asistente de WhatsApp (app/agente-whatsapp). Misma paleta apagada;
@@ -764,3 +794,65 @@ a{color:inherit;}
 .of-th-sort.on .arr{opacity:1;}
 @media (max-width: 575px){.of-map-canvas{height:340px;}}
 .of-ptable-name{min-width:190px;}
+
+/* ───────── Componentes base (components/ui) ───────── */
+/* Select2 (tema Bootstrap 5) con la paleta: mismo borde, fondo y foco que los inputs. */
+.of-select2 .select2-container--bootstrap-5 .select2-selection{background-color:var(--cui-body-bg);border-color:var(--cui-border-color);color:var(--ink);min-height:38px;}
+.of-select2 .select2-container--bootstrap-5.select2-container--focus .select2-selection,
+.of-select2 .select2-container--bootstrap-5.select2-container--open .select2-selection{border-color:var(--accent);box-shadow:0 0 0 .2rem color-mix(in srgb, var(--accent) 25%, transparent);}
+.of-select2 .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered{color:var(--ink);}
+.of-select2 .select2-container--bootstrap-5 .select2-selection--single .select2-selection__placeholder{color:var(--ink-soft);}
+.of-select2 .is-invalid + .select2-container--bootstrap-5 .select2-selection{border-color:var(--crit);}
+.select2-container--bootstrap-5 .select2-dropdown{background:var(--surface);border-color:var(--line);color:var(--ink);box-shadow:var(--shadow-pop);}
+.select2-container--bootstrap-5 .select2-dropdown .select2-search .select2-search__field{background:var(--paper);border-color:var(--line);color:var(--ink);}
+.select2-container--bootstrap-5 .select2-dropdown .select2-search .select2-search__field:focus{border-color:var(--accent);box-shadow:0 0 0 .2rem color-mix(in srgb, var(--accent) 25%, transparent);}
+.select2-container--bootstrap-5 .select2-dropdown .select2-results__options .select2-results__option{color:var(--ink);}
+.select2-container--bootstrap-5 .select2-dropdown .select2-results__options .select2-results__option.select2-results__option--highlighted{background:var(--accent-soft);color:var(--accent-ink);}
+.select2-container--bootstrap-5 .select2-dropdown .select2-results__options .select2-results__option.select2-results__option--selected{background:var(--accent);color:var(--surface);}
+.select2-container--bootstrap-5 .select2-dropdown .select2-results__options .select2-results__option[role=group] .select2-results__group{color:var(--ink-soft);font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;}
+.select2-container--bootstrap-5 .select2-dropdown .select2-results__options .select2-results__option.select2-results__message{color:var(--ink-soft);}
+
+/* DataTables (Bootstrap 5) con la paleta. */
+.of-dtable{--cui-table-bg:transparent;font-size:.88rem;}
+.of-dtable thead th{font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft);border-bottom:1.5px solid var(--line) !important;white-space:nowrap;}
+.of-dtable td{font-variant-numeric:tabular-nums;}
+div.dt-container .dt-search input,div.dt-container .dt-length select{background-color:var(--cui-body-bg);border-color:var(--line);color:var(--ink);}
+div.dt-container .dt-info,div.dt-container .dt-length label,div.dt-container .dt-search label{color:var(--ink-soft);font-size:.85rem;}
+div.dt-container .pagination{--cui-pagination-active-bg:var(--accent);--cui-pagination-active-border-color:var(--accent);--cui-pagination-color:var(--accent-ink);--cui-pagination-bg:var(--surface);--cui-pagination-border-color:var(--line);}
+
+/* Visor de fotos (yet-another-react-lightbox): fondo cálido, no negro puro. */
+.of-viewer{--yarl__color_backdrop:rgba(28,26,23,.94);--yarl__slide_title_color:#efece4;--yarl__color_button:rgba(239,236,228,.85);--yarl__color_button_active:#fff;}
+
+/* Estado vacío: ícono + qué falta + la acción para resolverlo. */
+.of-empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:28px 16px;text-align:center;color:var(--accent);
+  border:1px dashed var(--line);border-radius:10px;
+  background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);background-size:16px 16px;}
+.of-empty-title{margin:0 0 4px;color:var(--ink);font-weight:600;}
+.of-empty-sub{margin:-4px 0 6px;color:var(--ink-soft);font-size:.88rem;}
+
+/* Miniatura que abre el visor. */
+.of-thumb-btn{padding:0;border:0;background:none;cursor:zoom-in;border-radius:6px;display:inline-block;}
+.of-thumb-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.of-dropzone-icon{color:var(--accent);}
+a.of-dropzone-file-icon{color:var(--crit);}
+
+/* "Hoy · Efectivo · cambiar" (datos con valor por defecto, a demanda). */
+.of-more-toggle{display:inline-flex;align-items:center;gap:6px;border:0;background:none;padding:2px 0;color:var(--ink);font-size:.9rem;cursor:pointer;}
+.of-more-toggle .of-more-hint{color:var(--accent-ink);text-decoration:underline;}
+
+/* Soltar un comprobante en cualquier pantalla (AppShell). */
+.of-drop-overlay{position:fixed;inset:0;z-index:1080;display:flex;align-items:center;justify-content:center;pointer-events:none;
+  background:color-mix(in srgb, var(--paper) 80%, transparent);}
+.of-drop-card{display:flex;flex-direction:column;align-items:center;gap:6px;padding:28px 40px;border:2px dashed var(--accent);border-radius:14px;
+  background:var(--surface);color:var(--accent-ink);box-shadow:var(--shadow-pop);}
+.of-drop-card strong{font-family:'Barlow Condensed',system-ui,sans-serif;font-size:1.6rem;color:var(--ink);}
+.of-drop-card span{color:var(--ink-soft);font-size:.9rem;}
+
+/* Barra superior en un solo renglón: la ruta se recorta (con "…") antes que
+   los botones, que no se mueven de lugar entre pantallas. */
+.of-header > .container-fluid{flex-wrap:nowrap;gap:8px;}
+.of-header .breadcrumb{flex-wrap:nowrap;min-width:0;overflow:hidden;white-space:nowrap;}
+.of-header .breadcrumb-item{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.of-header .breadcrumb-item:not(:last-child){flex:none;max-width:14ch;}
+.of-header .d-flex.gap-2{flex:none;}
+@media (max-width: 1399px){.of-search-btn{min-width:0;}.of-search-btn .t{display:none;}}

@@ -10,9 +10,7 @@ import {
 import CIcon from "@coreui/icons-react";
 import { cilPencil, cilTrash, cilLinkBroken, cilPlus } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
-import ConfirmDialog from "@/components/ConfirmDialog";
-import Toast from "@/components/Toast";
-import { useToast } from "@/lib/useToast";
+import { confirmarAccion, notificar } from "@/lib/ui/alerts";
 import type { SitioDTO, SitioInput, ProjectDTO, ProjectType, ProjectStatus } from "@/lib/types";
 
 const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
@@ -46,7 +44,6 @@ function typeLabel(p: { type: ProjectType; customType?: string | null }): string
 export default function SitioDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const { toast, showToast } = useToast();
 
   const [sitio, setSitio] = useState<SitioDTO | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,16 +52,11 @@ export default function SitioDetailPage() {
   const [availableProjects, setAvailableProjects] = useState<ProjectDTO[]>([]);
   const [addingId, setAddingId] = useState("");
   const [addBusy, setAddBusy] = useState(false);
-  const [removeTarget, setRemoveTarget] = useState<ProjectDTO | null>(null);
-  const [removeBusy, setRemoveBusy] = useState(false);
 
   const [showEdit, setShowEdit] = useState(false);
   const [editForm, setEditForm] = useState<SitioInput>({ nombre: "", responsable: "", notas: "" });
   const [editBusy, setEditBusy] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
-
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleteBusy, setDeleteBusy] = useState(false);
 
   function load() {
     setLoading(true);
@@ -101,28 +93,33 @@ export default function SitioDetailPage() {
       setAddingId("");
       load();
     } catch {
-      showToast("No se pudo agregar la obra al sitio.");
+      notificar("No se pudo agregar la obra al sitio.", "error");
     } finally {
       setAddBusy(false);
     }
   }
 
   async function handleRemove(p: ProjectDTO) {
-    setRemoveBusy(true);
-    try {
-      const res = await fetch(`/api/projects/${p.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sitioNombre: null }),
-      });
-      if (!res.ok) throw new Error();
-      setRemoveTarget(null);
-      load();
-    } catch {
-      showToast("No se pudo quitar la obra del sitio.");
-    } finally {
-      setRemoveBusy(false);
-    }
+    if (!sitio) return;
+    const ok = await confirmarAccion({
+      titulo: "Quitar del sitio",
+      texto: `¿Quitar "${p.name}" de "${sitio.nombre}"? La obra sigue existiendo con todo su historial, solo deja de estar agrupada acá.`,
+      confirmar: "Quitar",
+      peligro: false,
+      accion: async () => {
+        try {
+          const res = await fetch(`/api/projects/${p.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sitioNombre: null }),
+          });
+          if (!res.ok) throw new Error();
+        } catch {
+          throw new Error("No se pudo quitar la obra del sitio.");
+        }
+      },
+    });
+    if (ok) load();
   }
 
   function openEdit() {
@@ -160,15 +157,22 @@ export default function SitioDetailPage() {
   }
 
   async function handleDelete() {
-    setDeleteBusy(true);
-    try {
-      const res = await fetch(`/api/sitios/${params.id}`, { method: "DELETE" });
-      if (!res.ok && res.status !== 204) throw new Error();
-      router.push("/sitios");
-    } catch {
-      showToast("No se pudo eliminar el sitio.");
-      setDeleteBusy(false);
-    }
+    if (!sitio) return;
+    const ok = await confirmarAccion({
+      titulo: "Eliminar sitio",
+      texto: `¿Eliminar "${sitio.nombre}"? Sus ${sitio.frentes.length} obra(s) NO se borran — quedan sueltas, sin sitio asignado.`,
+      confirmar: "Eliminar",
+      peligro: true,
+      accion: async () => {
+        try {
+          const res = await fetch(`/api/sitios/${params.id}`, { method: "DELETE" });
+          if (!res.ok && res.status !== 204) throw new Error();
+        } catch {
+          throw new Error("No se pudo eliminar el sitio.");
+        }
+      },
+    });
+    if (ok) router.push("/sitios");
   }
 
   if (loading) return <AppShell crumbs={[{ label: "Sitios", href: "/sitios" }]}><p className="state-message">Cargando…</p></AppShell>;
@@ -188,7 +192,7 @@ export default function SitioDetailPage() {
             <CButton size="sm" color="secondary" variant="outline" onClick={openEdit}>
               <CIcon icon={cilPencil} className="me-1" /> Editar
             </CButton>
-            <CButton size="sm" color="danger" variant="outline" onClick={() => setConfirmDelete(true)}>
+            <CButton size="sm" color="danger" variant="outline" onClick={handleDelete}>
               <CIcon icon={cilTrash} className="me-1" /> Eliminar sitio
             </CButton>
           </div>
@@ -226,7 +230,7 @@ export default function SitioDetailPage() {
                     <span className="mono">{fmtMoney(p.budget)} ppto · {fmtMoney(p.spent)} ejecutado</span>
                   </div>
                 </div>
-                <CButton size="sm" color="secondary" variant="outline" onClick={() => setRemoveTarget(p)}>
+                <CButton size="sm" color="secondary" variant="outline" onClick={() => handleRemove(p)}>
                   <CIcon icon={cilLinkBroken} className="me-1" /> Quitar del sitio
                 </CButton>
               </div>
@@ -286,28 +290,6 @@ export default function SitioDetailPage() {
           </CForm>
         </CModal>
       )}
-
-      <ConfirmDialog
-        open={Boolean(removeTarget)}
-        title="Quitar del sitio"
-        message={`¿Quitar "${removeTarget?.name}" de "${sitio.nombre}"? La obra sigue existiendo con todo su historial, solo deja de estar agrupada acá.`}
-        confirmLabel="Quitar"
-        confirmColor="primary"
-        busy={removeBusy}
-        onConfirm={() => removeTarget && handleRemove(removeTarget)}
-        onCancel={() => setRemoveTarget(null)}
-      />
-
-      <ConfirmDialog
-        open={confirmDelete}
-        title="Eliminar sitio"
-        message={`¿Eliminar "${sitio.nombre}"? Sus ${sitio.frentes.length} obra(s) NO se borran — quedan sueltas, sin sitio asignado.`}
-        busy={deleteBusy}
-        onConfirm={handleDelete}
-        onCancel={() => setConfirmDelete(false)}
-      />
-
-      {toast && <Toast message={toast} />}
     </AppShell>
   );
 }

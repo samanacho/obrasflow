@@ -11,9 +11,7 @@ import {
 import CIcon from "@coreui/icons-react";
 import { cilPlus, cilPencil, cilTrash } from "@coreui/icons";
 import AppShell from "@/components/AppShell";
-import ConfirmDialog from "@/components/ConfirmDialog";
-import Toast from "@/components/Toast";
-import { useToast } from "@/lib/useToast";
+import { confirmarAccion } from "@/lib/ui/alerts";
 import { LOT_STATUS_ORDER, LOT_STATUS_LABEL, LOT_STATUS_COLOR, TEST_TIPOS, TEST_RESULTADOS, TEST_RESULTADO_COLOR } from "@/lib/poleFields";
 import { fmtGs } from "@/lib/currency";
 import { fechaFiscalizacionEstimada } from "@/lib/factoryCapacity";
@@ -39,24 +37,19 @@ export default function PoleLotDetail({ params }: { params: { id: string } }) {
   const [specs, setSpecs] = useState<PoleSpecDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { toast, showToast } = useToast();
 
   // Edición del lote
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState<PoleLotInput | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Ensayos
   const [testForm, setTestForm] = useState<PoleQualityTestInput>(EMPTY_TEST);
   const [showTestForm, setShowTestForm] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
   const [savingTest, setSavingTest] = useState(false);
-  const [confirmTestId, setConfirmTestId] = useState<string | null>(null);
-  const [deletingTest, setDeletingTest] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -118,16 +111,24 @@ export default function PoleLotDetail({ params }: { params: { id: string } }) {
   }
 
   async function handleDelete() {
-    setDeleting(true);
-    setDeleteError(null);
-    try {
-      const res = await fetch(`/api/postes/lots/${id}`, { method: "DELETE" });
-      if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
-      router.push("/postes?tab=lotes");
-    } catch {
-      setDeleting(false);
-      setDeleteError("No se pudo eliminar el lote. Probá de nuevo.");
-    }
+    if (!lot) return;
+    const ok = await confirmarAccion({
+      titulo: "Eliminar lote",
+      texto: `¿Eliminar el lote "${lot.codigo}"? Esta acción no se puede deshacer.`,
+      confirmar: "Eliminar",
+      peligro: true,
+      accion: async () => {
+        setDeleting(true);
+        try {
+          const res = await fetch(`/api/postes/lots/${id}`, { method: "DELETE" });
+          if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
+        } catch {
+          setDeleting(false);
+          throw new Error("No se pudo eliminar el lote. Probá de nuevo.");
+        }
+      },
+    });
+    if (ok) router.push("/postes?tab=lotes");
   }
 
   async function handleTestSubmit(e: React.FormEvent) {
@@ -157,17 +158,21 @@ export default function PoleLotDetail({ params }: { params: { id: string } }) {
   }
 
   async function performDeleteTest(testId: string) {
-    setDeletingTest(true);
-    try {
-      const res = await fetch(`/api/postes/tests/${testId}`, { method: "DELETE" });
-      if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
-      setConfirmTestId(null);
-      load();
-    } catch {
-      showToast("No se pudo eliminar el ensayo.");
-    } finally {
-      setDeletingTest(false);
-    }
+    const ok = await confirmarAccion({
+      titulo: "Eliminar ensayo",
+      texto: "¿Eliminar este ensayo? Esta acción no se puede deshacer.",
+      confirmar: "Eliminar",
+      peligro: true,
+      accion: async () => {
+        try {
+          const res = await fetch(`/api/postes/tests/${testId}`, { method: "DELETE" });
+          if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
+        } catch {
+          throw new Error("No se pudo eliminar el ensayo.");
+        }
+      },
+    });
+    if (ok) load();
   }
 
   if (loading) return <AppShell crumbs={[{ label: "Fábrica de Postes", href: "/postes" }]}><p className="state-message">Cargando…</p></AppShell>;
@@ -183,7 +188,7 @@ export default function PoleLotDetail({ params }: { params: { id: string } }) {
           <CButton color="secondary" variant="outline" size="sm" onClick={openEdit}>
             <CIcon icon={cilPencil} className="me-1" /> Editar
           </CButton>
-          <CButton color="danger" variant="outline" size="sm" onClick={() => { setDeleteError(null); setConfirmDeleteOpen(true); }} disabled={deleting}>
+          <CButton color="danger" variant="outline" size="sm" onClick={handleDelete} disabled={deleting}>
             <CIcon icon={cilTrash} className="me-1" /> {deleting ? "Eliminando…" : "Eliminar"}
           </CButton>
         </>
@@ -331,7 +336,7 @@ export default function PoleLotDetail({ params }: { params: { id: string } }) {
                 </div>
                 {t.observaciones && <div className="item-row-notes">{t.observaciones}</div>}
                 <div className="item-row-actions">
-                  <CButton size="sm" color="danger" variant="outline" onClick={() => setConfirmTestId(t.id)}><CIcon icon={cilTrash} size="sm" /></CButton>
+                  <CButton size="sm" color="danger" variant="outline" onClick={() => performDeleteTest(t.id)}><CIcon icon={cilTrash} size="sm" /></CButton>
                 </div>
               </CListGroupItem>
             ))}
@@ -479,25 +484,6 @@ export default function PoleLotDetail({ params }: { params: { id: string } }) {
           </CForm>
         </CModal>
       )}
-
-      <ConfirmDialog
-        open={confirmDeleteOpen}
-        title="Eliminar lote"
-        message={`¿Eliminar el lote "${lot.codigo}"? Esta acción no se puede deshacer.`}
-        busy={deleting}
-        error={deleteError}
-        onConfirm={handleDelete}
-        onCancel={() => setConfirmDeleteOpen(false)}
-      />
-      <ConfirmDialog
-        open={confirmTestId !== null}
-        title="Eliminar ensayo"
-        message="¿Eliminar este ensayo? Esta acción no se puede deshacer."
-        busy={deletingTest}
-        onConfirm={() => confirmTestId && performDeleteTest(confirmTestId)}
-        onCancel={() => setConfirmTestId(null)}
-      />
-      <Toast message={toast} />
     </AppShell>
   );
 }
