@@ -15,6 +15,7 @@ export function serializeProject(p: Project & { sitio?: { nombre: string; respon
     id: p.id,
     name: p.name,
     reference: p.reference,
+    code: p.code,
     sitioId: p.sitioId,
     sitioNombre: p.sitio?.nombre ?? null,
     sitioResponsable: p.sitio?.responsable ?? null,

@@ -8,6 +8,8 @@ export interface ProjectDTO {
   name: string;
   /** Referencia corta para distinguir obras que se ven idénticas en las tarjetas (mismo tipo/ciudad/responsable/presupuesto). */
   reference: string | null;
+  /** Código único para emparejar la obra con Residente de Obra (su obra.codigo). null si no se integra. */
+  code: string | null;
   /** Sitio al que pertenece esta obra como frente — null si es un sitio en sí misma (la inmensa mayoría). Ver lib/types.ts SitioDTO. */
   sitioId: string | null;
   sitioNombre: string | null;
@@ -35,6 +37,8 @@ export interface ProjectDTO {
 export interface ProjectInput {
   name: string;
   reference?: string | null;
+  /** undefined = no cambiarlo; null o "" = quitarlo. */
+  code?: string | null;
   /** Nombre del Sitio al que pertenece esta obra (texto libre, con sugerencias de sitios ya cargados) — el servidor busca un Sitio existente con ese nombre o crea uno nuevo. Vacío/null = sin sitio. */
   sitioNombre?: string | null;
   type: ProjectType;

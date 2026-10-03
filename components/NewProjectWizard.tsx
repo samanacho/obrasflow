@@ -38,6 +38,7 @@ const STATUS_ORDER: ProjectStatus[] = ["planificado", "en_curso", "pausado", "fi
 const EMPTY_FORM: ProjectInput = {
   name: "",
   reference: "",
+  code: "",
   sitioNombre: "",
   type: "civil",
   customType: "",
@@ -59,6 +60,7 @@ function toForm(project: ProjectDTO): ProjectInput {
   return {
     name: project.name,
     reference: project.reference ?? "",
+    code: project.code ?? "",
     sitioNombre: project.sitioNombre ?? "",
     type: project.type,
     customType: project.customType ?? "",
@@ -267,6 +269,16 @@ function StepGeneral({
           onChange={(e) => setForm({ ...form, reference: e.target.value })}
         />
         <div className="form-hint mb-0">Para distinguir obras que de otro modo se ven idénticas (mismo tipo, ciudad, responsable y hasta presupuesto).</div>
+      </div>
+      <div className="mb-3">
+        <CFormLabel>Código de obra (opcional)</CFormLabel>
+        <CFormInput
+          placeholder="Ej. OF-2026-001"
+          maxLength={40}
+          value={form.code ?? ""}
+          onChange={(e) => setForm({ ...form, code: e.target.value })}
+        />
+        <div className="form-hint mb-0">Único por obra. Es el mismo código que se usa en Residente de Obra para que sus partes diarios lleguen solos a esta obra.</div>
       </div>
       <div className="mb-3">
         <CFormLabel>Sitio (opcional)</CFormLabel>

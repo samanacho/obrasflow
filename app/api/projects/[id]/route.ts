@@ -3,7 +3,9 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { serializeProject } from "@/lib/serialize";
 import { parseProjectInput, ValidationError } from "@/lib/validate";
+import { reprocessPending } from "@/lib/integraciones/residente/process";
 import { resolveSitioId } from "@/lib/sitios";
+import { APP_SOURCE, diffProject, logChanges } from "@/lib/history";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +14,12 @@ interface Params {
 }
 
 const SITIO_INCLUDE = { sitio: { select: { nombre: true, responsable: true } } } as const;
+
+/** Anota en el historial de la obra cada campo que cambió (nunca tira error). */
+async function logFieldChanges(projectId: string, before: Parameters<typeof diffProject>[0], after: Parameters<typeof diffProject>[1]) {
+  const diffs = diffProject(before, after);
+  await logChanges(prisma, projectId, diffs.map((d) => ({ action: "campo" as const, ...d })), APP_SOURCE);
+}
 
 export async function GET(_req: NextRequest, { params }: Params) {
   const project = await prisma.project.findUnique({ where: { id: params.id }, include: SITIO_INCLUDE });
@@ -25,6 +33,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
     const body = await req.json();
     const { sitioNombre, ...data } = parseProjectInput(body);
     const sitioId = await resolveSitioId(sitioNombre ?? null, data.manager);
+    // Versión anterior, para anotar en el historial qué cambió.
+    const before = await prisma.project.findUnique({ where: { id: params.id } });
     const updated = await prisma.project.update({
       where: { id: params.id },
       data: {
@@ -40,10 +50,16 @@ export async function PUT(req: NextRequest, { params }: Params) {
       },
       include: SITIO_INCLUDE,
     });
+    if (before) await logFieldChanges(params.id, before, updated);
+    // Si se le acaba de poner el código, aplicar los partes de Residente de Obra que esperaban esta obra.
+    if (updated.code && updated.code !== before?.code) await reprocessPending();
     return NextResponse.json(serializeProject(updated));
   } catch (err) {
     if (err instanceof ValidationError) {
       return NextResponse.json({ error: err.message }, { status: 400 });
+    }
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return NextResponse.json({ error: "Ya hay otra obra con ese código de obra." }, { status: 409 });
     }
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
       return NextResponse.json({ error: "Proyecto no encontrado." }, { status: 404 });
@@ -96,7 +112,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       data.sitioId = await resolveSitioId(body.sitioNombre as string | null, current.manager);
     }
 
+    // Versión anterior, para anotar en el historial qué cambió.
+    const before = await prisma.project.findUnique({ where: { id: params.id } });
     const updated = await prisma.project.update({ where: { id: params.id }, data, include: SITIO_INCLUDE });
+    if (before) await logFieldChanges(params.id, before, updated);
+    // Si se le acaba de poner el código, aplicar los partes de Residente de Obra que esperaban esta obra.
+    if (updated.code && updated.code !== before?.code) await reprocessPending();
     return NextResponse.json(serializeProject(updated));
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {

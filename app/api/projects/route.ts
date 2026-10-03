@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { serializeProject } from "@/lib/serialize";
 import { parseProjectInput, ValidationError } from "@/lib/validate";
+import { reprocessPending } from "@/lib/integraciones/residente/process";
 import { resolveSitioId } from "@/lib/sitios";
 
 export const dynamic = "force-dynamic";
@@ -31,10 +32,15 @@ export async function POST(req: NextRequest) {
       },
       include: { sitio: { select: { nombre: true, responsable: true } } },
     });
+    // Partes de Residente de Obra que llegaron antes de que existiera esta obra.
+    if (created.code) await reprocessPending();
     return NextResponse.json(serializeProject(created), { status: 201 });
   } catch (err) {
     if (err instanceof ValidationError) {
       return NextResponse.json({ error: err.message }, { status: 400 });
+    }
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return NextResponse.json({ error: "Ya hay otra obra con ese código de obra." }, { status: 409 });
     }
     console.error(err);
     return NextResponse.json({ error: "No se pudo crear el proyecto." }, { status: 500 });

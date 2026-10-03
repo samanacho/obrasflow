@@ -19,6 +19,15 @@ export function parseProjectInput(body: unknown): ProjectInput {
 
   const reference = String(b.reference ?? "").trim().slice(0, 120) || null;
   const sitioNombre = String(b.sitioNombre ?? "").trim().slice(0, 120) || null;
+  // Código para emparejar con Residente de Obra. Si el pedido no lo trae, no
+  // se toca (undefined) — así un formulario viejo no borra el ya cargado.
+  let code: string | null | undefined;
+  if ("code" in b) {
+    code = String(b.code ?? "").trim() || null;
+    if (code && !/^[A-Za-z0-9._\/-]{1,40}$/.test(code)) {
+      throw new ValidationError("El código de obra solo puede tener letras, números, punto, guion, barra o guion bajo (hasta 40).");
+    }
+  }
 
   const type = String(b.type ?? "");
   if (!TYPES.includes(type)) throw new ValidationError(`Tipo inválido: "${type}".`);
@@ -64,6 +73,7 @@ export function parseProjectInput(body: unknown): ProjectInput {
   return {
     name,
     reference,
+    code,
     sitioNombre,
     type: type as ProjectInput["type"],
     customType: type === "otro" ? customType : null,
