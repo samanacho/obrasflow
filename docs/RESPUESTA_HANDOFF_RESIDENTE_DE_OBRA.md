@@ -78,6 +78,42 @@ Headers: X-Signature: sha256=<HMAC del cuerpo>, X-Event: parte.cerrado, X-Delive
 - Como respaldo, un cron en Vercel puede consultar la API una vez por hora
   para traer lo que se haya perdido.
 
+### Formato que ya acepta nuestro receptor (ya construido y probado)
+
+Firma: `X-Signature: sha256=<hex>` = HMAC-SHA256 del cuerpo crudo con el
+secreto compartido. Si el cuerpo trae `parte`, lo guardamos directo; si trae
+solo `parte_id`, lo pedimos a su API.
+
+```json
+{
+  "id": "evento-uuid",
+  "event": "parte.cerrado",
+  "created_at": "2026-10-03T19:00:00Z",
+  "data": {
+    "obra": { "codigo": "OF-2026-001" },
+    "parte": {
+      "id": "parte-uuid",
+      "fecha": "2026-10-03",
+      "clima": "Soleado, 31 °C",
+      "personal": 12,
+      "trabajo": "Hormigonado de losa del 2º piso, sector B.",
+      "dotacion": [{ "subcontratista": "Electricidad Gómez", "cantidad": 3 }],
+      "avance": [{ "item": "Losa 2º piso", "cantidad": 45, "unidad": "m²" }],
+      "fotos": 8,
+      "url": "https://<su-app>/partes/parte-uuid",
+      "cerrado_por": "Nombre del residente"
+    }
+  }
+}
+```
+
+Respuestas: `200 {"ok":true,"estado":"procesado"}`; `200` con `"estado":"sin_obra"`
+si todavía no tenemos esa obra (lo guardamos y se aplica solo cuando le
+cargamos el código); `200 {"duplicado":true}` si ya recibimos ese `id`;
+`401` firma inválida; `400` cuerpo inválido. Reenviar el mismo `parte.id`
+actualiza el parte, no lo duplica. Los campos que no conozcamos se guardan
+igual (el parte crudo queda guardado).
+
 ## 3. Stack
 
 | Capa | ObrasFlow |

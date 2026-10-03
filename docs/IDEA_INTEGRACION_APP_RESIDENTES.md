@@ -81,9 +81,11 @@ Prueba chica propuesta por ellos (y aceptada): **obras y partes diarios de una s
 - [x] Mapear qué módulos se superponen con ObrasFlow (sección 4 de la respuesta).
 - [x] Definir un piloto chico: obras y partes diarios de una sola obra, un solo sentido.
 - [ ] Enviar la respuesta al equipo de Residente de Obra y acordar cuerpo del evento, firma y secreto.
-- [ ] ObrasFlow: agregar `Project.code` (único) y `ProjectItem.externalId/externalSource`.
-- [ ] ObrasFlow: receptor de webhook `/api/integraciones/residente-de-obra/webhook` + simulador con datos de prueba.
-- [ ] ObrasFlow: pestaña de partes recibidos (solo lectura) en la ficha de obra.
+- [x] ObrasFlow: agregar `Project.code` (único, en el formulario de la obra) y `ProjectItem.externalId/externalSource` (2026-10-03).
+- [x] ObrasFlow: receptor de webhook `/api/integraciones/residente-de-obra/webhook` + simulador `scripts/simular-webhook-residente.mjs` + tabla `IntegrationEvent` (deduplica y guarda lo pendiente) (2026-10-03).
+- [x] ObrasFlow: los partes recibidos aparecen en "Parte Diario" de la obra con la etiqueta "Residente de Obra", de solo lectura (2026-10-03).
+- [ ] Subir a producción y cargar `RESIDENTE_WEBHOOK_SECRET` en Vercel (cuando ellos tengan el webhook).
+- [ ] Cron de respaldo que consulte su API (cuando exista).
 - [ ] Crear el grupo de WhatsApp exclusivo de "Pedidos de compra" y acordar el formato del mensaje con obra.
 - [ ] Diseñar el módulo de Compras en ObrasFlow: pedido → aprobación → pago → factura, vinculado a ítems del presupuesto.
 - [ ] Cargar presupuestos con lista de materiales y precio por ítem, para poder comparar.
