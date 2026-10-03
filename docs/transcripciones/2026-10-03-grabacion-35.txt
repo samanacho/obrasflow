@@ -1,0 +1,157 @@
+# duracion: 360s
+[00:00] ¿Qué me iba a preguntar?
+[00:04] Tener un registro de compras, unas buenas prácticas que yo considero
+[00:10] es no hace falta tener un departamento, lo ideal sería tener un departamento de compras, pero si es que no
+[00:16] alguien tiene que igual hacer, alguien si o si se encarga de las compras, de aprobar para ese compre, vos dos
+[00:23] Yo quiero que vos sepas que la empresa de la que estamos hablando ahora mismo
+[00:28] consta de
+[00:30] dos personas
+[00:31] bueno la contadora y yo
+[00:33] yo soy el dueño y yo soy el todo ahora mismo
+[00:36] y vos recibís, vos aprobás los pagos entonces
+[00:38] yo aprobo los pagos
+[00:39] te ajustan o las facturas
+[00:42] te ajustan en qué sentido?
+[00:43] te ajustan las facturas
+[00:44] y las facturas me hacen llegar cuando se puede porque de repente me hacen un pedido
+[00:49] de materiales desde obra que ella es muy urgente
+[00:54] y me piden que haga la transferencia a
+[00:56] las casas materiales
+[00:58] y las facturas recién me llegan después
+[01:00] bueno entonces
+[01:02] te voy a recomendar un paso ahora
+[01:06] tu dios va a ser que por más de que él te esté pidiendo eso
+[01:11] tener un registro oficial de lo que se pide
+[01:15] esto nosotros le implementamos ahora al profe
+[01:20] que es
+[01:22] yo no tiene
+[01:24] ahí en GCA nos tienen un
+[01:26] tratar de ser breve en el sentido de decirme lo que van a ser
+[01:30] y el problema que están abarcando con eso que van a ser
+[01:34] no tienen un depadamento de compras
+[01:36] pero tienen una persona que lidia con las compras
+[01:38] que es la que es
+[01:40] Antonia
+[01:42] lo que hicimos ahora es creamos un email
+[01:44] que se llama comprasarrobagca.com.pa
+[01:46] que pertenece a Antonia
+[01:49] el profe cuando va a hacer una compra
+[01:53] el por más que desencargue toda la compra
+[01:55] envía un email a ese
+[01:57] a ese email
+[01:59] pone el codio ahora pues no se lo implementamos
+[02:01] el codio ahora
+[02:03] codio ahora
+[02:05] pedido de compra
+[02:07] y ahí la compra de especifica es lo que se hizo
+[02:09] osea el pedido de lo que va a comprar
+[02:11] y él después ya compra
+[02:13] normalmente en una consultora
+[02:15] se hace el departamento de compra
+[02:18] el residente envía el pedido
+[02:20] con qué efecto hicieron eso
+[02:22] qué impacto genera eso
+[02:24] para tener un registro
+[02:26] de todas las compras
+[02:28] bien limpio
+[02:30] claro pero ahí lo que yo tengo son
+[02:32] una lista innumerable
+[02:34] de mails
+[02:36] de peor a ver alguien tiene que poder interpretar
+[02:38] y que hace ahí
+[02:40] en su caso
+[02:42] yo creo que hablemos de mi caso
+[02:44] en el que yo soy la empresa
+[02:46] lo quiero hablar de otro caso
+[02:48] poder conectar al email
+[02:50] y que esa pueda
+[02:52] acuntarte
+[02:54] todos los emails de compra
+[02:56] lo ideal es que tenga un email específico
+[02:58] porque tiene que servir email y no puede servir
+[03:00] un canal como whatsapp
+[03:02] que sería mucho más fácil para mí
+[03:04] porque para entrar a whatsapp y comunicarme
+[03:06] por whatsapp para abrir mucho más sencillo
+[03:08] si puede ser también
+[03:10] puede ser un canal de whatsapp
+[03:12] tiene que tener acceso a ese canal
+[03:14] entonces estamos de acuerdo en que queda
+[03:16] que sea por whatsapp
+[03:18] o en un canal como whatsapp
+[03:22] tiene que ser
+[03:24] exclusivante para eso
+[03:26] y se tiene que subir ahí todas las compras
+[03:28] con una descripción
+[03:30] pedido de compra
+[03:34] la hora pedido de compra
+[03:36] y ahí la descripción de lo que se compra
+[03:38] y ahí yo te digo por qué tiene que ser exclusivo
+[03:40] de eso si es que
+[03:42] tiene que ser más fácil al bot
+[03:44] manejarse de eso
+[03:46] tiene que conectar después un bot a eso
+[03:48] para que el bot
+[03:50] lo que leas es que es solamente relacionado
+[03:52] con eso
+[03:54] perfecto
+[03:56] la discusión de la compra se puede hacer
+[03:58] vía personal
+[04:00] o sea en el caso de membo
+[04:02] que yo te mostré ahí
+[04:04] tiene que tener una función específica
+[04:06] que en este caso sería si yo quiero
+[04:08] control de gastos
+[04:10] o otro agente
+[04:12] como un membo
+[04:14] que se encarga exclusivamente
+[04:16] pero le debería usar otro número
+[04:18] o no necesariamente
+[04:20] lo que sigue que puede hacer
+[04:22] es ponerle un grupo de basado
+[04:24] y dependiendo
+[04:26] y ahí se suba el control de compra
+[04:28] y ahí se suba
+[04:30] todos los pedidos de compras
+[04:32] y después
+[04:34] y ahí tu bot
+[04:36] tenga acceso a eso
+[04:38] y él te puede recuperar toda esa formación
+[04:40] para que vos tengas
+[04:42] y te puede hacer una comparación de agentes
+[04:44] si es que vos tenés cargados los presupuestos
+[04:46] la cantidad de materiales que tenés presupuestados
+[04:48] porque si o si hay lista de materiales
+[04:50] van a hacer un presupuesto
+[04:52] y ahí vas controlando
+[04:54] cuánto se está comprando
+[04:56] también estás controlando el precio
+[04:58] al que se está comprando
+[05:00] y si tenés un presupuesto bien detallado
+[05:02] de cuánto cuesta cada item
+[05:04] si es que le asignas los materiales
+[05:06] y te va diciendo
+[05:08] cuánto estás gastando materiales por eso
+[05:10] y ahí vos puedes sacar más conclusión
+[05:12] obviamente está la mano obra de eso
+[05:14] que también
+[05:16] puede ver cuánto certificado
+[05:18] ¿usted tiene certificado?
+[05:20] no porque
+[05:22] recién empezamos y literalmente
+[05:24] ahora estamos implementando todo
+[05:26] eso deberías de implementar
+[05:28] entonces en este módulo
+[05:30] tenemos que contemplar
+[05:32] ese tema
+[05:34] también este módulo
+[05:36] lo que tiene que contemplar es
+[05:38] esos que mencionamos antes
+[05:40] también el tema de certificado
+[05:42] y también
+[05:44] como es
+[05:46] esto que me dijiste de
+[05:48] consulta
+[05:50] si
+[05:54] y si
+[05:56] usamos trabajo
