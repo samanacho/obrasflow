@@ -86,8 +86,9 @@ cerrá cada respuesta con "Qué necesito de vos" y "Próximos pasos recomendados
   después (también por el grupo: foto con "Factura pedido 14").
   `MEMBY_APROBADOR` = número que aprueba (si no, el chat "Tú"); `MEMBY_COMPRAS=off` lo apaga.
 - Producción: https://obrasflow-app.vercel.app (base Neon, se despliega con
-  cada push a `main`). El build corre `prisma db push --accept-data-loss`:
-  los cambios de esquema tienen que ser aditivos.
+  cada push a `main`). El build corre `prisma db push` sin `--accept-data-loss`:
+  los cambios de esquema tienen que ser aditivos (si uno fuera a borrar datos,
+  el deploy falla). Nunca vuelvas a agregar ese flag.
 - Interfaz: dirección visual "Plano técnico" (tokens en `app/globals.css`:
   paleta cálida apagada, acento azul acero, superficies planas sin sombras,
   cuadrícula de plano solo en la barra superior; contraste AA en claro y oscuro).

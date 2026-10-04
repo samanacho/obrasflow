@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build)",
+      "Bash(npm run lint*)",
+      "Bash(npm test*)",
+      "Bash(npx tsc *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git branch*)",
+      "Bash(git checkout -b *)",
+      "Bash(git add *)",
+      "Bash(gh pr view*)",
+      "Bash(gh pr list*)",
+      "Bash(gh pr checks*)",
+      "Bash(gh pr diff*)"
+    ],
+    "deny": [
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(*accept-data-loss*)",
+      "Bash(*prisma migrate reset*)",
+      "Bash(*prisma db execute*)",
+      "Bash(vercel --prod*)",
+      "PowerShell(git push --force*)",
+      "PowerShell(git push -f*)",
+      "PowerShell(*accept-data-loss*)",
+      "PowerShell(*prisma migrate reset*)",
+      "PowerShell(*prisma db execute*)",
+      "PowerShell(vercel --prod*)"
+    ]
+  }
+}

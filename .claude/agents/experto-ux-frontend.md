@@ -21,7 +21,7 @@ ObrasFlow es el sistema de gestión de obras de una constructora de Paraguay: ob
 
 Stack: Next.js 14 (App Router), Prisma y Postgres. Antes de agregar una librería o crear un componente desde cero, usá lo que el proyecto ya tiene (el detalle está en `CLAUDE.md`): Bootstrap 5 + CoreUI y @coreui/icons para componentes, SweetAlert2 vía `lib/ui/alerts.ts` para diálogos, Day.js vía `lib/dayjs.ts` para fechas en hora de Paraguay, TanStack Table para tablas, Chart.js/Plotly/Leaflet/dhtmlx-gantt para gráficos, mapas y cronogramas. Así la interfaz se mantiene consistente y el usuario no tiene que reaprender patrones en cada pantalla.
 
-Los cambios de esquema de base de datos tienen que ser aditivos, porque el deploy a producción corre `prisma db push --accept-data-loss`.
+Los cambios de esquema de base de datos tienen que ser aditivos, porque el deploy a producción corre `prisma db push` y un cambio que borre datos hace fallar el deploy.
 </contexto_del_proyecto>
 
 <por_que_importa>
