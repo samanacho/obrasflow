@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CCard, CCardBody, CButton, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
   CForm, CFormLabel, CFormInput, CFormSelect, CFormTextarea, CFormCheck,
@@ -45,7 +45,10 @@ export default function ProveedoresPage() {
     [suppliers]
   );
 
+  // Número de pedido: si una búsqueda vieja responde tarde, no pisa a la nueva.
+  const pedido = useRef(0);
   async function load() {
+    const n = ++pedido.current;
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -53,9 +56,11 @@ export default function ProveedoresPage() {
       if (statusFilter) params.set("status", statusFilter);
       if (search) params.set("q", search);
       const res = await fetch(`/api/suppliers?${params.toString()}`);
-      setSuppliers(res.ok ? await res.json() : []);
+      const lista = res.ok ? await res.json() : [];
+      if (n !== pedido.current) return;
+      setSuppliers(lista);
     } finally {
-      setLoading(false);
+      if (n === pedido.current) setLoading(false);
     }
   }
   useEffect(() => {

@@ -10,6 +10,7 @@ import dynamic from "next/dynamic";
 import QuickActions from "./QuickActions";
 import { exportObrasXlsx, printObras } from "@/lib/ui/exportObras";
 import { dayjs, TZ } from "@/lib/dayjs";
+import { daysBetween, todayLocal } from "@/lib/dates";
 import type { ProjectDTO, ProjectStatus, ProjectType } from "@/lib/types";
 
 export const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
@@ -29,9 +30,9 @@ export function budgetState(p: Pick<ProjectDTO, "budget" | "spent">): { pct: num
   return { pct, light: pct > 100 ? "crit" : pct >= 80 ? "warn" : "ok" };
 }
 
-/** Días hasta la fecha de fin (negativo = vencida). */
+/** Días hasta la fecha de fin (negativo = vencida). Días calendario, igual que la ficha de la obra. */
 export function daysLeft(end: string): number {
-  return dayjs.tz(end, TZ).startOf("day").diff(dayjs().tz(TZ).startOf("day"), "day");
+  return daysBetween(todayLocal(), end.slice(0, 10));
 }
 
 export function fmtGs(n: number) {

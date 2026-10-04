@@ -9,10 +9,8 @@ const TYPE_HEX: Record<ProjectType, string> = { civil: "#4a6b85", electrico: "#a
 const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
 
 /**
- * Cronograma interactivo con dhtmlx Gantt (Community Edition, MIT) — a
- * diferencia de nuestro Gantt casero, trae zoom de escala (día/semana/mes),
- * arrastrar para mover/extender tareas, y una grilla de datos editable al
- * costado, todo con una sola librería especializada en esto.
+ * Cronograma con dhtmlx Gantt (Community Edition, MIT), de solo lectura:
+ * muestra inicio, fin y avance de cada proyecto; un clic abre la obra.
  */
 export default function DhtmlxGanttChart({ projects }: { projects: ProjectDTO[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -39,7 +37,9 @@ export default function DhtmlxGanttChart({ projects }: { projects: ProjectDTO[] 
         { name: "type", label: "Rubro", align: "center", width: 80 },
         { name: "progress", label: "Avance", align: "center", width: 70, template: (t: any) => `${Math.round((t.progress || 0) * 100)}%` },
       ];
-      gantt.config.readonly = false;
+      // Solo lectura: arrastrar no guarda nada, y al recargar las fechas
+      // volvían a las de antes. Las fechas se cambian en el proyecto.
+      gantt.config.readonly = true;
       gantt.config.drag_links = false;
       gantt.config.drag_progress = false;
 

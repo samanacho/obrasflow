@@ -38,6 +38,7 @@ export default function RegistroRapidoPage() {
   const [items, setItems] = useState<QuickExpenseDTO[]>([]);
   const [projects, setProjects] = useState<ProjectDTO[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showResolved, setShowResolved] = useState(false);
 
   const [obraPickerFor, setObraPickerFor] = useState<string | null>(null);
@@ -45,13 +46,17 @@ export default function RegistroRapidoPage() {
   const [obraFormFor, setObraFormFor] = useState<{ quickExpense: QuickExpenseDTO; projectId: string } | null>(null);
   const [generalFormFor, setGeneralFormFor] = useState<QuickExpenseDTO | null>(null);
 
+  // Si la API falla se muestra el error (no "al día"): una lista vacía por
+  // error haría creer que no queda nada por clasificar.
   function load() {
     setLoading(true);
+    setError(null);
     Promise.all([
-      fetch("/api/quick-expenses").then((r) => (r.ok ? r.json() : [])),
-      fetch("/api/projects").then((r) => (r.ok ? r.json() : [])),
+      fetch("/api/quick-expenses").then((r) => (r.ok ? r.json() : Promise.reject())),
+      fetch("/api/projects").then((r) => (r.ok ? r.json() : Promise.reject())),
     ])
       .then(([q, p]) => { setItems(q); setProjects(p); })
+      .catch(() => setError("No se pudieron cargar las capturas. Revisá la conexión y probá de nuevo."))
       .finally(() => setLoading(false));
   }
   useEffect(load, []);
@@ -77,11 +82,13 @@ export default function RegistroRapidoPage() {
 
   async function markResolved(id: string) {
     try {
-      await fetch(`/api/quick-expenses/${id}`, {
+      const res = await fetch(`/api/quick-expenses/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ resuelto: true }),
       });
+      // Sin esto, un 401/500 la mostraba "Clasificado" igual y al recargar volvía a pendientes.
+      if (!res.ok) throw new Error();
       setItems((cur) => cur.map((i) => (i.id === id ? { ...i, resuelto: true } : i)));
       notifyQuickExpensesChanged();
     } catch {
@@ -234,8 +241,14 @@ export default function RegistroRapidoPage() {
       </p>
 
       {loading && <p className="state-message">Cargando…</p>}
+      {!loading && error && (
+        <div className="of-empty">
+          <p className="of-empty-title">{error}</p>
+          <CButton color="primary" variant="outline" size="sm" onClick={load}>Reintentar</CButton>
+        </div>
+      )}
 
-      {!loading && (
+      {!loading && !error && (
         <>
           <h2 className="h5 fw-semibold mb-3">
             Pendientes {pendientes.length > 0 && <CBadge color="warning">{pendientes.length}</CBadge>}

@@ -27,6 +27,7 @@ import type { ProjectDTO, ProjectItemDTO } from "@/lib/types";
 import { ITEM_KINDS, ITEM_KIND_ORDER, ItemKindConfig } from "@/lib/itemKinds";
 import { PUBLIC_FIELDS, PRIVATE_FIELDS } from "@/lib/sectorFields";
 import { MOVIMIENTO_TIPOS } from "@/lib/movimientos";
+import { daysBetween, todayLocal } from "@/lib/dates";
 
 const TYPE_LABEL: Record<string, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
 const TYPE_COLOR: Record<string, string> = { civil: "info", electrico: "warning", vial: "secondary", otro: "dark" };
@@ -220,7 +221,8 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
   if (error || !project) return <AppShell crumbs={[{ label: "Obras por rubro", href: "/rubros" }]}><p className="state-message form-error">{error || "Proyecto no encontrado."}</p></AppShell>;
 
   const overBudget = project.spent > project.budget;
-  const daysLeft = Math.ceil((new Date(project.end).getTime() - Date.now()) / 86400000);
+  // Días calendario: new Date("YYYY-MM-DD") es medianoche UTC y corría un día.
+  const daysLeft = daysBetween(todayLocal(), project.end.slice(0, 10));
 
   return (
     <AppShell
@@ -461,11 +463,18 @@ function ModuleView({
   // Parte Diario: importar el archivo exportado de Residente de Obra.
   const [importOpen, setImportOpen] = useState(false);
 
+  // Si la API falla se muestra el error, no "Todavía no hay…" (parecería vacía).
+  const [loadError, setLoadError] = useState(false);
   async function load() {
     setLoading(true);
+    setLoadError(false);
     try {
       const res = await fetch(`/api/projects/${projectId}/items?kind=${kind}`);
-      setItems(res.ok ? await res.json() : []);
+      if (!res.ok) throw new Error();
+      setItems(await res.json());
+    } catch {
+      setItems([]);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -531,16 +540,19 @@ function ModuleView({
   const sinPresupuestoConGastos = project.budget <= 0 && project.spent > 0;
   const ejecucionPct = sinPresupuestoConGastos ? 100 : Math.min(100, ejecucionPctReal);
 
-  // Gasto por categoría (todos los movimientos con "categoria" cargada,
-  // sin importar el tipo — es una clasificación transversal).
+  // Gasto por categoría, con el mismo criterio que el Ejecutado: un ingreso de
+  // capital o una orden de cambio no son gasto, y una devolución resta (antes
+  // se sumaba todo y el gráfico inflaba el gasto). Una torta no muestra negativos.
   const categoriaSums: Record<string, number> = {};
   if (isMovimientos) {
     items.forEach((i) => {
+      const effect = EFFECT_BY_TIPO[i.data?.tipo ?? ""];
+      if (effect !== "add" && effect !== "subtract") return;
       const cat = i.data?.categoria || "Sin categoría";
-      categoriaSums[cat] = (categoriaSums[cat] ?? 0) + Number(i.data?.monto ?? 0);
+      categoriaSums[cat] = (categoriaSums[cat] ?? 0) + Number(i.data?.monto ?? 0) * (effect === "subtract" ? -1 : 1);
     });
   }
-  const categoriaLabels = Object.keys(categoriaSums);
+  const categoriaLabels = Object.keys(categoriaSums).filter((c) => categoriaSums[c] > 0);
   const isDark = useIsDarkTheme();
   const chartColors = isDark ? CHART_COLORS_DARK : CHART_COLORS_LIGHT;
   const tickColor = isDark ? "#a39e93" : "#75726a";
@@ -870,7 +882,13 @@ function ModuleView({
         )}
 
         {!(isMovimientos && openRubro) && loading && <p className="empty-col">Cargando…</p>}
-        {!(isMovimientos && openRubro) && !loading && items.length === 0 && (
+        {!(isMovimientos && openRubro) && !loading && loadError && (
+          <div className="of-empty">
+            <p className="of-empty-title">No se pudieron cargar los datos de esta pestaña. Revisá la conexión y probá de nuevo.</p>
+            <CButton color="primary" variant="outline" size="sm" onClick={() => load()}>Reintentar</CButton>
+          </div>
+        )}
+        {!(isMovimientos && openRubro) && !loading && !loadError && items.length === 0 && (
           <div className="of-empty">
             <Icon icon={kindIcon(kind)} size={40} />
             <p className="of-empty-title">Todavía no hay {cfg.label.toLowerCase()} en esta obra</p>

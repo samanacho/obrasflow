@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   CCard, CCardBody, CButton, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
@@ -61,7 +61,10 @@ export default function InventarioPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // Número de pedido: si una búsqueda vieja responde tarde, no pisa a la nueva.
+  const pedido = useRef(0);
   async function load() {
+    const n = ++pedido.current;
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -69,9 +72,11 @@ export default function InventarioPage() {
       if (categoriaFilter) params.set("categoria", categoriaFilter);
       if (search) params.set("q", search);
       const res = await fetch(`/api/tools?${params.toString()}`);
-      setTools(res.ok ? await res.json() : []);
+      const lista = res.ok ? await res.json() : [];
+      if (n !== pedido.current) return;
+      setTools(lista);
     } finally {
-      setLoading(false);
+      if (n === pedido.current) setLoading(false);
     }
   }
   useEffect(() => {

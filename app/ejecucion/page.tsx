@@ -81,24 +81,42 @@ function EjecucionInner() {
   const initialTab = (searchParams.get("tab") as TabKey) || "gastos";
   const [tab, setTabState] = useState<TabKey>(TABS.some((t) => t.key === initialTab) ? initialTab : "gastos");
 
+  // La obra y la pestaña siguen a la dirección: así "Atrás" vuelve a la anterior.
+  useEffect(() => {
+    setSelectedId(searchParams.get("obra") || "");
+    const t = searchParams.get("tab") as TabKey | null;
+    setTabState(t && TABS.some((x) => x.key === t) ? t : "gastos");
+  }, [searchParams]);
+
   const [items, setItems] = useState<ProjectItemDTO[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
+  const [errorProjects, setErrorProjects] = useState(false);
+  const [errorItems, setErrorItems] = useState(false);
+  const [reintento, setReintento] = useState(0);
 
   useEffect(() => {
+    setLoadingProjects(true);
+    setErrorProjects(false);
     fetch("/api/projects")
-      .then((r) => (r.ok ? r.json() : []))
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then(setProjects)
+      .catch(() => setErrorProjects(true))
       .finally(() => setLoadingProjects(false));
-  }, []);
+  }, [reintento]);
 
   useEffect(() => {
-    if (!selectedId) { setItems([]); return; }
+    if (!selectedId) { setItems([]); setErrorItems(false); return; }
+    // Si se cambia de obra rápido, la respuesta de la obra anterior se descarta.
+    let vivo = true;
     setLoadingItems(true);
+    setErrorItems(false);
     fetch(`/api/projects/${selectedId}/items?kind=change_order`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setItems)
-      .finally(() => setLoadingItems(false));
-  }, [selectedId]);
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((d) => { if (vivo) setItems(d); })
+      .catch(() => { if (vivo) { setItems([]); setErrorItems(true); } })
+      .finally(() => { if (vivo) setLoadingItems(false); });
+    return () => { vivo = false; };
+  }, [selectedId, reintento]);
 
   function selectProject(id: string) {
     setSelectedId(id);
@@ -136,7 +154,13 @@ function EjecucionInner() {
         {!selected && (
           <CCardBody>
             {loadingProjects && <p className="state-message">Cargando obras…</p>}
-            {!loadingProjects && projects.length === 0 && <p className="empty-col">Todavía no hay obras cargadas.</p>}
+            {!loadingProjects && errorProjects && (
+              <div className="of-empty">
+                <p className="of-empty-title">No se pudieron cargar las obras. Revisá la conexión y probá de nuevo.</p>
+                <CButton color="primary" variant="outline" size="sm" onClick={() => setReintento((n) => n + 1)}>Reintentar</CButton>
+              </div>
+            )}
+            {!loadingProjects && !errorProjects && projects.length === 0 && <p className="empty-col">Todavía no hay obras cargadas.</p>}
             {!loadingProjects && projects.length > 0 && (
               <>
                 <div className="mb-3">
@@ -217,9 +241,15 @@ function EjecucionInner() {
           </CNav>
 
           {loadingItems && <p className="state-message">Cargando gastos…</p>}
-          {!loadingItems && tab === "gastos" && <PlanillaGastosView project={selected} items={items} />}
-          {!loadingItems && tab === "archivos" && <ArchivosView items={items} />}
-          {!loadingItems && tab === "resumen" && <ResumenView project={selected} items={items} />}
+          {!loadingItems && errorItems && (
+            <div className="of-empty">
+              <p className="of-empty-title">No se pudieron cargar los gastos de esta obra. Revisá la conexión y probá de nuevo.</p>
+              <CButton color="primary" variant="outline" size="sm" onClick={() => setReintento((n) => n + 1)}>Reintentar</CButton>
+            </div>
+          )}
+          {!loadingItems && !errorItems && tab === "gastos" && <PlanillaGastosView project={selected} items={items} />}
+          {!loadingItems && !errorItems && tab === "archivos" && <ArchivosView items={items} />}
+          {!loadingItems && !errorItems && tab === "resumen" && <ResumenView project={selected} items={items} />}
         </>
       )}
     </AppShell>
@@ -454,11 +484,16 @@ function ResumenView({ project, items }: { project: ProjectDTO; items: ProjectIt
   const saldoDisponible = project.budget - project.spent;
 
   const categoriaSums: Record<string, number> = {};
+  // Mismo criterio que monthlyTotals: lo que no mueve el gasto no suma, y lo
+  // que lo descuenta resta. Una torta no muestra negativos: quedan afuera.
   items.forEach((i) => {
+    const effect = EFFECT_BY_TIPO[i.data?.tipo ?? ""];
+    if (effect !== "add" && effect !== "subtract") return;
     const cat = i.data?.categoria || "Sin categoría";
-    categoriaSums[cat] = (categoriaSums[cat] ?? 0) + Number(i.data?.monto ?? 0);
+    const monto = Number(i.data?.monto ?? 0) * (effect === "subtract" ? -1 : 1);
+    categoriaSums[cat] = (categoriaSums[cat] ?? 0) + monto;
   });
-  const categoriaLabels = Object.keys(categoriaSums);
+  const categoriaLabels = Object.keys(categoriaSums).filter((c) => categoriaSums[c] > 0);
 
   const monthlyTotals = new Map<string, number>();
   items.forEach((i) => {
