@@ -4,6 +4,9 @@ import { createProjectItem } from "../items";
 import { logChanges } from "../history";
 import { fmtGs, normalizeText } from "../agent/format";
 import { todayInParaguay } from "../dates";
+import { CompraError, ESTADO_LABEL, compararPresupuesto, validarPago, type ComparacionPresupuesto } from "./calculos";
+
+export { CompraError, ESTADO_LABEL, type BudgetRowDTO } from "./calculos";
 
 // Módulo Compras: pedido de compra → aprobación → pago (crea el gasto en
 // Ejecución de la obra) → factura, y comparación contra el presupuesto por
@@ -16,16 +19,6 @@ import { todayInParaguay } from "../dates";
 
 export const ESTADOS_PEDIDO = ["pendiente", "aprobado", "rechazado", "pagado", "anulado"] as const;
 export type EstadoPedido = (typeof ESTADOS_PEDIDO)[number];
-
-export const ESTADO_LABEL: Record<string, string> = {
-  pendiente: "Esperando aprobación",
-  aprobado: "Aprobado · por pagar",
-  rechazado: "Rechazado",
-  pagado: "Pagado",
-  anulado: "Anulado",
-};
-
-export class CompraError extends Error {}
 
 // ------------------------------- DTOs -------------------------------
 
@@ -398,10 +391,8 @@ export interface PayInput {
 export async function payOrder(id: string, input: PayInput) {
   const o = await prisma.purchaseOrder.findUnique({ where: { id }, include: { ...ORDER_INCLUDE, supplier: true } });
   if (!o) throw new CompraError("Ese pedido ya no existe.");
-  if (o.status !== "aprobado") throw new CompraError(o.status === "pendiente" ? "Primero hay que aprobar el pedido." : `El pedido #${o.numero} está ${ESTADO_LABEL[o.status]?.toLowerCase()}: no se puede pagar.`);
-  if (!o.projectId) throw new CompraError("Elegí a qué obra va el pedido antes de pagarlo.");
-  const monto = Math.round(Number(input.monto));
-  if (!(monto > 0)) throw new CompraError("El monto pagado tiene que ser mayor a cero.");
+  const monto = validarPago(o, input.monto);
+  const projectId = o.projectId!;
   const fecha = /^\d{4}-\d{2}-\d{2}$/.test(input.fecha ?? "") ? input.fecha! : todayInParaguay();
 
   const supplierId = input.supplierId !== undefined ? input.supplierId : o.supplierId;
@@ -427,7 +418,7 @@ export async function payOrder(id: string, input: PayInput) {
   const precios = new Map((input.precios ?? []).filter((p) => Number(p.precioUnitario) >= 0).map((p) => [p.lineId, Number(p.precioUnitario)]));
 
   const item = await createProjectItem(
-    { projectId: o.projectId, kind: "change_order", title: input.rubro?.trim() || "Materiales", status: "Pagado", data: data as Prisma.InputJsonValue, source: input.por },
+    { projectId, kind: "change_order", title: input.rubro?.trim() || "Materiales", status: "Pagado", data: data as Prisma.InputJsonValue, source: input.por },
     async (tx, created) => {
       const claimed = await tx.purchaseOrder.updateMany({
         where: { id, status: "aprobado" },
@@ -537,82 +528,16 @@ export async function registerInvoice(id: string, input: InvoiceInput) {
 
 // ------------------------------- presupuesto -------------------------------
 
-export interface BudgetRowDTO {
-  id: string;
-  codigo: string | null;
-  descripcion: string;
-  unidad: string | null;
-  cantidad: number;
-  precioUnitario: number;
-  total: number;
-  categoria: string | null;
-  orden: number;
-  /** Cantidad en pedidos aprobados o pagados. */
-  pedido: number;
-  /** Cantidad en pedidos ya pagados. */
-  comprado: number;
-  /** Lo gastado en esos renglones pagados (con su precio real, o el presupuestado si no se cargó). */
-  gastado: number;
-  /** Precio real promedio de lo pagado (null si no hay precios cargados). */
-  precioReal: number | null;
-  /** "ok" | "cerca" (≥ 90 % de la cantidad) | "pasado" (más de lo presupuestado) | "precio" (precio real > 5 % arriba) */
-  alerta: "ok" | "cerca" | "pasado" | "precio";
-}
-
-export async function budgetComparison(projectId: string): Promise<{ items: BudgetRowDTO[]; totales: { presupuestado: number; pedido: number; gastado: number } }> {
+export async function budgetComparison(projectId: string): Promise<ComparacionPresupuesto> {
   const items = await prisma.budgetItem.findMany({ where: { projectId }, orderBy: [{ orden: "asc" }, { createdAt: "asc" }] });
   const lines = await prisma.purchaseOrderLine.findMany({
     where: { budgetItemId: { in: items.map((i) => i.id) }, order: { status: { in: ["aprobado", "pagado"] } } },
     select: { budgetItemId: true, cantidad: true, precioUnitario: true, order: { select: { status: true } } },
   });
-  const agg = new Map<string, { pedido: number; comprado: number; gastado: number; conPrecio: number; montoConPrecio: number }>();
-  const byId = new Map(items.map((i) => [i.id, i]));
-  for (const l of lines) {
-    const a = agg.get(l.budgetItemId!) ?? { pedido: 0, comprado: 0, gastado: 0, conPrecio: 0, montoConPrecio: 0 };
-    const c = Number(l.cantidad);
-    a.pedido += c;
-    if (l.order.status === "pagado") {
-      a.comprado += c;
-      const p = l.precioUnitario !== null ? Number(l.precioUnitario) : Number(byId.get(l.budgetItemId!)!.precioUnitario);
-      a.gastado += p * c;
-      if (l.precioUnitario !== null) {
-        a.conPrecio += c;
-        a.montoConPrecio += Number(l.precioUnitario) * c;
-      }
-    }
-    agg.set(l.budgetItemId!, a);
-  }
-  let presupuestado = 0;
-  let pedidoTotal = 0;
-  let gastadoTotal = 0;
-  const rows = items.map((i): BudgetRowDTO => {
-    const a = agg.get(i.id) ?? { pedido: 0, comprado: 0, gastado: 0, conPrecio: 0, montoConPrecio: 0 };
-    const cantidad = Number(i.cantidad);
-    const precio = Number(i.precioUnitario);
-    const precioReal = a.conPrecio > 0 ? a.montoConPrecio / a.conPrecio : null;
-    presupuestado += cantidad * precio;
-    pedidoTotal += a.pedido * precio;
-    gastadoTotal += a.gastado;
-    const alerta =
-      cantidad > 0 && a.pedido > cantidad + 1e-9 ? "pasado" : precioReal !== null && precio > 0 && precioReal > precio * 1.05 ? "precio" : cantidad > 0 && a.pedido >= cantidad * 0.9 ? "cerca" : "ok";
-    return {
-      id: i.id,
-      codigo: i.codigo,
-      descripcion: i.descripcion,
-      unidad: i.unidad,
-      cantidad,
-      precioUnitario: precio,
-      total: Math.round(cantidad * precio),
-      categoria: i.categoria,
-      orden: i.orden,
-      pedido: a.pedido,
-      comprado: a.comprado,
-      gastado: Math.round(a.gastado),
-      precioReal: precioReal === null ? null : Math.round(precioReal),
-      alerta,
-    };
-  });
-  return { items: rows, totales: { presupuestado: Math.round(presupuestado), pedido: Math.round(pedidoTotal), gastado: Math.round(gastadoTotal) } };
+  return compararPresupuesto(
+    items.map((i) => ({ id: i.id, codigo: i.codigo, descripcion: i.descripcion, unidad: i.unidad, cantidad: Number(i.cantidad), precioUnitario: Number(i.precioUnitario), categoria: i.categoria, orden: i.orden })),
+    lines.map((l) => ({ budgetItemId: l.budgetItemId!, cantidad: Number(l.cantidad), precioUnitario: l.precioUnitario === null ? null : Number(l.precioUnitario), status: l.order.status }))
+  );
 }
 
 // ------------------------------- textos -------------------------------

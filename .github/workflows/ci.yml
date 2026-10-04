@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    env:
+      # Falsas a propósito: el CI nunca se conecta a Neon (ni a ninguna base).
+      POSTGRES_PRISMA_URL: postgresql://ci:ci@127.0.0.1:5432/ci
+      POSTGRES_URL_NON_POOLING: postgresql://ci:ci@127.0.0.1:5432/ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24 # la misma que usa Vercel en obrasflow-app
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx tsc --noEmit
+      - run: npm test
+      # NO `npm run build` ni el buildCommand de vercel.json: ese corre `prisma db push`.
+      - run: npx next build
