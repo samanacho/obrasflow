@@ -11,7 +11,25 @@ const projects = [
   { name: "Rotonda acceso norte", type: "vial", manager: "Lucía Fernández", start: "2026-04-01", end: "2026-08-15", status: "en_curso", budget: 190000, spent: 58000, progress: 30 },
 ] as const;
 
+/**
+ * El seed BORRA todas las obras (y en cascada sus gastos, adjuntos e
+ * historial). Solo corre contra una base de esta PC: apuntado a Neon por
+ * error, se perdía producción entera.
+ */
+function assertLocalDb() {
+  const url = process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL || process.env.DATABASE_URL || "";
+  let host = "";
+  try {
+    host = new URL(url).hostname;
+  } catch {}
+  if (!["127.0.0.1", "localhost", "::1", "[::1]"].includes(host)) {
+    console.error(`El seed borra todas las obras: solo corre contra una base local, y esta apunta a "${host || "?"}". No se tocó nada.`);
+    process.exit(1);
+  }
+}
+
 async function main() {
+  assertLocalDb();
   await prisma.project.deleteMany();
   for (const p of projects) {
     await prisma.project.create({

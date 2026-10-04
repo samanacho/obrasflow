@@ -98,8 +98,12 @@ export function newSession(user: { id: string; name: string }, remember: boolean
   return { uid: user.id, n: user.name, exp, rexp: rexp ?? (remember ? now + REMEMBER_TTL_S : exp) };
 }
 
-/** Solo rutas internas ("/compras?x=1"), nunca "//otro-sitio" ni URLs completas. */
+/**
+ * Solo rutas internas ("/compras?x=1"), nunca "//otro-sitio" ni URLs completas.
+ * También rechaza tabs, saltos de línea y "\": el navegador los borra o los
+ * toma como "/", y "/\t/otro-sitio" terminaba en otro-sitio.
+ */
 export function safeReturnPath(p: string | null | undefined): string {
-  if (!p || !p.startsWith("/") || p.startsWith("//") || p.startsWith("/\\")) return "/";
+  if (!p || !p.startsWith("/") || p.startsWith("//") || /[\x00-\x1f\x7f\\]/.test(p)) return "/";
   return p;
 }
