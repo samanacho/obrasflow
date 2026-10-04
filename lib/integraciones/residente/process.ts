@@ -139,7 +139,17 @@ function decidir(existente: Existente | undefined, projectId: string, title: str
  * duplica (índice único externalSource + externalId). Nunca tira error:
  * cada parte devuelve su resultado.
  */
-export async function importPartes(projectId: string, partes: ResidenteParte[], opts: { dryRun?: boolean } = {}): Promise<ParteResultado[]> {
+export async function importPartes(
+  projectId: string,
+  partes: ResidenteParte[],
+  opts: {
+    dryRun?: boolean;
+    /** Solo el webhook: su evento (firmado) dice la obra, así que puede pasar un parte a otra obra. Un archivo, no. */
+    permitirCambioDeObra?: boolean;
+    /** Quién subió el archivo (appSource), para el historial. */
+    subidoPor?: string;
+  } = {}
+): Promise<ParteResultado[]> {
   // Lo que ya teníamos, en pocas consultas (no una por parte).
   const existentes = new Map<string, Existente>();
   const ids = [...new Set(partes.map((p) => p.id))];
@@ -158,7 +168,13 @@ export async function importPartes(projectId: string, partes: ResidenteParte[], 
     try {
       const title = parteTitle(p);
       const data = parteToItemData(p);
+      const fuente = SOURCE_LABEL + (base.autor ? ` · ${base.autor}` : "") + (opts.subidoPor ? ` (subido por ${opts.subidoPor})` : "");
       const existente = existentes.get(p.id);
+      // Un archivo sin código de obra importado en la obra equivocada no puede llevarse los partes de otra.
+      if (existente && existente.projectId !== projectId && !opts.permitirCambioDeObra) {
+        out.push({ ...base, outcome: "error", error: "Este parte ya está cargado en otra obra" });
+        continue;
+      }
       const outcome = decidir(existente, projectId, title, data, p);
       if (!opts.dryRun) {
         if (outcome === "nuevo") {
@@ -170,6 +186,7 @@ export async function importPartes(projectId: string, partes: ResidenteParte[], 
             data,
             externalSource: SOURCE,
             externalId: p.id,
+            source: fuente,
           });
           existentes.set(p.id, { id: creado.id, projectId, title, data: data as Prisma.JsonValue });
         } else if (outcome === "actualizado" && existente) {
@@ -180,7 +197,7 @@ export async function importPartes(projectId: string, partes: ResidenteParte[], 
             prisma,
             projectId,
             [{ action: "registro_editado", detail: `${cfg.icon} ${cfg.singular}: "${title}" (versión más nueva de Residente de Obra)` }],
-            SOURCE_LABEL + (base.autor ? ` · ${base.autor}` : "")
+            fuente
           );
         }
       }
@@ -198,7 +215,7 @@ export async function importPartes(projectId: string, partes: ResidenteParte[], 
  * ítems). Desde ahí la obra queda con "avance según Residente de Obra" y en
  * la app no se edita a mano. Se anota en el historial de cambios.
  */
-export async function applyObraAvance(projectId: string, pct: number, at?: string | null): Promise<{ antes: number; despues: number }> {
+export async function applyObraAvance(projectId: string, pct: number, at?: string | null, subidoPor?: string): Promise<{ antes: number; despues: number }> {
   const despues = Math.max(0, Math.min(100, Math.round(pct)));
   const before = await prisma.project.findUnique({ where: { id: projectId }, select: { progress: true, progressSource: true } });
   if (!before) throw new Error("Obra no encontrada.");
@@ -214,7 +231,7 @@ export async function applyObraAvance(projectId: string, pct: number, at?: strin
     prisma,
     projectId,
     [{ action: "campo", field: "Avance", before: `${before.progress} %`, after: `${despues} %`, detail: detalle }],
-    SOURCE_LABEL
+    SOURCE_LABEL + (subidoPor ? ` (subido por ${subidoPor})` : "")
   );
   return { antes: before.progress, despues };
 }
@@ -252,7 +269,8 @@ async function apply(ev: ResidenteEvent): Promise<Result> {
   const codigo = ev.data?.obra?.codigo?.trim();
   if (!codigo) return { status: "error", error: "El evento no trae el código de la obra.", projectId: null };
 
-  const project = await prisma.project.findUnique({ where: { code: codigo }, select: { id: true } });
+  // Igual que el importador: el código se compara sin distinguir mayúsculas.
+  const project = await prisma.project.findFirst({ where: { code: { equals: codigo, mode: "insensitive" } }, select: { id: true } });
   if (!project) {
     return { status: "sin_obra", error: `No hay ninguna obra con el código "${codigo}" en ObrasFlow.`, projectId: null };
   }
@@ -269,7 +287,7 @@ async function apply(ev: ResidenteEvent): Promise<Result> {
   const parte = normalizeParte(crudo, avisos);
   if (!parte) return { status: "error", error: avisos.join(" ") || "El parte no trae id o fecha válida.", projectId: project.id };
 
-  const [r] = await importPartes(project.id, [parte]);
+  const [r] = await importPartes(project.id, [parte], { permitirCambioDeObra: true });
   if (r.outcome === "error") return { status: "error", error: r.error ?? "No se pudo guardar el parte.", projectId: project.id };
   return { status: "procesado", error: null, projectId: project.id };
 }
@@ -291,14 +309,31 @@ export async function processEvent(row: IntegrationEvent): Promise<Result> {
   return result;
 }
 
+/** Un evento "recibido" hace más que esto quedó cortado a mitad de camino (se cortó la función). */
+export const RECIBIDO_COLGADO_MS = 5 * 60 * 1000;
+
+/** ¿Hay que (re)procesar esta fila? Sí si quedó "sin_obra", con "error" o colgada en "recibido". */
+export function esPendiente(row: Pick<IntegrationEvent, "status" | "createdAt">, ahora = Date.now()): boolean {
+  if (row.status === "sin_obra" || row.status === "error") return true;
+  return row.status === "recibido" && ahora - row.createdAt.getTime() > RECIBIDO_COLGADO_MS;
+}
+
 /**
- * Reprocesa los eventos del webhook que quedaron "sin_obra" o con "error"
- * (ej. después de cargar el código de la obra). Devuelve cuántos se
- * aplicaron. Los archivos importados (event "import.archivo") no se tocan.
+ * Reprocesa los eventos del webhook que quedaron "sin_obra", con "error"
+ * (ej. después de cargar el código de la obra) o colgados en "recibido".
+ * Devuelve cuántos se aplicaron. Los archivos importados (event
+ * "import.archivo") no se tocan.
  */
 export async function reprocessPending(limit = 100): Promise<{ total: number; procesados: number }> {
   const rows = await prisma.integrationEvent.findMany({
-    where: { source: SOURCE, status: { in: ["sin_obra", "error"] }, event: { not: "import.archivo" } },
+    where: {
+      source: SOURCE,
+      event: { not: "import.archivo" },
+      OR: [
+        { status: { in: ["sin_obra", "error"] } },
+        { status: "recibido", createdAt: { lt: new Date(Date.now() - RECIBIDO_COLGADO_MS) } },
+      ],
+    },
     orderBy: { createdAt: "asc" },
     take: limit,
   });

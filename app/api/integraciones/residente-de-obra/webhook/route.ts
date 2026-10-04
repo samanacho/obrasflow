@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { SIGNATURE_HEADER, verifySignature } from "@/lib/integraciones/residente/signature";
-import { checkEvent, processEvent } from "@/lib/integraciones/residente/process";
+import { checkEvent, esPendiente, processEvent } from "@/lib/integraciones/residente/process";
 import { SOURCE } from "@/lib/integraciones/residente/types";
 
 // Webhook de Residente de Obra. URL para darles:
@@ -35,7 +35,9 @@ export async function POST(req: NextRequest) {
   const check = checkEvent(body);
   if (!check.ok) return NextResponse.json({ error: check.error }, { status: 400 });
 
-  const deliveryId = req.headers.get("x-delivery-id")?.trim() || check.event.id;
+  // Se deduplica por el id del evento, que viene dentro del cuerpo firmado
+  // (el header X-Delivery-Id no va firmado: cualquiera podría inventarlo).
+  const deliveryId = check.event.id;
 
   // Se guarda primero (deduplicado): si el mismo envío llega dos veces, el
   // segundo no hace nada. Lo que no se pueda aplicar queda para reprocesar.
@@ -46,7 +48,12 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-      return NextResponse.json({ ok: true, duplicado: true });
+      // Ya lo teníamos. Si quedó pendiente (o colgado en "recibido" porque se
+      // cortó la función), el reintento lo procesa; si no, es un duplicado.
+      const previo = await prisma.integrationEvent.findUnique({ where: { source_deliveryId: { source: SOURCE, deliveryId } } });
+      if (!previo || !esPendiente(previo)) return NextResponse.json({ ok: true, duplicado: true });
+      const result = await processEvent(previo);
+      return NextResponse.json({ ok: true, estado: result.status, ...(result.error ? { detalle: result.error } : {}) });
     }
     console.error("Residente de Obra: no se pudo guardar el evento", err);
     return NextResponse.json({ error: "No se pudo guardar el evento." }, { status: 500 });
