@@ -4,6 +4,7 @@ import { serializeItem } from "@/lib/serialize";
 import { ITEM_KINDS } from "@/lib/itemKinds";
 import { createProjectItem } from "@/lib/items";
 import { appSource } from "@/lib/auth/server";
+import { normalizeMovimientoData } from "@/lib/validate";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,16 @@ export async function POST(req: NextRequest, { params }: Params) {
     const title = String(body.title ?? "").trim();
     if (!title) return NextResponse.json({ error: "El título es obligatorio." }, { status: 400 });
 
+    let data = body.data;
+    if (kind === "change_order") {
+      const n = normalizeMovimientoData(data);
+      if ("error" in n) return NextResponse.json({ error: n.error }, { status: 400 });
+      data = n.data;
+    }
+
+    const project = await prisma.project.findUnique({ where: { id: params.id }, select: { id: true } });
+    if (!project) return NextResponse.json({ error: "Obra no encontrada." }, { status: 404 });
+
     // Mismo camino que usa el agente de WhatsApp (lib/items.ts): crea el
     // item, deja el evento en el feed de actividad y recalcula el Ejecutado.
     const created = await createProjectItem({
@@ -45,7 +56,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       kind,
       title,
       status: body.status ? String(body.status) : null,
-      data: (body.data as any) ?? {},
+      data: (data as any) ?? {},
       source: await appSource(),
     });
 

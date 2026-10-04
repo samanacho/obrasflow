@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { appSource } from "@/lib/auth/server";
+import { APP_SOURCE } from "@/lib/history";
 import { decodificar, leerExport } from "@/lib/integraciones/residente/importar";
 import { applyObraAvance, importPartes, ultimoAvanceImportado } from "@/lib/integraciones/residente/process";
 import { SOURCE } from "@/lib/integraciones/residente/types";
@@ -84,7 +86,10 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 
   const aplicar = modo === "aplicar";
-  const resultados = await importPartes(project.id, leido.partes, { dryRun: !aplicar });
+  // Historial: "Residente de Obra · <autor> (subido por <quien ingresó>)". En la app local (sin login) va sin el "subido por".
+  const quien = await appSource();
+  const subidoPor = quien === APP_SOURCE ? undefined : quien;
+  const resultados = await importPartes(project.id, leido.partes, { dryRun: !aplicar, subidoPor });
   const cuenta = (o: string) => resultados.filter((r) => r.outcome === o).length;
   const conteos = {
     total: leido.partes.length,
@@ -111,7 +116,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       };
     } else if (aplicar) {
       try {
-        const r = await applyObraAvance(project.id, leido.avancePct, leido.avanceAt);
+        const r = await applyObraAvance(project.id, leido.avancePct, leido.avanceAt, subidoPor);
         avance = { ...avance, antes: r.antes, despues: r.despues };
       } catch (err) {
         console.error("Residente de Obra: no se pudo guardar el avance", err);

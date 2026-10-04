@@ -115,7 +115,8 @@ export function normTimestamp(v: unknown): string | null {
   }
   m = s.match(/^(\d{4}-\d{2}-\d{2})(?:[\sT](\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?))?\s*(Z|[+-]\d{2}:?\d{2})?$/i);
   if (m) {
-    const hora = m[2] ? (m[2].length < 5 ? "0" + m[2] : m[2]) : "00:00:00";
+    // Hora de un dígito ("9:30" o "9:30:15") → "09:…".
+    const hora = m[2] ? (/^\d:/.test(m[2]) ? "0" + m[2] : m[2]) : "00:00:00";
     const zona = m[3] ? m[3].toUpperCase() : "-03:00";
     const d = new Date(`${m[1]}T${hora}${zona}`);
     return Number.isNaN(d.getTime()) ? null : d.toISOString();

@@ -6,7 +6,7 @@ import {
 } from "@coreui/react";
 import Select2 from "@/components/ui/Select2";
 import { useProveedores } from "./shared";
-import { MEDIOS_PAGO, fmtCantUnidad, fmtGs, fmtMiles, hoyPy, parseNumero } from "@/lib/compras/labels";
+import { MEDIOS_PAGO, fmtCantUnidad, fmtGs, fmtMiles, hoyPy, parseGs } from "@/lib/compras/labels";
 import type { PurchaseOrderDTO } from "@/lib/compras/core";
 
 /**
@@ -54,10 +54,10 @@ export default function PagarModal({
   }, [visible, order]);
 
   const suma = useMemo(
-    () => Math.round(order.lines.reduce((s, l) => s + (parseNumero(precios[l.id]) ?? 0) * l.cantidad, 0)),
+    () => Math.round(order.lines.reduce((s, l) => s + (parseGs(precios[l.id]) ?? 0) * l.cantidad, 0)),
     [precios, order.lines]
   );
-  const montoFinal = montoManual ? parseNumero(monto) ?? 0 : suma || parseNumero(monto) || 0;
+  const montoFinal = montoManual ? parseGs(monto) ?? 0 : suma || parseGs(monto) || 0;
 
   async function pagar(e: React.FormEvent) {
     e.preventDefault();
@@ -75,7 +75,7 @@ export default function PagarModal({
           supplierId: supplierId || null,
           proveedorNombre: supplierId ? null : proveedorNombre.trim() || null,
           precios: order.lines
-            .map((l) => ({ lineId: l.id, precioUnitario: parseNumero(precios[l.id]) }))
+            .map((l) => ({ lineId: l.id, precioUnitario: parseGs(precios[l.id]) }))
             .filter((p) => p.precioUnitario !== null),
         }),
       });
@@ -108,7 +108,7 @@ export default function PagarModal({
                 </thead>
                 <tbody>
                   {order.lines.map((l) => {
-                    const p = parseNumero(precios[l.id]);
+                    const p = parseGs(precios[l.id]);
                     return (
                       <tr key={l.id}>
                         <td>{l.descripcion}</td>

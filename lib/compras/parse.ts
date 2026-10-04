@@ -1,4 +1,5 @@
 import { normalizeText } from "../agent/format";
+import { daysBetween, isValidYmd } from "../dates";
 
 // Lectura del mensaje "Pedido de compra" del grupo de WhatsApp, sin IA, para
 // el formato acordado con obra:
@@ -88,8 +89,12 @@ const NUM = String.raw`(\d+(?:[.,]\d+)*)`;
 export function parseLine(raw: string): ParsedLine | null {
   const line = raw.replace(/^\s*(?:[-•*·>]|\d+[.)])\s+/, "").replace(/[*_~]/g, "").trim();
   if (!line) return null;
+  // Un número al principio que es una medida y no la cantidad ("1/2 m3 de
+  // arena", "10mm varilla x 20", "3 x 2 mts de malla"): se prueba solo el
+  // patrón de cantidad al final; si tampoco sirve, el renglón no se adivina.
+  const medidaAlPrincipio = new RegExp(`^${NUM}\\s*(?:/|[x×]\\s*\\d|(?:mm|cm|pulg)\\b|")`, "i").test(line);
   // Cantidad al principio.
-  let m = new RegExp(`^${NUM}\\s*([a-zA-ZñÑáéíóú0-9.]+)?\\s*(.*)$`).exec(line);
+  let m = medidaAlPrincipio ? null : new RegExp(`^${NUM}\\s*([a-zA-ZñÑáéíóú0-9.]+)?\\s*(.*)$`).exec(line);
   if (m) {
     const cantidad = parseNumber(m[1]);
     const maybeUnit = m[2] ?? "";
@@ -127,7 +132,12 @@ export function parseFecha(s: string, today: string): string | null {
     const mm = Number(m[2]);
     let yy = m[3] ? Number(m[3]) : y;
     if (yy < 100) yy += 2000;
-    if (dd >= 1 && dd <= 31 && mm >= 1 && mm <= 12) return `${yy}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
+    const ymd = (year: number) => `${year}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
+    // "31/02" no existe (JS lo pasaba en silencio al 3 de marzo).
+    if (!isValidYmd(ymd(yy))) return null;
+    // Sin año, "05/01" escrito en diciembre es del año que viene (no de hace 11 meses).
+    if (!m[3] && daysBetween(today, ymd(yy)) < -60 && isValidYmd(ymd(yy + 1))) return ymd(yy + 1);
+    return ymd(yy);
   }
   return null;
 }

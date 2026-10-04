@@ -554,9 +554,12 @@ export async function listPendingActions(phone: string) {
   return actions.map((a) => ({ propuestaId: a.id, tipo: a.kind, resumen: a.summary, creada: a.createdAt.toISOString() }));
 }
 
-export async function cancelPendingAction(phone: string, id: string): Promise<string> {
+export async function cancelPendingAction(phone: string, id: string, opts: { fromModel?: boolean } = {}): Promise<string> {
+  // Cancelar la tarjeta de un pedido lo RECHAZA y avisa en el grupo: solo con
+  // el "No" del dueño, nunca porque el modelo lo decidió (ni por un texto del
+  // grupo que se haya colado en la conversación).
   const res = await prisma.whatsAppPendingAction.updateMany({
-    where: { id, phone, status: "pendiente" },
+    where: { id, phone, status: "pendiente", ...(opts.fromModel ? { kind: { not: "aprobar_pedido" } } : {}) },
     data: { status: "cancelada" },
   });
   if (res.count === 1) {
@@ -575,6 +578,9 @@ export async function cancelPendingAction(phone: string, id: string): Promise<st
   }
   const a = await prisma.whatsAppPendingAction.findFirst({ where: { id, phone } });
   if (!a) return "No encontré esa propuesta.";
+  if (opts.fromModel && a.kind === "aprobar_pedido" && a.status === "pendiente") {
+    return "Los pedidos de compra no se cancelan desde acá: el dueño los aprueba o rechaza con Sí/No en la tarjeta (o con el código).";
+  }
   if (a.status === "confirmada") return "Esa propuesta ya estaba confirmada y registrada — para anularla hay que borrar el movimiento desde la app.";
   return "Esa propuesta ya no estaba pendiente.";
 }

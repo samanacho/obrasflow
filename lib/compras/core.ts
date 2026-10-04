@@ -336,8 +336,10 @@ export async function updateOrder(
   const budget = projectId ? await prisma.budgetItem.findMany({ where: { projectId }, select: { id: true, descripcion: true, unidad: true } }) : [];
   const valid = new Set(budget.map((b) => b.id));
   await prisma.$transaction(async (tx) => {
-    await tx.purchaseOrder.update({
-      where: { id },
+    // El estado se vuelve a mirar acá adentro: si lo pagaron entre la lectura
+    // de arriba y este punto, no se tocan los renglones de un pedido ya pagado.
+    const claimed = await tx.purchaseOrder.updateMany({
+      where: { id, status: { in: ["pendiente", "aprobado"] } },
       data: {
         ...(input.projectId !== undefined ? { projectId: input.projectId, ...(input.projectId ? { obraTexto: null } : {}) } : {}),
         ...(input.supplierId !== undefined ? { supplierId: input.supplierId, ...(input.supplierId ? { proveedorNombre: null } : {}) } : {}),
@@ -346,6 +348,7 @@ export async function updateOrder(
         ...(input.fechaNecesaria !== undefined ? { fechaNecesaria: input.fechaNecesaria } : {}),
       },
     });
+    if (claimed.count !== 1) throw new CompraError("El pedido cambió mientras lo editabas (¿lo pagaron o anularon desde otro lado?). No se guardó nada.");
     if (input.lines) {
       const clean = input.lines.filter((l) => l.descripcion.trim() && Number(l.cantidad) > 0);
       if (!clean.length) throw new CompraError("El pedido tiene que tener al menos un material con cantidad.");
@@ -447,17 +450,23 @@ export async function payOrder(id: string, input: PayInput) {
 async function attachMediaToItem(itemId: string, mediaId: string, baseName: string) {
   const media = await prisma.inboundMedia.findUnique({ where: { id: mediaId } });
   if (!media) return;
-  // Un registro guarda un solo archivo: la factura reemplaza al anterior.
-  await prisma.attachment.deleteMany({ where: { projectItemId: itemId } });
-  await prisma.attachment.create({
-    data: {
-      projectItemId: itemId,
-      filename: media.filename || `${baseName}.${media.mimeType === "application/pdf" ? "pdf" : "jpg"}`,
-      mimeType: media.mimeType,
-      size: media.size,
-      data: media.data,
-    },
+  await replaceAttachment(itemId, {
+    filename: media.filename || `${baseName}.${media.mimeType === "application/pdf" ? "pdf" : "jpg"}`,
+    mimeType: media.mimeType,
+    size: media.size,
+    data: media.data,
   });
+}
+
+/**
+ * Un registro guarda un solo archivo: el nuevo reemplaza al anterior. Primero
+ * se crea y después se borra el resto, cada paso en una sola operación (corre
+ * también en el conector, sin transacción): si se corta la red en medio,
+ * queda con dos archivos, nunca sin comprobante.
+ */
+async function replaceAttachment(itemId: string, file: { filename: string; mimeType: string; size: number; data: Buffer | Uint8Array }) {
+  const nuevo = await prisma.attachment.create({ data: { projectItemId: itemId, ...file, data: Buffer.from(file.data) } });
+  await prisma.attachment.deleteMany({ where: { projectItemId: itemId, id: { not: nuevo.id } } });
 }
 
 export interface InvoiceInput {
@@ -471,6 +480,29 @@ export interface InvoiceInput {
   /** Foto/PDF que llegó por WhatsApp (InboundMedia). */
   mediaId?: string | null;
   por: string;
+}
+
+/**
+ * Pasa los datos de la factura al gasto. Lo que se vació en este guardado
+ * (p.ej. un IVA cargado por error) también se borra del gasto; lo que no vino
+ * en el pedido queda como estaba.
+ */
+export function mergeInvoiceIntoGasto(
+  prev: Record<string, unknown>,
+  fresh: { facturaTipo: string | null; facturaNumero: string | null; facturaRuc: string | null; iva10: unknown; iva5: unknown },
+  input: Pick<InvoiceInput, "numero" | "ruc" | "iva10" | "iva5">
+): Record<string, unknown> {
+  const data: Record<string, unknown> = { ...prev };
+  if (fresh.facturaNumero) Object.assign(data, { tipoComprobante: fresh.facturaTipo ?? "Factura", comprobante: fresh.facturaNumero });
+  else if (input.numero !== undefined) delete data.comprobante;
+  if (fresh.facturaRuc) data.rucProveedor = fresh.facturaRuc;
+  else if (input.ruc !== undefined) delete data.rucProveedor;
+  for (const k of ["iva10", "iva5"] as const) {
+    const v = fresh[k] ? Number(fresh[k]) : null;
+    if (v) data[k] = v;
+    else if (input[k] !== undefined) delete data[k];
+  }
+  return data;
 }
 
 /** Datos de la factura (y el archivo). Si el pedido ya se pagó, también se completan en el gasto de Ejecución. */
@@ -498,19 +530,10 @@ export async function registerInvoice(id: string, input: InvoiceInput) {
     if (item) {
       const prev = (item.data ?? {}) as Record<string, unknown>;
       const fresh = await prisma.purchaseOrder.findUniqueOrThrow({ where: { id } });
-      const data = {
-        ...prev,
-        ...(fresh.facturaNumero ? { tipoComprobante: fresh.facturaTipo ?? "Factura", comprobante: fresh.facturaNumero } : {}),
-        ...(fresh.facturaRuc ? { rucProveedor: fresh.facturaRuc } : {}),
-        ...(fresh.iva10 ? { iva10: Number(fresh.iva10) } : {}),
-        ...(fresh.iva5 ? { iva5: Number(fresh.iva5) } : {}),
-      };
+      const data = mergeInvoiceIntoGasto(prev, fresh, input);
       await prisma.projectItem.update({ where: { id: item.id }, data: { data: data as Prisma.InputJsonValue } });
       if (input.file) {
-        await prisma.attachment.deleteMany({ where: { projectItemId: item.id } });
-        await prisma.attachment.create({
-          data: { projectItemId: item.id, filename: input.file.filename, mimeType: input.file.mimeType, size: input.file.data.length, data: input.file.data },
-        });
+        await replaceAttachment(item.id, { filename: input.file.filename, mimeType: input.file.mimeType, size: input.file.data.length, data: input.file.data });
       } else if (input.mediaId) {
         await attachMediaToItem(item.id, input.mediaId, `factura-pedido-${o.numero}`);
       }

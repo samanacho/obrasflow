@@ -133,12 +133,18 @@ export default function GastoObraButton() {
       const saved: ProjectItemDTO = await res.json();
 
       // El comprobante se sube recién con el movimiento ya creado (necesita su id).
+      // Try propio: si la subida falla, el gasto ya quedó guardado; cerrar igual
+      // evita que un reintento cree un segundo gasto.
       let avisoArchivo = false;
       if (file) {
-        const fd = new FormData();
-        fd.append("file", file);
-        const up = await fetch(`/api/items/${saved.id}/attachment`, { method: "POST", body: fd });
-        avisoArchivo = !up.ok;
+        try {
+          const fd = new FormData();
+          fd.append("file", file);
+          const up = await fetch(`/api/items/${saved.id}/attachment`, { method: "POST", body: fd });
+          avisoArchivo = !up.ok;
+        } catch {
+          avisoArchivo = true;
+        }
       }
 
       setOpen(false);

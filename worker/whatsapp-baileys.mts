@@ -41,7 +41,7 @@ import {
 } from "../lib/compras/whatsapp";
 import type { InboundMessage } from "../lib/whatsapp/parse";
 import type { Transport } from "../lib/whatsapp/transport";
-import { getAllowedNumbers } from "../lib/whatsapp/config";
+import { getAllowedNumbers, normalizePhone } from "../lib/whatsapp/config";
 import { startLocalPanel } from "./local-panel.mjs";
 import { agentBackend } from "../lib/agent/run";
 import { checkClaudeCli } from "../lib/agent/cli-run";
@@ -367,8 +367,13 @@ function innerOf(m: WAMessage) {
  * de la cuenta vinculada.
  */
 function approverPhone(): string | null {
-  const env = process.env.MEMBY_APROBADOR?.replace(/\D/g, "");
-  return env || ownPhone;
+  return aprobadorEnv() || ownPhone;
+}
+
+/** MEMBY_APROBADOR normalizado como los números que entran: "0981 123 456" → "595981123456". */
+function aprobadorEnv(): string {
+  const d = normalizePhone(process.env.MEMBY_APROBADOR ?? "");
+  return d.startsWith("0") ? `595${d.slice(1)}` : d;
 }
 
 async function handleGroupMessage(m: WAMessage) {
@@ -470,8 +475,13 @@ function scheduleReconnect(ms: number) {
 async function heartbeat() {
   try {
     const s = await prisma.whatsAppSession.findUnique({ where: { id: SESSION_ID } });
-    await prisma.whatsAppSession.update({ where: { id: SESSION_ID }, data: { heartbeatAt: new Date(), command: null } }).catch(() => {});
-    if (s?.command === "logout" || s?.command === "restart") await runCommand(s.command);
+    await prisma.whatsAppSession.update({ where: { id: SESSION_ID }, data: { heartbeatAt: new Date() } }).catch(() => {});
+    if (s?.command) {
+      // Se borra solo el comando que se leyó: si desde la app tocaron otro
+      // entre medio, queda para el próximo latido en vez de perderse.
+      const taken = await prisma.whatsAppSession.updateMany({ where: { id: SESSION_ID, command: s.command }, data: { command: null } });
+      if (taken.count === 1 && (s.command === "logout" || s.command === "restart")) await runCommand(s.command);
+    }
   } catch (err) {
     console.error("Latido:", (err as Error).message);
   }
@@ -594,8 +604,12 @@ async function main() {
   if (process.env.MEMBY_VOZ?.trim().toLowerCase() !== "off") warmUpTranscriber();
   if (!COMPRAS_OFF) {
     setInterval(() => void purchaseGroupTick(), 45_000);
-    const aprobador = process.env.MEMBY_APROBADOR?.replace(/\D/g, "");
+    const aprobador = aprobadorEnv();
     console.log(`🛒 Pedidos de compra: leo el grupo "${process.env.MEMBY_GRUPO_COMPRAS?.trim() || "Pedidos de compra"}"; aprueba ${aprobador ? `el ${aprobador}` : 'el chat "Tú"'}.`);
+    if (aprobador && !getAllowedNumbers().has(aprobador)) {
+      // Sin estar en la lista, su "Sí"/"No" se descarta y los pedidos nunca se aprueban por WhatsApp.
+      console.warn(`⚠️ MEMBY_APROBADOR (${aprobador}) no está en WHATSAPP_ALLOWED_NUMBERS: no va a poder aprobar por WhatsApp.`);
+    }
   }
   await connect();
 }

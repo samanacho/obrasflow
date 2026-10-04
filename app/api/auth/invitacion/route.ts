@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { hashPassword, hashToken, normalizeUsername, passwordProblem } from "@/lib/auth/password";
 import { setSessionCookie } from "@/lib/auth/server";
@@ -46,7 +47,11 @@ export async function POST(req: NextRequest) {
       if (claimed.count !== 1) throw new Error("usada");
       return tx.user.create({ data: { username, name, passwordHash, lastLoginAt: new Date() } });
     });
-  } catch {
+  } catch (err) {
+    // Otra persona eligió el mismo usuario justo ahora: la transacción se deshizo y el link sigue sirviendo.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return NextResponse.json({ error: `El usuario "${username}" ya existe. Elegí otro.` }, { status: 409 });
+    }
     return NextResponse.json({ error: "Este link de invitación ya se usó. Pedí uno nuevo." }, { status: 409 });
   }
   const res = NextResponse.json({ ok: true, nombre: user.name, usuario: user.username }, { status: 201 });

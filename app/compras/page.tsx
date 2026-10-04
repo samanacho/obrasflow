@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CButton } from "@coreui/react";
@@ -90,21 +90,27 @@ export default function ComprasPage() {
     if (sp.get("nuevo") === "1") setNuevo(true);
   }, []);
 
+  // Cada pedido lleva su número: si al cambiar de obra rápido llega tarde una
+  // respuesta vieja, se descarta en vez de pisar a la nueva.
+  const pedido = useRef(0);
   const cargar = useCallback(async () => {
     if (projectId === null) return;
+    const n = ++pedido.current;
     setCargando(true);
     setError(null);
     try {
       const res = await fetch(`/api/compras${projectId ? `?projectId=${encodeURIComponent(projectId)}` : ""}`);
       if (!res.ok) throw new Error();
       const d = (await res.json()) as { orders: PurchaseOrderDTO[]; counts: Counts };
+      if (n !== pedido.current) return;
       setOrders(d.orders);
       setCounts(d.counts);
       setFiltro((f) => f ?? (d.counts.pendiente > 0 ? "pendiente" : "todos"));
     } catch {
+      if (n !== pedido.current) return;
       setError("No se pudieron cargar los pedidos. Revisá la conexión y probá de nuevo.");
     } finally {
-      setCargando(false);
+      if (n === pedido.current) setCargando(false);
     }
   }, [projectId]);
   useEffect(() => { cargar(); }, [cargar]);

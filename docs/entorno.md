@@ -17,8 +17,11 @@ Lo de Memby (conector de WhatsApp) está en `worker/CLAUDE.md`.
     carpeta Inicio sigue lanzando el viejo `scripts/start-conector.cmd` →
     `scripts/local-stack.mjs` (next start).
   Pantalla del agente: http://localhost:3000/agente-whatsapp
-- Tests: `npm test` (Vitest). Hoy cubren los cálculos de plata de Compras
-  (`lib/compras/calculos.test.ts`).
+- Tests: `npm test` (Vitest, `vitest.config.ts`). Solo lógica pura, sin base
+  ni red: plata y compras (`lib/compras/*.test.ts`), fechas y validaciones,
+  login y app local (`lib/auth/`), Memby y WhatsApp (`lib/memby/`,
+  `lib/whatsapp/`), Residente de Obra y reparto de beneficios. Corren en UTC
+  como Vercel: lo que dependa de la hora de Paraguay la fija a mano.
 
 ## Producción
 

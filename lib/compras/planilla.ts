@@ -1,4 +1,4 @@
-import { parseNumero } from "./labels";
+import { parseGs, parseNumero } from "./labels";
 
 // Lectura de un presupuesto pegado desde Excel (o leído de un .xlsx/.csv):
 // busca la fila de títulos, reconoce qué columna es cada cosa por el nombre
@@ -24,9 +24,10 @@ const sinTildes = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLo
 function campoDeTitulo(t: string): Campo | null {
   const s = sinTildes(t).replace(/[.:]/g, " ").replace(/\s+/g, " ").trim();
   if (!s) return null;
+  // "Cant. total" es la cantidad: va antes que "total".
+  if (/^cant|^qty|^cnt/.test(s)) return "cantidad";
   if (/total|^importe|^monto|^parcial/.test(s)) return "total";
   if (/^(precio|costo|valor)\b.*unit|^p ?u$|^p ?unit|^unitario|^precio\b|^costo$/.test(s)) return "precioUnitario";
-  if (/^cant|^qty|^cnt/.test(s)) return "cantidad";
   if (/^(unid|und|ud$|um$|u$|medida|u ?m$)/.test(s)) return "unidad";
   if (/descrip|detalle|concepto|material|designacion|rubro|partida/.test(s)) return "descripcion";
   if (/^(cod|item|n(ro|°|º|o)?$|num|#)/.test(s)) return "codigo";
@@ -127,8 +128,8 @@ export function leerPlanilla(celdas: unknown[][]): ResultadoPlanilla {
     const cantRaw = tomar(f, "cantidad");
     const precioRaw = tomar(f, "precioUnitario");
     const cantidad = parseNumero(cantRaw);
-    let precioUnitario = parseNumero(precioRaw);
-    const total = parseNumero(tomar(f, "total"));
+    let precioUnitario = parseGs(precioRaw);
+    const total = parseGs(tomar(f, "total"));
     if (precioUnitario === null && total !== null && cantidad) precioUnitario = Math.round(total / cantidad);
     const catCol = texto(tomar(f, "categoria")) || null;
     const base = { fila: i + 1, codigo, descripcion, unidad, cantidad, precioUnitario, categoria: catCol ?? categoria };

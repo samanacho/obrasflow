@@ -31,7 +31,7 @@ const DhtmlxGanttChart = dynamic(() => import("@/components/DhtmlxGanttChart"), 
 });
 import type { ProjectDTO, ProjectStatus, ProjectType, DashboardSummaryDTO, PoleLotDTO, PoleSpecDTO, GeneralMovementDTO } from "@/lib/types";
 import { fechaFiscalizacionEstimada, capacityForDate, FACTORY_SCHEDULE_LABEL } from "@/lib/factoryCapacity";
-import { todayLocal } from "@/lib/dates";
+import { daysBetween, todayLocal } from "@/lib/dates";
 
 const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
 const TYPE_COLOR: Record<ProjectType, string> = { civil: "info", electrico: "warning", vial: "secondary", otro: "dark" };
@@ -105,6 +105,18 @@ function HomeInner() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<ProjectDTO | null>(null);
+
+  // La pestaña sigue a la dirección (así "Atrás" funciona), y ?nuevo=1 (desde
+  // el buscador rápido) abre el asistente de nuevo proyecto.
+  useEffect(() => {
+    const t = searchParams.get("tab") as TabKey | null;
+    setTabState(t && TABS.some((x) => x.key === t) ? t : "dashboard");
+    if (searchParams.get("nuevo") === "1") {
+      openModal(null);
+      router.replace("/", { scroll: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   useEffect(() => { loadProjects(); loadSummary(); loadPostesSummary(); loadGeneralMovements(); }, []);
 
@@ -384,7 +396,8 @@ function DashboardView({
   const overBudget = projects.filter((p) => p.spent > p.budget);
   const dueSoon = projects
     .filter((p) => p.status !== "finalizado")
-    .map((p) => ({ p, daysLeft: Math.ceil((new Date(p.end).getTime() - now) / 86400000) }))
+    // Días calendario: new Date("YYYY-MM-DD") es medianoche UTC y corría un día.
+    .map((p) => ({ p, daysLeft: daysBetween(todayLocal(), p.end.slice(0, 10)) }))
     .filter((x) => x.daysLeft <= 7);
 
   const lotesEnProceso = poleLots.filter((l) => l.estado === "en_curado" || l.estado === "listo_para_ensayo" || l.estado === "en_ensayo").length;
@@ -658,7 +671,7 @@ function DashboardView({
       <CCard className="mt-4">
         <CCardHeader className="fw-semibold">Cronograma interactivo</CCardHeader>
         <CCardBody>
-          <p className="module-desc mb-3">Arrastrá tareas, cambiá la escala (semana/mes) y hacé clic en un proyecto para abrirlo — motor <strong>dhtmlx Gantt</strong>.</p>
+          <p className="module-desc mb-3">Inicio y fin de cada proyecto, para ver cómo se superponen. Hacé clic en un proyecto para abrirlo (las fechas se cambian desde ahí) — motor <strong>dhtmlx Gantt</strong>.</p>
           <DhtmlxGanttChart projects={projects} />
         </CCardBody>
       </CCard>
@@ -707,7 +720,7 @@ function BoardView({
 
 function DueBadge({ end, status }: { end: string; status: ProjectStatus }) {
   if (status === "finalizado") return null;
-  const daysLeft = Math.ceil((new Date(end).getTime() - Date.now()) / 86400000);
+  const daysLeft = daysBetween(todayLocal(), end.slice(0, 10));
   let color: string | null = null;
   let text = "";
   if (daysLeft < 0) { color = "danger"; text = `Vencido ${Math.abs(daysLeft)}d`; }

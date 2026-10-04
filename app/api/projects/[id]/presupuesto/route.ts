@@ -26,8 +26,10 @@ export async function POST(req: NextRequest, { params }: Params) {
   try {
     const project = await prisma.project.findUnique({ where: { id: params.id }, select: { id: true } });
     if (!project) return NextResponse.json({ error: "Obra no encontrada." }, { status: 404 });
-    const b = (await req.json()) as { items?: any[]; reemplazar?: boolean };
-    const rows = (b.items ?? [])
+    const b = (await req.json().catch(() => ({}))) as { items?: unknown; reemplazar?: boolean };
+    if (b.items !== undefined && !Array.isArray(b.items)) return NextResponse.json({ error: "La lista de ítems es inválida." }, { status: 400 });
+    const rows = ((b.items ?? []) as any[])
+      .filter((i) => i && typeof i === "object")
       .map((i) => ({
         codigo: i.codigo ? String(i.codigo).trim() || null : null,
         descripcion: String(i.descripcion ?? "").trim(),

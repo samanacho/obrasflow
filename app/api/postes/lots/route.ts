@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { serializePoleLot } from "@/lib/serialize";
 import { LOT_STATUS_ORDER } from "@/lib/poleFields";
+import { parseLotDates } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +51,11 @@ export async function POST(req: NextRequest) {
     }
     const fechaColado = body.fechaColado ? String(body.fechaColado) : "";
     if (!fechaColado) return NextResponse.json({ error: "La fecha de colado es obligatoria." }, { status: 400 });
+    const fechas = parseLotDates(body);
+    if ("error" in fechas) return NextResponse.json({ error: fechas.error }, { status: 400 });
     const estado = LOT_STATUS_ORDER.includes(body.estado as any) ? String(body.estado) : "en_curado";
+    const spec = await prisma.poleSpec.findUnique({ where: { id: specId }, select: { id: true } });
+    if (!spec) return NextResponse.json({ error: "Esa especificación de poste ya no existe." }, { status: 400 });
 
     // Al crear el lote se congela el consumo de materia prima: se toma la
     // receta de la especificación TAL COMO ESTÁ en este momento (cantidad
@@ -65,13 +70,11 @@ export async function POST(req: NextRequest) {
           codigo,
           cantidad,
           cantidadParaEnsayo,
-          fechaColado: new Date(fechaColado),
-          fechaDesmolde: body.fechaDesmolde ? new Date(String(body.fechaDesmolde)) : null,
+          ...fechas,
           estado: estado as any,
           responsable: body.responsable ? String(body.responsable) : null,
           ciudadDestino: body.ciudadDestino ? String(body.ciudadDestino) : null,
           andeAprobado: Boolean(body.andeAprobado),
-          andeFecha: body.andeFecha ? new Date(String(body.andeFecha)) : null,
           andeActa: body.andeActa ? String(body.andeActa) : null,
           andeInspector: body.andeInspector ? String(body.andeInspector) : null,
           numeracionAnde: body.numeracionAnde ? String(body.numeracionAnde) : null,

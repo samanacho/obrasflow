@@ -1,11 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, nowS, readSession } from "@/lib/auth/token";
+import { localRequestAllowed } from "@/lib/auth/local";
 
 // Login: toda la app pide haber ingresado (pantalla /ingresar), salvo:
 //  • las rutas que usan otros sistemas con su propia clave o firma (Memby,
 //    backup diario, webhook de WhatsApp, webhook de Residente de Obra);
 //  • las páginas legales que pide Meta y la propia pantalla de ingreso;
-//  • la app local (server/local-server.mjs, solo 127.0.0.1).
+//  • la app local (server/local-server.mjs, solo 127.0.0.1), que en cambio
+//    solo acepta pedidos de la propia PC (lib/auth/local.ts).
 // Ver lib/auth/token.ts.
 
 const PUBLIC: RegExp[] = [
@@ -20,7 +22,13 @@ const PUBLIC: RegExp[] = [
 ];
 
 export async function middleware(req: NextRequest) {
-  if (process.env.OBRASFLOW_LOCAL === "1" && !process.env.VERCEL) return NextResponse.next();
+  if (process.env.OBRASFLOW_LOCAL === "1" && !process.env.VERCEL) {
+    const h = req.headers;
+    if (!localRequestAllowed(req.method, h.get("host"), h.get("origin"), h.get("sec-fetch-site"))) {
+      return NextResponse.json({ error: "Pedido rechazado: la app local solo acepta pedidos desde esta misma PC." }, { status: 403 });
+    }
+    return NextResponse.next();
+  }
   const { pathname, search } = req.nextUrl;
   if (PUBLIC.some((re) => re.test(pathname))) return NextResponse.next();
 
@@ -46,6 +54,10 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Todo menos los archivos estáticos de Next y de /public.
-  matcher: ["/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|txt|xml|json|webmanifest|woff2?|css|js|map)$).*)"],
+  // Todo menos los archivos estáticos de Next y de /public. La API va siempre
+  // aparte: si no, /api/loquesea.json se salteaba el login por la extensión.
+  matcher: [
+    "/api/:path*",
+    "/((?!api/|_next/static|_next/image|favicon\\.ico|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|txt|xml|json|webmanifest|woff2?|css|js|map)$).*)",
+  ],
 };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   CCard, CCardBody, CButton, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
@@ -62,7 +62,10 @@ export default function ContratistasPage() {
     [contractors]
   );
 
+  // Número de pedido: si una búsqueda vieja responde tarde, no pisa a la nueva.
+  const pedido = useRef(0);
   async function load() {
+    const n = ++pedido.current;
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -70,9 +73,11 @@ export default function ContratistasPage() {
       if (statusFilter) params.set("status", statusFilter);
       if (search) params.set("q", search);
       const res = await fetch(`/api/contractors?${params.toString()}`);
-      setContractors(res.ok ? await res.json() : []);
+      const lista = res.ok ? await res.json() : [];
+      if (n !== pedido.current) return;
+      setContractors(lista);
     } finally {
-      setLoading(false);
+      if (n === pedido.current) setLoading(false);
     }
   }
   useEffect(() => {

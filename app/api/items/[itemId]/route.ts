@@ -7,6 +7,7 @@ import { recomputeProjectSpent } from "@/lib/spent";
 import { logChanges } from "@/lib/history";
 import { appSource } from "@/lib/auth/server";
 import { fmtGs } from "@/lib/agent/format";
+import { normalizeMovimientoData } from "@/lib/validate";
 
 export const dynamic = "force-dynamic";
 
@@ -65,17 +66,31 @@ export async function PUT(req: NextRequest, { params }: Params) {
     const title = String(body.title ?? "").trim();
     if (!title) return NextResponse.json({ error: "El título es obligatorio." }, { status: 400 });
 
+    let data = body.data;
+    if (existing.kind === "change_order" && data !== undefined && data !== null) {
+      const n = normalizeMovimientoData(data);
+      if ("error" in n) return NextResponse.json({ error: n.error }, { status: 400 });
+      data = n.data;
+    }
+
     const updated = await prisma.projectItem.update({
       where: { id: params.itemId },
       data: {
         title,
         status: body.status === undefined ? existing.status : body.status,
-        data: (body.data as any) ?? existing.data,
+        data: (data as any) ?? existing.data,
       },
       include: { attachments: { select: ATTACHMENT_META_SELECT, orderBy: { createdAt: "desc" }, take: 1 } },
     });
 
-    if (existing.kind === "change_order") await recomputeProjectSpent(existing.projectId);
+    if (existing.kind === "change_order") {
+      await recomputeProjectSpent(existing.projectId);
+      // Si es el gasto de un pedido de compra pagado, el pedido muestra el mismo monto.
+      const monto = Number(asObj(updated.data).monto);
+      if (Number.isFinite(monto) && monto !== Number(asObj(existing.data).monto)) {
+        await prisma.purchaseOrder.updateMany({ where: { gastoItemId: existing.id, status: "pagado" }, data: { montoPagado: monto } });
+      }
+    }
 
     const detail = describeEdit(existing.kind, existing, updated);
     if (detail) {

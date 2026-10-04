@@ -30,7 +30,8 @@ export async function GET(req: NextRequest) {
     clearSessionCookie(res);
     return res;
   }
-  const url = new URL(volver, req.nextUrl.origin);
+  let url = new URL(volver, req.nextUrl.origin);
+  if (url.origin !== req.nextUrl.origin) url = new URL("/", req.nextUrl.origin); // segunda red: nunca fuera de la app
   const res = NextResponse.redirect(url);
   await setSessionCookie(res, r.s, r.persistent);
   return res;

@@ -23,12 +23,24 @@ export class RemoteDbError extends Error {
 }
 
 const TIMEOUT_MS = 30_000;
+const READ_OPS = new Set(["findUnique", "findUniqueOrThrow", "findFirst", "findFirstOrThrow", "findMany", "count", "aggregate", "groupBy"]);
+
+/**
+ * ¿Se puede repetir sin riesgo si la red falla? Solo las lecturas: una
+ * escritura puede haber llegado a Vercel aunque la respuesta se haya cortado,
+ * y repetirla duplicaba registros (o daba P2002 y el mensaje se descartaba).
+ */
+export function isRetryable(path: string, body: unknown): boolean {
+  const op = (body as { op?: unknown } | null)?.op;
+  return path === "/api/memby/db" && typeof op === "string" && READ_OPS.has(op);
+}
 
 export async function callMemby(baseUrl: string, key: string, path: string, body: unknown): Promise<any> {
   let lastErr: unknown;
-  // Un reintento solo ante fallas de red (no ante errores de la base: una
-  // escritura que llegó no se repite).
-  for (let attempt = 0; attempt < 2; attempt++) {
+  const attempts = isRetryable(path, body) ? 2 : 1;
+  // Un reintento solo ante fallas de red y solo en lecturas (no ante errores
+  // de la base: una escritura que llegó no se repite).
+  for (let attempt = 0; attempt < attempts; attempt++) {
     let res: Response;
     try {
       res = await fetch(`${baseUrl.replace(/\/$/, "")}${path}`, {
@@ -39,7 +51,7 @@ export async function callMemby(baseUrl: string, key: string, path: string, body
       });
     } catch (err) {
       lastErr = err;
-      await new Promise((r) => setTimeout(r, 800));
+      if (attempt + 1 < attempts) await new Promise((r) => setTimeout(r, 800));
       continue;
     }
     const json = (await res.json().catch(() => null)) as any;

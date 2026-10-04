@@ -174,18 +174,27 @@ export default function ItemFormModal({
       // El adjunto se sube/borra recién ahora que el item ya tiene id —
       // si algo de esto falla, el item ya se guardó igual: se avisa pero
       // no se bloquea el cierre del modal por un problema solo del archivo.
-      if (pendingFile) {
-        const fd = new FormData();
-        fd.append("file", pendingFile);
-        const upRes = await fetch(`/api/items/${saved.id}/attachment`, { method: "POST", body: fd });
-        if (upRes.ok) saved.attachment = await upRes.json();
-        else {
-          const upBody = await upRes.json().catch(() => ({}));
-          showToast(upBody.error || "El movimiento se guardó, pero no se pudo subir el archivo adjunto.");
+      // Try propio: un error de red acá no puede caer en el catch general
+      // (el modal quedaría abierto y al reintentar se crearía otro item).
+      try {
+        if (pendingFile) {
+          const fd = new FormData();
+          fd.append("file", pendingFile);
+          const upRes = await fetch(`/api/items/${saved.id}/attachment`, { method: "POST", body: fd });
+          if (upRes.ok) saved.attachment = await upRes.json();
+          else {
+            const upBody = await upRes.json().catch(() => ({}));
+            showToast(upBody.error || "El movimiento se guardó, pero no se pudo subir el archivo adjunto.");
+          }
+        } else if (removeAttachment && existing?.attachment) {
+          const delRes = await fetch(`/api/attachments/${existing.attachment.id}`, { method: "DELETE" });
+          if (delRes.ok) saved.attachment = null;
+          else showToast("El movimiento se guardó, pero no se pudo quitar el archivo adjunto.");
         }
-      } else if (removeAttachment && existing?.attachment) {
-        await fetch(`/api/attachments/${existing.attachment.id}`, { method: "DELETE" }).catch(() => {});
-        saved.attachment = null;
+      } catch {
+        showToast(pendingFile
+          ? "El movimiento se guardó, pero no se pudo subir el archivo adjunto."
+          : "El movimiento se guardó, pero no se pudo quitar el archivo adjunto.");
       }
 
       onSaved(saved);
