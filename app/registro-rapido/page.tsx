@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { CCard, CCardBody, CBadge, CButton, CFormSelect } from "@coreui/react";
-import CIcon from "@coreui/icons-react";
-import { cilCheckCircle, cilTrash } from "@coreui/icons";
+import { CheckCircle, Trash } from "@phosphor-icons/react";
+import Icon from "@/components/ui/Icon";
 import AppShell from "@/components/AppShell";
 import { confirmarAccion, notificar } from "@/lib/ui/alerts";
 import ItemFormModal from "@/components/ItemFormModal";
@@ -174,7 +174,7 @@ export default function RegistroRapidoPage() {
               )}
             </div>
             {item.resuelto && (
-              <CBadge color="success"><CIcon icon={cilCheckCircle} size="sm" className="me-1" />Clasificado</CBadge>
+              <CBadge color="success"><Icon icon={CheckCircle} size={14} className="me-1" />Clasificado</CBadge>
             )}
           </div>
 
@@ -212,7 +212,7 @@ export default function RegistroRapidoPage() {
                     Cargar como gasto general
                   </CButton>
                   <CButton size="sm" color="danger" variant="ghost" onClick={() => handleDelete(item)}>
-                    <CIcon icon={cilTrash} size="sm" />
+                    <Icon icon={Trash} size={16} label="Eliminar" />
                   </CButton>
                 </div>
               )}

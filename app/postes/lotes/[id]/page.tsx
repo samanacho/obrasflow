@@ -8,8 +8,8 @@ import {
   CForm, CFormLabel, CFormInput, CFormSelect, CFormTextarea, CBadge, CAlert, CListGroup, CListGroupItem, CRow, CCol,
   CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell,
 } from "@coreui/react";
-import CIcon from "@coreui/icons-react";
-import { cilPlus, cilPencil, cilTrash } from "@coreui/icons";
+import { PencilSimple, Plus, Trash } from "@phosphor-icons/react";
+import Icon from "@/components/ui/Icon";
 import AppShell from "@/components/AppShell";
 import { confirmarAccion } from "@/lib/ui/alerts";
 import { LOT_STATUS_ORDER, LOT_STATUS_LABEL, LOT_STATUS_COLOR, TEST_TIPOS, TEST_RESULTADOS, TEST_RESULTADO_COLOR } from "@/lib/poleFields";
@@ -186,10 +186,10 @@ export default function PoleLotDetail({ params }: { params: { id: string } }) {
       headerActions={
         <>
           <CButton color="secondary" variant="outline" size="sm" onClick={openEdit}>
-            <CIcon icon={cilPencil} className="me-1" /> Editar
+            <Icon icon={PencilSimple} size={16} className="me-1" /> Editar
           </CButton>
           <CButton color="danger" variant="outline" size="sm" onClick={handleDelete} disabled={deleting}>
-            <CIcon icon={cilTrash} className="me-1" /> {deleting ? "Eliminando…" : "Eliminar"}
+            <Icon icon={Trash} size={16} className="me-1" /> {deleting ? "Eliminando…" : "Eliminar"}
           </CButton>
         </>
       }
@@ -319,7 +319,7 @@ export default function PoleLotDetail({ params }: { params: { id: string } }) {
             <p className="module-desc mb-0">Ruptura/flexión, verificación dimensional, curado — un registro por ensayo hecho sobre este lote.</p>
           </div>
           <CButton color="primary" size="sm" onClick={() => { setTestError(null); setTestForm({ ...EMPTY_TEST, fecha: todayLocal() }); setShowTestForm(true); }}>
-            <CIcon icon={cilPlus} className="me-1" /> Agregar ensayo
+            <Icon icon={Plus} size={16} className="me-1" /> Agregar ensayo
           </CButton>
         </CCardHeader>
         <CCardBody>
@@ -336,7 +336,7 @@ export default function PoleLotDetail({ params }: { params: { id: string } }) {
                 </div>
                 {t.observaciones && <div className="item-row-notes">{t.observaciones}</div>}
                 <div className="item-row-actions">
-                  <CButton size="sm" color="danger" variant="outline" onClick={() => performDeleteTest(t.id)}><CIcon icon={cilTrash} size="sm" /></CButton>
+                  <CButton size="sm" color="danger" variant="outline" onClick={() => performDeleteTest(t.id)}><Icon icon={Trash} size={16} label="Eliminar" /></CButton>
                 </div>
               </CListGroupItem>
             ))}

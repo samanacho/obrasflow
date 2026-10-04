@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { CCard, CCardBody, CForm, CFormInput, CButton, CAlert } from "@coreui/react";
-import CIcon from "@coreui/icons-react";
-import { cilLockLocked } from "@coreui/icons";
+import { LockSimple } from "@phosphor-icons/react";
+import Icon from "@/components/ui/Icon";
 
 /**
  * Gate simple por PIN para tapar el contenido de un módulo — pedido
@@ -66,7 +66,7 @@ export default function PinGate({
     <div className="d-flex justify-content-center pt-5">
       <CCard style={{ maxWidth: 360, width: "100%" }}>
         <CCardBody className="text-center">
-          <CIcon icon={cilLockLocked} size="xl" className="mb-3 text-body-secondary" />
+          <Icon icon={LockSimple} size={24} className="mb-3 text-body-secondary" />
           <h2 className="h5 mb-2">{title || "Acceso restringido"}</h2>
           <p className="module-desc mb-3">Ingresá el PIN para entrar a este módulo.</p>
           <CForm onSubmit={handleSubmit}>

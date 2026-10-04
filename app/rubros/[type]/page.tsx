@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CCard, CCardBody, CCardHeader, CBadge, CButton } from "@coreui/react";
-import CIcon from "@coreui/icons-react";
-import { cilPlus, cilPencil, cilTrash } from "@coreui/icons";
+import { PencilSimple, Plus, Trash } from "@phosphor-icons/react";
+import Icon from "@/components/ui/Icon";
 import AppShell from "@/components/AppShell";
 import NewProjectWizard from "@/components/NewProjectWizard";
 import { confirmarAccion } from "@/lib/ui/alerts";
@@ -120,7 +120,7 @@ export default function RubroDetailPage({ params }: { params: { type: string } }
       crumbs={[{ label: "Obras por rubro", href: "/rubros" }, { label: TYPE_LABEL[t] }]}
       headerActions={
         <CButton color="primary" size="sm" onClick={openCreate}>
-          <CIcon icon={cilPlus} className="me-1" /> Nueva obra
+          <Icon icon={Plus} size={16} className="me-1" /> Nueva obra
         </CButton>
       }
     >
@@ -186,10 +186,10 @@ export default function RubroDetailPage({ params }: { params: { type: string } }
                         {p.reference && <div className="item-row-sub text-end mt-1">REF: {p.reference}</div>}
                         <div className="row-actions mt-2">
                           <CButton size="sm" color="secondary" variant="outline" onClick={() => openEdit(p)}>
-                            <CIcon icon={cilPencil} size="sm" />
+                            <Icon icon={PencilSimple} size={16} label="Editar" />
                           </CButton>
                           <CButton size="sm" color="danger" variant="outline" onClick={() => handleDelete(p)}>
-                            <CIcon icon={cilTrash} size="sm" />
+                            <Icon icon={Trash} size={16} label="Eliminar" />
                           </CButton>
                         </div>
                       </div>

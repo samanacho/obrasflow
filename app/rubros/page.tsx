@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CCard, CCardBody, CBadge, CButton, CInputGroup, CInputGroupText, CFormInput } from "@coreui/react";
-import CIcon from "@coreui/icons-react";
-import { cilPlus, cilSearch } from "@coreui/icons";
+import { MagnifyingGlass, Plus } from "@phosphor-icons/react";
+import Icon from "@/components/ui/Icon";
 import AppShell from "@/components/AppShell";
 import NewProjectWizard from "@/components/NewProjectWizard";
 import type { ProjectDTO, ProjectType, ProjectStatus } from "@/lib/types";
@@ -112,7 +112,7 @@ export default function RubrosPage() {
         <div className="d-flex gap-2">
           <Link href="/sitios" className="btn btn-outline-secondary btn-sm">📍 Sitios</Link>
           <CButton color="primary" size="sm" onClick={() => setModalOpen(true)}>
-            <CIcon icon={cilPlus} className="me-1" /> Nueva obra
+            <Icon icon={Plus} size={16} className="me-1" /> Nueva obra
           </CButton>
         </div>
       }
@@ -126,7 +126,7 @@ export default function RubrosPage() {
       <div className="row mb-4">
         <div className="col-md-6">
           <CInputGroup>
-            <CInputGroupText><CIcon icon={cilSearch} /></CInputGroupText>
+            <CInputGroupText><Icon icon={MagnifyingGlass} size={16} /></CInputGroupText>
             <CFormInput
               placeholder="Buscar obra por nombre, referencia, sitio, responsable o ciudad…"
               value={search}

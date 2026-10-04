@@ -8,8 +8,8 @@ import {
   CFormInput, CFormSelect, CButton, CRow, CCol, CBadge, CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell,
 } from "@coreui/react";
 import { CChartDoughnut, CChartLine } from "@coreui/react-chartjs";
-import CIcon from "@coreui/icons-react";
-import { cilCloudDownload, cilArrowLeft, cilDescription } from "@coreui/icons";
+import { ArrowLeft, DownloadSimple, FileText } from "@phosphor-icons/react";
+import Icon from "@/components/ui/Icon";
 import AppShell from "@/components/AppShell";
 import { MOVIMIENTO_TIPOS } from "@/lib/movimientos";
 import { useIsDarkTheme } from "@/lib/useIsDarkTheme";
@@ -129,7 +129,7 @@ function EjecucionInner() {
           </div>
           {selected && (
             <CButton color="secondary" variant="outline" size="sm" onClick={() => selectProject("")}>
-              <CIcon icon={cilArrowLeft} className="me-1" /> Cambiar obra
+              <Icon icon={ArrowLeft} size={16} className="me-1" /> Cambiar obra
             </CButton>
           )}
         </CCardHeader>
@@ -282,7 +282,7 @@ function PlanillaGastosView({ project, items }: { project: ProjectDTO; items: Pr
           <p className="module-desc mb-0">Todos los movimientos cargados en la Ejecución de esta obra. Para agregar o editar, entrá a la ficha de la obra.</p>
         </div>
         <CButton color="secondary" variant="outline" size="sm" onClick={() => exportGastosCSV(items, project.name)} disabled={items.length === 0}>
-          <CIcon icon={cilCloudDownload} className="me-1" /> Exportar CSV
+          <Icon icon={DownloadSimple} size={16} className="me-1" /> Exportar CSV
         </CButton>
       </CCardHeader>
       <CCardBody>
@@ -416,11 +416,11 @@ function ArchivosView({ items }: { items: ProjectItemDTO[] }) {
                       </a>
                     ) : attachmentUrl ? (
                       <a href={attachmentUrl} target="_blank" rel="noopener noreferrer" className="d-flex align-items-center justify-content-center" style={{ height: 100, background: "var(--panel-2, rgba(0,0,0,.03))" }}>
-                        <CIcon icon={cilDescription} size="xl" className="text-body-secondary" />
+                        <Icon icon={FileText} size={24} className="text-body-secondary" />
                       </a>
                     ) : (
                       <div className="d-flex align-items-center justify-content-center" style={{ height: 100, background: "var(--panel-2, rgba(0,0,0,.03))" }}>
-                        <CIcon icon={cilDescription} size="xl" className="text-body-secondary" />
+                        <Icon icon={FileText} size={24} className="text-body-secondary" />
                       </div>
                     )}
                     <CCardBody>

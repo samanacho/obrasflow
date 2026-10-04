@@ -6,8 +6,8 @@ import {
   CCard, CCardBody, CCardHeader, CButton, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
   CForm, CFormLabel, CFormInput, CFormSelect, CFormTextarea, CBadge, CAlert, CListGroup, CListGroupItem, CRow, CCol,
 } from "@coreui/react";
-import CIcon from "@coreui/icons-react";
-import { cilPlus, cilTrash } from "@coreui/icons";
+import { Plus, Trash } from "@phosphor-icons/react";
+import Icon from "@/components/ui/Icon";
 import AppShell from "@/components/AppShell";
 import { confirmarAccion } from "@/lib/ui/alerts";
 import type { ContractorDTO, ContractorHistoryDTO, ContractorHistoryInput, ProjectDTO, ProjectType } from "@/lib/types";
@@ -123,7 +123,7 @@ export default function ContractorDetail({ params }: { params: { id: string } })
       crumbs={[{ label: "Contratistas", href: "/contratistas" }, { label: contractor.name }]}
       headerActions={
         <CButton color="danger" variant="outline" size="sm" onClick={handleDelete} disabled={deleting}>
-          <CIcon icon={cilTrash} className="me-1" /> {deleting ? "Eliminando…" : "Eliminar"}
+          <Icon icon={Trash} size={16} className="me-1" /> {deleting ? "Eliminando…" : "Eliminar"}
         </CButton>
       }
     >
@@ -165,7 +165,7 @@ export default function ContractorDetail({ params }: { params: { id: string } })
             <p className="module-desc mb-0">Cada obra trabajada junto a este contratista, con su propia calificación.</p>
           </div>
           <CButton color="primary" size="sm" onClick={() => setShowForm(true)}>
-            <CIcon icon={cilPlus} className="me-1" /> Agregar obra
+            <Icon icon={Plus} size={16} className="me-1" /> Agregar obra
           </CButton>
         </CCardHeader>
         <CCardBody>

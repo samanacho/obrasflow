@@ -7,8 +7,8 @@ import {
   CForm, CFormLabel, CFormInput, CFormSelect, CFormTextarea,
   CBadge, CAlert, CRow, CCol,
 } from "@coreui/react";
-import CIcon from "@coreui/icons-react";
-import { cilPlus, cilBriefcase, cilCalendar, cilUser, cilCloudDownload } from "@coreui/icons";
+import { ArrowsLeftRight, Briefcase, CalendarBlank, Plus, User } from "@phosphor-icons/react";
+import Icon from "@/components/ui/Icon";
 import AppShell from "@/components/AppShell";
 import { confirmarAccion } from "@/lib/ui/alerts";
 import type { ToolDTO, ToolInput, ToolStatus, SupplierDTO } from "@/lib/types";
@@ -162,7 +162,7 @@ export default function InventarioPage() {
       crumbs={[{ label: "Inventario" }]}
       headerActions={
         <CButton color="primary" size="sm" onClick={() => openModal(null)}>
-          <CIcon icon={cilPlus} className="me-1" /> Nueva herramienta
+          <Icon icon={Plus} size={16} className="me-1" /> Nueva herramienta
         </CButton>
       }
     >
@@ -211,13 +211,13 @@ export default function InventarioPage() {
                   )}
                 </div>
                 <div className="contractor-meta">
-                  {t.proveedorNombre && <span><CIcon icon={cilBriefcase} size="sm" className="me-1" />{t.proveedorNombre}</span>}
-                  {t.fechaAdquisicion && <span><CIcon icon={cilCalendar} size="sm" className="me-1" />{fmtDate(t.fechaAdquisicion)}</span>}
-                  {t.responsable && <span><CIcon icon={cilUser} size="sm" className="me-1" />{t.responsable}</span>}
+                  {t.proveedorNombre && <span><Icon icon={Briefcase} size={14} className="me-1" />{t.proveedorNombre}</span>}
+                  {t.fechaAdquisicion && <span><Icon icon={CalendarBlank} size={14} className="me-1" />{fmtDate(t.fechaAdquisicion)}</span>}
+                  {t.responsable && <span><Icon icon={User} size={14} className="me-1" />{t.responsable}</span>}
                 </div>
                 {t.generalMovementId && (
                   <div className="item-row-sub">
-                    <CIcon icon={cilCloudDownload} size="sm" className="me-1" />
+                    <Icon icon={ArrowsLeftRight} size={14} className="me-1" />
                     <Link href="/movimientos">Ver movimiento generado ↗</Link>
                   </div>
                 )}
