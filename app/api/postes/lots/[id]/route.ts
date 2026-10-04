@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { serializePoleLot } from "@/lib/serialize";
 import { LOT_STATUS_ORDER } from "@/lib/poleFields";
+import { parseLotDates } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +55,24 @@ export async function PUT(req: NextRequest, { params }: Params) {
     }
     const fechaColado = body.fechaColado ? String(body.fechaColado) : "";
     if (!fechaColado) return NextResponse.json({ error: "La fecha de colado es obligatoria." }, { status: 400 });
+    const fechas = parseLotDates(body);
+    if ("error" in fechas) return NextResponse.json({ error: fechas.error }, { status: 400 });
     const estado = LOT_STATUS_ORDER.includes(body.estado as any) ? String(body.estado) : "en_curado";
+
+    const existing = await prisma.poleLot.findUnique({ where: { id: params.id }, select: { specId: true, _count: { select: { materialConsumptions: true } } } });
+    if (!existing) return NextResponse.json({ error: "Lote no encontrado." }, { status: 404 });
+    if (specId !== existing.specId) {
+      // El consumo y el costo del lote se congelaron con la receta de la
+      // especificación original: cambiarla dejaría el costo de otro poste.
+      if (existing._count.materialConsumptions > 0) {
+        return NextResponse.json(
+          { error: "Este lote ya tiene calculado el consumo de materiales con su especificación. Para cambiarla, borrá el lote y cargalo de nuevo." },
+          { status: 400 }
+        );
+      }
+      const spec = await prisma.poleSpec.findUnique({ where: { id: specId }, select: { id: true } });
+      if (!spec) return NextResponse.json({ error: "Esa especificación de poste ya no existe." }, { status: 400 });
+    }
 
     // Si cambia la cantidad de postes del lote, se re-escala la cantidad y
     // costo total de cada consumo de materia prima YA registrado — pero
@@ -70,13 +88,11 @@ export async function PUT(req: NextRequest, { params }: Params) {
           cantidad,
           cantidadParaEnsayo,
           cantidadDespachada,
-          fechaColado: new Date(fechaColado),
-          fechaDesmolde: body.fechaDesmolde ? new Date(String(body.fechaDesmolde)) : null,
+          ...fechas,
           estado: estado as any,
           responsable: body.responsable ? String(body.responsable) : null,
           ciudadDestino: body.ciudadDestino ? String(body.ciudadDestino) : null,
           andeAprobado: Boolean(body.andeAprobado),
-          andeFecha: body.andeFecha ? new Date(String(body.andeFecha)) : null,
           andeActa: body.andeActa ? String(body.andeActa) : null,
           andeInspector: body.andeInspector ? String(body.andeInspector) : null,
           numeracionAnde: body.numeracionAnde ? String(body.numeracionAnde) : null,

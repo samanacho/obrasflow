@@ -49,9 +49,13 @@ export async function PUT(req: NextRequest, { params }: Params) {
       fechaAdquisicion,
     });
 
-    const updated = await prisma.tool.update({
-      where: { id: params.id },
-      data: {
+    // Igual que en el alta: si el movimiento se creó recién y la herramienta no
+    // se puede guardar (ej. proveedor borrado), no queda un egreso suelto.
+    const movimientoNuevo = !existing.generalMovementId && generalMovementId ? generalMovementId : null;
+    const updated = await prisma.tool
+      .update({
+        where: { id: params.id },
+        data: {
         nombre,
         categoria: body.categoria ? String(body.categoria).trim() || null : null,
         marcaModelo: body.marcaModelo ? String(body.marcaModelo).trim() || null : null,
@@ -63,9 +67,13 @@ export async function PUT(req: NextRequest, { params }: Params) {
         responsable: body.responsable ? String(body.responsable).trim() || null : null,
         notas: body.notas ? String(body.notas).trim() || null : null,
         generalMovementId,
-      },
-      include: { proveedor: { select: { name: true } } },
-    });
+        },
+        include: { proveedor: { select: { name: true } } },
+      })
+      .catch(async (toolErr) => {
+        if (movimientoNuevo) await prisma.generalMovement.delete({ where: { id: movimientoNuevo } }).catch(() => {});
+        throw toolErr;
+      });
     return NextResponse.json(serializeTool(updated));
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {

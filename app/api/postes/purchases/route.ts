@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { serializeMaterialPurchase } from "@/lib/serialize";
 import type { PurchaseDocType } from "@/lib/types";
+import { parseOptionalYmd } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -27,8 +28,9 @@ export async function POST(req: NextRequest) {
     const material = await prisma.rawMaterial.findUnique({ where: { id: materialId } });
     if (!material) return NextResponse.json({ error: "Materia prima no encontrada." }, { status: 400 });
 
-    const fecha = String(body.fecha ?? "").trim();
-    if (!fecha) return NextResponse.json({ error: "La fecha es obligatoria." }, { status: 400 });
+    const fecha = parseOptionalYmd(body.fecha);
+    if (fecha === null) return NextResponse.json({ error: "La fecha es obligatoria." }, { status: 400 });
+    if (fecha === undefined) return NextResponse.json({ error: "La fecha es inválida." }, { status: 400 });
 
     const cantidad = Number(body.cantidad);
     if (!Number.isFinite(cantidad) || cantidad <= 0) {
@@ -47,7 +49,7 @@ export async function POST(req: NextRequest) {
     const created = await prisma.materialPurchase.create({
       data: {
         materialId,
-        fecha: new Date(fecha),
+        fecha,
         cantidad,
         costoUnitarioGs,
         costoTotalGs: cantidad * costoUnitarioGs,

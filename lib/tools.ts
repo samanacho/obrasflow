@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { todayInParaguay } from "./dates";
 
 // Servidor únicamente (usa Prisma) — separado por el mismo motivo que
 // lib/spent.ts: evita arrastrar el cliente de Prisma a un bundle de cliente
@@ -46,7 +47,8 @@ export async function syncToolMovement(params: {
       return existingGeneralMovementId;
     }
     const created = await prisma.generalMovement.create({
-      data: { ...data, fecha: fecha ?? new Date(), estado: "Pagado" },
+      // "Hoy" en Paraguay: con new Date() (UTC en Vercel) después de las 21:00 quedaba con fecha de mañana.
+      data: { ...data, fecha: fecha ?? new Date(todayInParaguay()), estado: "Pagado" },
     });
     return created.id;
   }

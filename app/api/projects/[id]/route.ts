@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { serializeProject } from "@/lib/serialize";
-import { parseProjectInput, ValidationError } from "@/lib/validate";
+import { MAX_MONTO_GS, parseProjectInput, ValidationError } from "@/lib/validate";
 import { reprocessPending } from "@/lib/integraciones/residente/process";
 import { SOURCE as RESIDENTE_SOURCE } from "@/lib/integraciones/residente/types";
 import { resolveSitioId } from "@/lib/sitios";
@@ -123,6 +123,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       const budget = Number(body.budget);
       if (!Number.isFinite(budget) || budget < 0) {
         return NextResponse.json({ error: "Presupuesto inválido." }, { status: 400 });
+      }
+      if (budget > MAX_MONTO_GS) {
+        return NextResponse.json({ error: "El presupuesto es demasiado grande: revisá que no sobren ceros." }, { status: 400 });
       }
       data.budget = budget;
     }
