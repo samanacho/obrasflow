@@ -1,9 +1,7 @@
 # Backlog
 
 ## En curso
-- Reorganización del setup de Claude (`docs/reorganizacion-claude.md`):
-  Fases 0 a 3 hechas; Fase 5 en PR (agente UX, librerías, íconos a Phosphor);
-  falta la 4 (loop como skill, con plantillas de backlog y decisiones).
+<!-- nada: la reorganización del setup quedó completa (ver Hecho) -->
 
 ## Esperando a Ignacio
 - Borrar el proyecto abandonado `obrasflow` en Vercel (sin repo, sin base,
@@ -23,7 +21,7 @@
   `scripts/start-conector.cmd`; pasarlo a `scripts/start-local.cmd`.
 
 ## Hecho
-### 2026-10-04 — reorganización del setup (PR #1 a #3)
+### 2026-10-04 — reorganización del setup (PR #1 a #5)
 - Fase 0: deploy sin `--accept-data-loss`; permisos con comandos bloqueados;
   sonidos solo para "terminé", "te necesito" y "pido permiso".
 - Fase 1: previews con su propia copia de la base (integración de Neon).
@@ -34,3 +32,9 @@
 - Fase 5: `react-plotly.js` desinstalado (no se usaba); TanStack y Plotly
   documentados como excepciones; agente UX recortado (15 KB → 10 KB) y
   apuntando a `docs/interfaz.md`; `docs/decisiones.md` creado.
+- Íconos: los 26 de CoreUI pasan a Phosphor en 15 pantallas (PR #4).
+- Fase 4: `/sesion` pasa a skill (`.claude/skills/sesion/`) con plantillas de
+  backlog y decisiones; preguntas "hasta 4" en vez de "siempre 4×4"; cada
+  ronda en una rama con su PR. Plan movido a `docs/historial/`.
+- Sonidos de peon-ping: no andaban nunca porque Windows bloqueaba los scripts
+  de PowerShell; el usuario de Windows pasó a `RemoteSigned`.
