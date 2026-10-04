@@ -84,7 +84,7 @@ cerrá cada respuesta con "Qué necesito de vos" y "Próximos pasos recomendados
   la tarjeta Sí/No (`aprobar_pedido`) y el conector avisa en el grupo cada
   cambio de estado. Pagar crea el gasto en Ejecución; la factura se agrega
   después (también por el grupo: foto con "Factura pedido 14").
-  `MEMBY_COMPRAS=off` lo apaga.
+  `MEMBY_APROBADOR` = número que aprueba (si no, el chat "Tú"); `MEMBY_COMPRAS=off` lo apaga.
 - Producción: https://obrasflow-app.vercel.app (base Neon, se despliega con
   cada push a `main`). El build corre `prisma db push --accept-data-loss`:
   los cambios de esquema tienen que ser aditivos.

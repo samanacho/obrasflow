@@ -361,9 +361,20 @@ function innerOf(m: WAMessage) {
   return c?.ephemeralMessage?.message ?? c?.viewOnceMessage?.message ?? c?.viewOnceMessageV2?.message ?? c?.documentWithCaptionMessage?.message ?? c;
 }
 
+/**
+ * Quién aprueba los pedidos (recibe la tarjeta Sí/No y los avisos de facturas):
+ * MEMBY_APROBADOR (un número, ej. 595981111111) o, si no está, el chat "Tú"
+ * de la cuenta vinculada.
+ */
+function approverPhone(): string | null {
+  const env = process.env.MEMBY_APROBADOR?.replace(/\D/g, "");
+  return env || ownPhone;
+}
+
 async function handleGroupMessage(m: WAMessage) {
   const jid = m.key.remoteJid!;
-  if (!ownPhone || !(await isPurchaseGroup(jid))) return;
+  const approver = approverPhone();
+  if (!ownPhone || !approver || !(await isPurchaseGroup(jid))) return;
   const inner = innerOf(m);
   if (!inner) return;
   const text = inner.conversation ?? inner.extendedTextMessage?.text ?? null;
@@ -377,9 +388,9 @@ async function handleGroupMessage(m: WAMessage) {
   if (text && isPurchaseRequest(text)) {
     console.log(`🛒 Pedido de compra de ${senderName} en el grupo`);
     await sock?.sendPresenceUpdate("composing", jid).catch(() => {});
-    const r = await handleGroupPurchaseRequest({ text, groupJid: jid, waMessageId: m.key.id!, senderName, senderPhone }, ownPhone);
+    const r = await handleGroupPurchaseRequest({ text, groupJid: jid, waMessageId: m.key.id!, senderName, senderPhone }, approver);
     if (r.groupReply) await sendToGroup(jid, r.groupReply, m);
-    if (r.card) await sendApprovalCard(transport, ownPhone, r.card.actionId, r.card.body);
+    if (r.card) await sendApprovalCard(transport, approver, r.card.actionId, r.card.body);
     return;
   }
 
@@ -400,7 +411,7 @@ async function handleGroupMessage(m: WAMessage) {
     });
     const r = await handleGroupInvoice(numero, media.id, senderName);
     await sendToGroup(jid, r.groupReply, m);
-    if (r.ownerNotice) await sendOwnerNotice(transport, ownPhone, r.ownerNotice);
+    if (r.ownerNotice) await sendOwnerNotice(transport, approver, r.ownerNotice);
   }
 }
 
@@ -583,7 +594,8 @@ async function main() {
   if (process.env.MEMBY_VOZ?.trim().toLowerCase() !== "off") warmUpTranscriber();
   if (!COMPRAS_OFF) {
     setInterval(() => void purchaseGroupTick(), 45_000);
-    console.log(`🛒 Pedidos de compra: leo el grupo "${process.env.MEMBY_GRUPO_COMPRAS?.trim() || "Pedidos de compra"}".`);
+    const aprobador = process.env.MEMBY_APROBADOR?.replace(/\D/g, "");
+    console.log(`🛒 Pedidos de compra: leo el grupo "${process.env.MEMBY_GRUPO_COMPRAS?.trim() || "Pedidos de compra"}"; aprueba ${aprobador ? `el ${aprobador}` : 'el chat "Tú"'}.`);
   }
   await connect();
 }
