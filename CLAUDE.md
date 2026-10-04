@@ -15,6 +15,7 @@ usás un término técnico, explicalo en pocas palabras. Cerrá cada respuesta c
 - Correr la app, producción, previews, CI y login → `docs/entorno.md`
 - Memby / conector de WhatsApp / compras por el grupo → `worker/CLAUDE.md`
 - Interfaz: diseño y librerías permitidas → `docs/interfaz.md`
+- Decisiones de producto ya tomadas → `docs/decisiones.md`
 - Pendientes e ideas → `docs/sesiones/backlog.md`
 - Sesión en loop → `/sesion`
 
