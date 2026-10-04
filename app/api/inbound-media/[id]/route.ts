@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 // Tablas de Memby: en la app local pueden venir de producción (ver lib/memby/chat-db.ts).
-import { membyDb as prisma } from "@/lib/memby/chat-db";
+import { membyDb } from "@/lib/memby/chat-db";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,10 @@ interface Params {
 
 /** Sirve un comprobante recibido por WhatsApp (ver InboundMedia) — mismo criterio que /api/attachments/[id]. */
 export async function GET(_req: NextRequest, { params }: Params) {
-  const media = await prisma.inboundMedia.findUnique({ where: { id: params.id } });
+  // Las facturas de pedidos de compra subidas desde la app quedan en la base de la app.
+  const media =
+    (await membyDb.inboundMedia.findUnique({ where: { id: params.id } })) ??
+    (membyDb === prisma ? null : await prisma.inboundMedia.findUnique({ where: { id: params.id } }));
   if (!media) return NextResponse.json({ error: "Comprobante no encontrado." }, { status: 404 });
   const filename = media.filename || `comprobante.${media.mimeType === "application/pdf" ? "pdf" : "jpg"}`;
   return new NextResponse(new Uint8Array(media.data), {

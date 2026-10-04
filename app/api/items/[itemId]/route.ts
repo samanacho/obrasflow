@@ -101,6 +101,12 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     }
     const deleted = await prisma.projectItem.delete({ where: { id: params.itemId } });
     if (deleted.kind === "change_order") await recomputeProjectSpent(deleted.projectId);
+    // Era el gasto de un pedido de compra: el pedido vuelve a "por pagar" (la factura cargada se conserva).
+    if (deleted.kind === "change_order") {
+      await prisma.purchaseOrder
+        .updateMany({ where: { gastoItemId: deleted.id, status: "pagado" }, data: { status: "aprobado", gastoItemId: null, montoPagado: null, pagadoAt: null, grupoAvisado: "aprobado" } })
+        .catch((err) => console.error("No se pudo devolver el pedido de compra a 'por pagar':", err));
+    }
     if (existing.kind !== "activity") {
       const cfg = ITEM_KINDS[existing.kind];
       const monto = asObj(existing.data).monto;

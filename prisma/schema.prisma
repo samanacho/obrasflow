@@ -101,9 +101,12 @@ model Project {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
-  items   ProjectItem[]
+  items          ProjectItem[]
   /// Historial de cambios de la obra (ver model ProjectChange).
-  changes ProjectChange[]
+  changes        ProjectChange[]
+  /// Presupuesto por ítem (cómputo) y pedidos de compra de la obra (módulo Compras).
+  budgetItems    BudgetItem[]
+  purchaseOrders PurchaseOrder[]
 
   @@index([status])
   @@index([sitioId])
@@ -117,25 +120,25 @@ model Project {
 /// propios de cada uno como JSON — evita una tabla por módulo para un
 /// set de features que comparten el mismo patrón CRUD.
 model ProjectItem {
-  id        String   @id @default(cuid())
-  projectId String
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  kind      String
-  title     String
-  status    String?
-  data      Json     @default("{}")
+  id             String   @id @default(cuid())
+  projectId      String
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  kind           String
+  title          String
+  status         String?
+  data           Json     @default("{}")
   /// Registros que vienen de otro sistema (ej. partes de Residente de Obra):
   /// de dónde vienen y su id allá. null en todo lo cargado en ObrasFlow. El
   /// índice único hace que reintentar el mismo envío no duplique nada.
   externalSource String?
   externalId     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   attachments Attachment[]
 
-  @@index([projectId, kind])
   @@unique([externalSource, externalId])
+  @@index([projectId, kind])
 }
 
 /// Eventos recibidos de sistemas externos (webhooks). Sirve para no procesar
@@ -274,7 +277,8 @@ model Supplier {
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
 
-  tools Tool[]
+  tools          Tool[]
+  purchaseOrders PurchaseOrder[]
 
   @@index([status])
 }
@@ -429,25 +433,25 @@ model InboundMedia {
 /// estas; el registro real se hace recién cuando el usuario toca
 /// "Confirmar" en WhatsApp (ver lib/agent/actions.ts executePendingAction).
 model WhatsAppPendingAction {
-  id        String   @id @default(cuid())
-  phone     String
+  id          String   @id @default(cuid())
+  phone       String
   /// "movimiento_obra" | "movimiento_general" | "registro_rapido"
-  kind      String
+  kind        String
   /// Datos ya validados y normalizados, listos para escribir.
-  payload   Json
+  payload     Json
   /// Resumen legible que se le mostró al usuario para confirmar.
-  summary   String
+  summary     String
   /// "pendiente" | "ejecutando" | "confirmada" | "cancelada" | "fallida"
-  status    String   @default("pendiente")
+  status      String   @default("pendiente")
   /// id del registro creado al confirmar (ProjectItem / GeneralMovement / QuickExpense).
-  resultId  String?
-  error     String?
+  resultId    String?
+  error       String?
   /// Código de 4 dígitos para confirmar por texto ("OK 4821") cuando el canal
   /// no tiene botones (conexión por QR / Baileys). Identifica UNA propuesta.
   confirmCode String?
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([phone, status])
 }
@@ -702,4 +706,107 @@ model PoleQualityTest {
   createdAt     DateTime @default(now())
 
   @@index([lotId])
+}
+
+/// Presupuesto por ítem de una obra (cómputo): material o tarea con unidad,
+/// cantidad y precio unitario presupuestados. Contra esto se comparan los
+/// pedidos de compra (cuánto se pidió y a qué precio). Pestaña "Presupuesto"
+/// de la ficha de obra; se carga a mano o importando una planilla.
+model BudgetItem {
+  id             String   @id @default(cuid())
+  projectId      String
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  /// Código o número de ítem de la planilla (ej. "3.2"). Opcional.
+  codigo         String?
+  descripcion    String
+  /// Ej. "bolsa", "m3", "varilla", "gl".
+  unidad         String?
+  cantidad       Decimal  @db.Decimal(14, 3)
+  precioUnitario Decimal  @db.Decimal(14, 2)
+  /// Agrupador libre (ej. "Materiales", "Mano de obra", "Estructura").
+  categoria      String?
+  orden          Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  lines PurchaseOrderLine[]
+
+  @@index([projectId, orden])
+}
+
+/// Pedido de compra (módulo Compras): llega por el grupo de WhatsApp de
+/// pedidos (lo lee Memby) o se carga en la app. Ciclo:
+/// pendiente → aprobado (o rechazado) → pagado (crea el gasto en Ejecución)
+/// y la factura se agrega después. Ver lib/compras/.
+model PurchaseOrder {
+  id               String    @id @default(cuid())
+  /// Número correlativo que se ve en WhatsApp y en la app ("Pedido #14").
+  numero           Int       @unique @default(autoincrement())
+  projectId        String?
+  project          Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  /// "pendiente" | "aprobado" | "rechazado" | "pagado" | "anulado"
+  status           String    @default("pendiente")
+  /// "whatsapp" | "app"
+  origen           String    @default("app")
+  /// Quién pidió (nombre de WhatsApp o lo que se cargó en la app).
+  solicitante      String
+  solicitantePhone String?
+  /// Mensaje original del grupo, tal cual llegó.
+  textoOriginal    String?
+  /// Cómo nombraron la obra cuando no se pudo reconocer (se elige en la app).
+  obraTexto        String?
+  /// Para cuándo lo necesitan (si lo dijeron).
+  fechaNecesaria   DateTime?
+  notas            String?
+  supplierId       String?
+  supplier         Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  proveedorNombre  String?
+  aprobadoPor      String?
+  aprobadoAt       DateTime?
+  rechazoMotivo    String?
+  montoPagado      Decimal?  @db.Decimal(14, 2)
+  medioPago        String?
+  pagadoAt         DateTime?
+  /// Movimiento de Ejecución (ProjectItem change_order) creado al pagar.
+  gastoItemId      String?   @unique
+  facturaTipo      String?
+  facturaNumero    String?
+  facturaRuc       String?
+  facturaFecha     DateTime?
+  iva10            Decimal?  @db.Decimal(14, 2)
+  iva5             Decimal?  @db.Decimal(14, 2)
+  /// Foto o PDF de la factura que llegó por WhatsApp (InboundMedia), si todavía no se pasó al gasto.
+  facturaMediaId   String?
+  facturaAt        DateTime?
+  /// Grupo de WhatsApp de donde vino (para avisar ahí cada cambio de estado).
+  grupoJid         String?
+  waMessageId      String?   @unique
+  /// Último estado ya avisado en el grupo (el conector avisa cuando cambia).
+  grupoAvisado     String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  lines PurchaseOrderLine[]
+
+  @@index([status])
+  @@index([projectId])
+}
+
+/// Renglón de un pedido de compra: qué material, cuánto y (al pagar) a qué
+/// precio. Se vincula al ítem del presupuesto para comparar.
+model PurchaseOrderLine {
+  id             String        @id @default(cuid())
+  orderId        String
+  order          PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  budgetItemId   String?
+  budgetItem     BudgetItem?   @relation(fields: [budgetItemId], references: [id], onDelete: SetNull)
+  descripcion    String
+  unidad         String?
+  cantidad       Decimal       @db.Decimal(14, 3)
+  /// Precio unitario real (se completa al pagar; antes, null).
+  precioUnitario Decimal?      @db.Decimal(14, 2)
+  orden          Int           @default(0)
+
+  @@index([orderId])
+  @@index([budgetItemId])
 }
