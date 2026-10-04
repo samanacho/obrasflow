@@ -11,6 +11,7 @@ import { Receipt, CaretDown, CaretUp } from "@phosphor-icons/react";
 import Icon from "@/components/ui/Icon";
 import Select2, { type Select2Option } from "@/components/ui/Select2";
 import FileDropZone from "@/components/FileDropZone";
+import MontoInput from "@/components/ui/MontoInput";
 import { notificar } from "@/lib/ui/alerts";
 import { MEDIO_PAGO_OPTIONS } from "@/components/GeneralMovementFormModal";
 import { ITEM_KINDS } from "@/lib/itemKinds";
@@ -183,7 +184,7 @@ export default function GastoObraButton() {
               <div className="row g-3 mb-3">
                 <div className="col-5">
                   <CFormLabel htmlFor="gasto-monto">Monto (Gs.)</CFormLabel>
-                  <CFormInput id="gasto-monto" type="number" inputMode="numeric" min={0} value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="0" autoFocus={Boolean(obraDeLaPantalla)} />
+                  <MontoInput id="gasto-monto" value={monto} onChange={(v) => setMonto(v === null ? "" : String(v))} placeholder="0" autoFocus={Boolean(obraDeLaPantalla)} />
                 </div>
                 <div className="col-7">
                   <CFormLabel htmlFor="gasto-concepto">En qué se gastó</CFormLabel>

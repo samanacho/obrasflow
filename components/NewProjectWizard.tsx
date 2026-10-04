@@ -13,6 +13,7 @@ import type { ProjectDTO, ProjectInput, ProjectStatus, ProjectType, ProjectSecto
 import { PUBLIC_FIELDS, PRIVATE_FIELDS, SectorField } from "@/lib/sectorFields";
 import { PARAGUAY_DEPARTMENTS } from "@/lib/departments";
 import CityMultiSelect from "@/components/CityMultiSelect";
+import MontoInput from "@/components/ui/MontoInput";
 
 const LocationPicker = dynamic(() => import("@/components/LocationPicker"), {
   ssr: false,
@@ -383,12 +384,12 @@ function StepGeneral({
       </CRow>
       <CRow className="mb-3 g-2">
         <CCol>
-          <CFormLabel>Presupuesto (Gs.)</CFormLabel>
-          <CFormInput type="number" min={0} step={1} required placeholder="0" value={form.budget === 0 ? "" : form.budget} onChange={(e) => setForm({ ...form, budget: Number(e.target.value) })} />
+          <CFormLabel htmlFor="wizard-presupuesto">Presupuesto (Gs.)</CFormLabel>
+          <MontoInput id="wizard-presupuesto" required placeholder="0" value={form.budget === 0 ? "" : form.budget} onChange={(v) => setForm({ ...form, budget: v ?? 0 })} />
         </CCol>
         <CCol>
-          <CFormLabel>Ejecutado (Gs.)</CFormLabel>
-          <CFormInput type="number" disabled value={form.spent} />
+          <CFormLabel htmlFor="wizard-ejecutado">Ejecutado (Gs.)</CFormLabel>
+          <MontoInput id="wizard-ejecutado" disabled value={form.spent} onChange={() => {}} />
           <div className="form-hint mb-0">Se calcula automáticamente desde Movimientos.</div>
         </CCol>
       </CRow>
@@ -455,9 +456,17 @@ function StepSectorDetails({
             </CFormSelect>
           ) : f.type === "text" && f.label.toLowerCase().includes("forma de pago") ? (
             <CFormTextarea rows={2} required={f.required} value={String(form.sectorData?.[f.key] ?? "")} placeholder={f.placeholder} onChange={(e) => setSectorField(f.key, e.target.value)} />
+          ) : f.type === "number" ? (
+            // Los campos numéricos del sector son montos en guaraníes.
+            <MontoInput
+              required={f.required}
+              placeholder={f.placeholder}
+              value={(form.sectorData?.[f.key] as string | number | undefined) ?? ""}
+              onChange={(v) => setSectorField(f.key, v === null ? "" : String(v))}
+            />
           ) : (
             <CFormInput
-              type={f.type === "number" ? "number" : f.type === "date" ? "date" : "text"}
+              type={f.type === "date" ? "date" : "text"}
               required={f.required}
               placeholder={f.placeholder}
               value={String(form.sectorData?.[f.key] ?? "")}

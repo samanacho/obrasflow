@@ -11,6 +11,7 @@ import Icon from "@/components/ui/Icon";
 import { MEDIO_PAGO_OPTIONS } from "@/components/GeneralMovementFormModal";
 import type { QuickExpenseDTO } from "@/lib/types";
 import { todayLocal } from "@/lib/dates";
+import MontoInput from "@/components/ui/MontoInput";
 
 /**
  * Botón siempre visible (en el header, ver AppShell) para anotar un pago en
@@ -125,8 +126,8 @@ export default function QuickExpenseButton() {
                 <Link href="/registro-rapido">Registro rápido</Link>.
               </p>
               <div className="mb-3">
-                <CFormLabel>Monto (Gs.)</CFormLabel>
-                <CFormInput type="number" min={0} autoFocus value={monto} onChange={(e) => setMonto(e.target.value)} required placeholder="0" />
+                <CFormLabel htmlFor="rapido-monto">Monto (Gs.)</CFormLabel>
+                <MontoInput id="rapido-monto" autoFocus value={monto} onChange={(v) => setMonto(v === null ? "" : String(v))} required placeholder="0" />
               </div>
               <div className="mb-3">
                 <CFormLabel>Medio de pago</CFormLabel>

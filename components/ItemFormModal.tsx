@@ -8,6 +8,7 @@ import {
   CForm, CFormLabel, CFormInput, CFormSelect, CFormTextarea, CAlert,
 } from "@coreui/react";
 import FileDropZone from "@/components/FileDropZone";
+import MontoInput from "@/components/ui/MontoInput";
 import type { ProjectItemDTO, ContractorDTO, SupplierDTO } from "@/lib/types";
 import { ITEM_KINDS, ItemField } from "@/lib/itemKinds";
 import { todayLocal } from "@/lib/dates";
@@ -124,7 +125,7 @@ export default function ItemFormModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.tipoInsumo]);
 
-  function setField(key: string, value: string) {
+  function setField(key: string, value: string | number) {
     setData((d) => ({ ...d, [key]: value }));
   }
 
@@ -296,6 +297,15 @@ export default function ItemFormModal({
                 <LocationPicker
                   value={parseCoords(data[f.key])}
                   onChange={(coords) => setField(f.key, `${coords.lat},${coords.lng}`)}
+                />
+              ) : f.type === "money" ? (
+                <MontoInput
+                  value={data[f.key]}
+                  onChange={(v) => setField(f.key, v ?? "")}
+                  required={f.required}
+                  placeholder={f.placeholder ?? "0"}
+                  // Una orden de cambio puede achicar el alcance (monto negativo).
+                  permitirNegativo={f.key === "monto" && data.tipo === "Orden de cambio"}
                 />
               ) : f.type === "file" ? (
                 <FileDropZone

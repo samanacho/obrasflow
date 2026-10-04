@@ -4,7 +4,8 @@
 
 import { MOVIMIENTO_TIPOS } from "./movimientos";
 
-export type FieldType = "text" | "textarea" | "number" | "date" | "contractor" | "quote" | "supplier" | "select" | "location" | "select-search" | "file";
+/** "money" = guaraníes (components/ui/MontoInput.tsx: puntos de miles al escribir); "number" = cantidades. */
+export type FieldType = "text" | "textarea" | "number" | "money" | "date" | "contractor" | "quote" | "supplier" | "select" | "location" | "select-search" | "file";
 
 export interface ItemField {
   key: string;
@@ -118,7 +119,7 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
     defaultStatus: "Pendiente",
     fields: [
       { key: "contratistaId", label: "Contratista", type: "contractor", required: true },
-      { key: "monto", label: "Monto cotizado (Gs.)", type: "number", required: true },
+      { key: "monto", label: "Monto cotizado (Gs.)", type: "money", required: true },
       { key: "notas", label: "Notas", type: "textarea" },
     ],
     summary: (d) => [d.contratistaNombre, d.monto ? `Gs. ${Number(d.monto).toLocaleString("es-PY")}` : ""].filter(Boolean).join(" · "),
@@ -190,7 +191,7 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
     defaultStatus: "Pendiente",
     fields: [
       { key: "tipo", label: "Tipo de movimiento", type: "select", required: true, options: MOVIMIENTO_TIPOS.map((t) => t.value) },
-      { key: "monto", label: "Monto (Gs.)", type: "number", required: true },
+      { key: "monto", label: "Monto (Gs.)", type: "money", required: true },
       { key: "fecha", label: "Fecha del movimiento", type: "date", required: true },
       {
         key: "tipoInsumo",
@@ -253,8 +254,8 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
       // Factura paraguaya: el precio ya incluye el IVA; se guarda la
       // "Liquidación del IVA" que figura al pie (10 % = monto/11, 5 % = monto/21).
       { key: "rucProveedor", label: "RUC del emisor", type: "text", placeholder: "Ej. 80012345-6", showIf: (d) => d.tipoComprobante === "Factura" },
-      { key: "iva10", label: "IVA 10 % incluido (Gs.)", type: "number", showIf: (d) => d.tipoComprobante === "Factura" },
-      { key: "iva5", label: "IVA 5 % incluido (Gs.)", type: "number", showIf: (d) => d.tipoComprobante === "Factura" },
+      { key: "iva10", label: "IVA 10 % incluido (Gs.)", type: "money", showIf: (d) => d.tipoComprobante === "Factura" },
+      { key: "iva5", label: "IVA 5 % incluido (Gs.)", type: "money", showIf: (d) => d.tipoComprobante === "Factura" },
       { key: "comprobanteArchivo", label: "Archivo adjunto (foto o PDF del comprobante)", type: "file" },
       {
         key: "procesadoPor",
@@ -297,7 +298,7 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
       { key: "marcaModelo", label: "Marca / modelo", type: "text" },
       { key: "patente", label: "Patente / N° de serie (opcional)", type: "text" },
       { key: "contratistaId", label: "Proveedor / contratista (si es alquilada o tercerizada)", type: "contractor" },
-      { key: "costo", label: "Costo (Gs.) — alquiler, contrato o valor de compra", type: "number" },
+      { key: "costo", label: "Costo (Gs.) — alquiler, contrato o valor de compra", type: "money" },
       { key: "fechaInicio", label: "Fecha de inicio de uso", type: "date" },
       { key: "fechaFin", label: "Fecha de fin / devolución (opcional)", type: "date" },
       { key: "operador", label: "Operador asignado", type: "text" },
@@ -378,7 +379,7 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
     titleLabel: "Partida",
     statusOptions: null,
     fields: [
-      { key: "monto", label: "Monto (Gs.)", type: "number", required: true },
+      { key: "monto", label: "Monto (Gs.)", type: "money", required: true },
       { key: "categoria", label: "Categoría (materiales, mano de obra...)", type: "text" },
     ],
     summary: (d) => (d.monto ? `Gs. ${Number(d.monto).toLocaleString("es-PY")}` : ""),
