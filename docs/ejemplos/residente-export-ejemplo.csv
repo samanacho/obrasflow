@@ -1,0 +1,5 @@
+obra_codigo;parte_id;fecha;autor;actualizado_at;clima;dotacion;observaciones;item;cantidad;unidad;fotos;url;avance_obra
+OBRA-PRUEBA;prt_0001;01/10/2026;Juan Benítez;2026-10-01 18:40;Soleado, 31 °C;12;"Hormigonado de losa del 2º piso, sector B. Llegó el hierro de 10 mm.";Losa 2º piso;45;m²;https://residente-de-obra.example/fotos/f_0001|https://residente-de-obra.example/fotos/f_0002;https://residente-de-obra.example/partes/prt_0001;42,5
+OBRA-PRUEBA;prt_0001;01/10/2026;Juan Benítez;2026-10-01 18:40;Soleado, 31 °C;12;"Hormigonado de losa del 2º piso, sector B. Llegó el hierro de 10 mm.";Columnas 3º piso;6;u;;https://residente-de-obra.example/partes/prt_0001;42,5
+OBRA-PRUEBA;prt_0002;01/10/2026;María Gómez;2026-10-02 05:50;;4;"Instalación eléctrica: cañerías del 1º piso. Falta caja de paso en baño 3.";Cañería eléctrica 1º piso;120;m;;https://residente-de-obra.example/partes/prt_0002;42,5
+OBRA-PRUEBA;prt_0003;02/10/2026;Juan Benítez;2026-10-02 17:05;Lluvia por la tarde;9;"Se suspendió el hormigonado a las 14:00 por lluvia. Se cubrió la losa.";;;;https://residente-de-obra.example/fotos/f_0003;https://residente-de-obra.example/partes/prt_0003;42,5

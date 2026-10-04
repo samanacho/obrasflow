@@ -211,7 +211,8 @@ function HomeInner() {
     const nextIdx = Math.max(0, Math.min(STATUS_ORDER.length - 1, idx + dir));
     const nextStatus = STATUS_ORDER[nextIdx];
     if (nextStatus === p.status) return;
-    const nextProgress = nextStatus === "finalizado" ? 100 : p.progress;
+    // El avance de las obras de Residente de Obra lo marca esa app: no se pisa al finalizar.
+    const nextProgress = nextStatus === "finalizado" && !p.progressSource ? 100 : p.progress;
 
     const prev = projects;
     setProjects((cur) =>
@@ -221,7 +222,7 @@ function HomeInner() {
       const res = await fetch(`/api/projects/${p.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: nextStatus, progress: nextProgress }),
+        body: JSON.stringify(p.progressSource ? { status: nextStatus } : { status: nextStatus, progress: nextProgress }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setSaveState("Guardado");

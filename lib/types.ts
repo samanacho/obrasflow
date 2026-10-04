@@ -30,6 +30,8 @@ export interface ProjectDTO {
   budget: number;
   spent: number;
   progress: number;
+  /** De dónde sale el avance: null = se carga a mano; "residente-de-obra" = lo calcula Residente de Obra (en la app no se edita). */
+  progressSource: string | null;
   sector: ProjectSector | null;
   sectorData: Record<string, any> | null;
 }

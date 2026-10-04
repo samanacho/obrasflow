@@ -31,6 +31,7 @@ export function serializeProject(p: Project & { sitio?: { nombre: string; respon
     budget: Number(p.budget),
     spent: Number(p.spent),
     progress: p.progress,
+    progressSource: p.progressSource ?? null,
     sector: p.sector as ProjectDTO["sector"],
     sectorData: (p.sectorData as Record<string, any> | null) ?? null,
   };

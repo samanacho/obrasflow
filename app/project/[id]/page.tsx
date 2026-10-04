@@ -11,7 +11,7 @@ import {
   CDropdown, CDropdownToggle, CDropdownMenu, CDropdownItem,
 } from "@coreui/react";
 import { CChartDoughnut, CChartLine } from "@coreui/react-chartjs";
-import { PencilSimple, Trash, Plus, MapPin, CalendarBlank, FilePdf, Check, DotsThree, ArrowBendDownRight, Calculator } from "@phosphor-icons/react";
+import { PencilSimple, Trash, Plus, MapPin, CalendarBlank, FilePdf, Check, DotsThree, ArrowBendDownRight, Calculator, CloudArrowDown, Images } from "@phosphor-icons/react";
 import Icon from "@/components/ui/Icon";
 import ImageViewer from "@/components/ui/ImageViewer";
 import { kindIcon, TIPO_INSUMO_ICON } from "@/components/ui/kindIcons";
@@ -19,8 +19,9 @@ import { ITEMS_CHANGED } from "@/components/GastoObraButton";
 import AppShell from "@/components/AppShell";
 import NewProjectWizard from "@/components/NewProjectWizard";
 import BudgetPanel from "@/components/project/BudgetPanel";
-import { confirmarAccion, notificar } from "@/lib/ui/alerts";
+import { avisar, confirmarAccion, notificar } from "@/lib/ui/alerts";
 import ItemFormModal from "@/components/ItemFormModal";
+import ResidenteImportModal from "@/components/project/ResidenteImportModal";
 import { useIsDarkTheme } from "@/lib/useIsDarkTheme";
 import type { ProjectDTO, ProjectItemDTO } from "@/lib/types";
 import { ITEM_KINDS, ITEM_KIND_ORDER, ItemKindConfig } from "@/lib/itemKinds";
@@ -291,7 +292,16 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
               <div className={"sub" + (overBudget ? " alert-text" : "")}>{fmtMoney(project.spent)} ejecutado{overBudget ? " · sobre presupuesto" : ""}</div>
             </CCardBody>
           </CCard>
-          <CCard><CCardBody><div className="label">Avance</div><div className="value mono">{project.progress}%</div><div className="sub">Estado: {project.status.replace("_", " ")}</div></CCardBody></CCard>
+          <CCard>
+            <CCardBody>
+              <div className="label">Avance</div>
+              <div className="value mono">{project.progress}%</div>
+              <div className="sub">Estado: {project.status.replace("_", " ")}</div>
+              {project.progressSource === "residente-de-obra" && (
+                <div className="sub" title="Lo calcula Residente de Obra y se actualiza al importar sus partes. No se cambia a mano.">Avance según Residente de Obra</div>
+              )}
+            </CCardBody>
+          </CCard>
           <CCard><CCardBody><div className="label">Fecha fin</div><div className="value mono">{project.end.split("-").reverse().join("/")}</div><div className={"sub" + (daysLeft < 7 ? " alert-text" : "")}>{daysLeft < 0 ? `Vencido hace ${Math.abs(daysLeft)}d` : `${daysLeft} días restantes`}</div></CCardBody></CCard>
         </div>
       </div>
@@ -447,6 +457,9 @@ function ModuleView({
   // en vez de una lista plana de insumos sueltos. `null` = viendo la
   // grilla de rubros; un string = adentro de la ficha de ese rubro.
   const [openRubro, setOpenRubro] = useState<string | null>(null);
+
+  // Parte Diario: importar el archivo exportado de Residente de Obra.
+  const [importOpen, setImportOpen] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -671,13 +684,40 @@ function ModuleView({
             </p>
           )}
         </div>
-        {/* Con la lista vacía, el botón vive en el estado vacío (uno solo, no dos). */}
-        {!cfg.readOnly && !(isMovimientos && openRubro) && (loading || items.length > 0) && (
-          <CButton color="primary" size="sm" onClick={() => { setEditing(null); setPrefillTitle(null); setShowForm(true); }}>
-            <Icon icon={Plus} size={16} weight="bold" className="me-1" /> Agregar {cfg.singular}
-          </CButton>
-        )}
+        <div className="d-flex flex-wrap gap-2 align-items-start">
+          {/* Partes de la app Residente de Obra: se importan desde el archivo que se baja allá. */}
+          {kind === "daily_log" && (
+            <CButton
+              color="secondary" variant="outline" size="sm" className="d-inline-flex align-items-center gap-1"
+              onClick={() =>
+                project.code
+                  ? setImportOpen(true)
+                  : avisar(
+                      "Falta el código de obra",
+                      "Primero cargale el código de obra de Residente (en Editar obra). Tiene que ser el mismo código que tiene la obra en Residente de Obra.",
+                      "info"
+                    )
+              }
+            >
+              <Icon icon={CloudArrowDown} size={18} /> Importar de Residente de Obra
+            </CButton>
+          )}
+          {/* Con la lista vacía, el botón vive en el estado vacío (uno solo, no dos). */}
+          {!cfg.readOnly && !(isMovimientos && openRubro) && (loading || items.length > 0) && (
+            <CButton color="primary" size="sm" onClick={() => { setEditing(null); setPrefillTitle(null); setShowForm(true); }}>
+              <Icon icon={Plus} size={16} weight="bold" className="me-1" /> Agregar {cfg.singular}
+            </CButton>
+          )}
+        </div>
       </CCardHeader>
+      {kind === "daily_log" && (
+        <ResidenteImportModal
+          projectId={projectId}
+          visible={importOpen}
+          onClose={() => setImportOpen(false)}
+          onImported={() => { load(); onProjectChanged(); }}
+        />
+      )}
       <CCardBody>
         {isMovimientos && openRubro && (
           <RubroFicha
@@ -940,6 +980,10 @@ function ItemRow({
   const [viewing, setViewing] = useState<string | null>(null);
   // Registros que llegan de otra app (hoy: partes de Residente de Obra): solo lectura acá.
   const externo = item.data?.origen === "residente-de-obra";
+  // Links a las fotos del parte (solo http/https; se abren dentro de Residente de Obra).
+  const fotosExternas: { url: string; descripcion?: string | null }[] = externo && Array.isArray(item.data?.fotos)
+    ? item.data.fotos.filter((f: any) => f && typeof f.url === "string" && /^https?:\/\//i.test(f.url))
+    : [];
   return (
     <CListGroupItem className={"item-row border-0 border-bottom rounded-0 px-0" + (isWinner ? " item-row-winner" : "")}>
       <div className="item-row-main">
@@ -985,6 +1029,18 @@ function ItemRow({
       {externo && item.data?.urlExterna && (
         <div className="item-row-sub">
           <a href={item.data.urlExterna} target="_blank" rel="noopener noreferrer">Ver el parte en Residente de Obra ↗</a>
+        </div>
+      )}
+      {externo && fotosExternas.length > 0 && (
+        <div className="item-row-sub">
+          <div className="d-flex flex-wrap align-items-center gap-2">
+            <Icon icon={Images} size={16} />
+            <span>{fotosExternas.length === 1 ? "1 foto:" : `${fotosExternas.length} fotos:`}</span>
+            {fotosExternas.map((f, i) => (
+              <a key={f.url + i} href={f.url} target="_blank" rel="noopener noreferrer">{f.descripcion || `Foto ${i + 1}`} ↗</a>
+            ))}
+          </div>
+          <div className="form-hint mb-0">Las fotos se abren en Residente de Obra con tu usuario.</div>
         </div>
       )}
       {item.data?.respuesta && <div className="item-row-notes"><Icon icon={ArrowBendDownRight} size={14} /> {item.data.respuesta}</div>}

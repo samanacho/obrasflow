@@ -219,6 +219,7 @@ export default function NewProjectWizard({
             cityDepartmentMap={cityDepartmentMap}
             knownManagers={knownManagers}
             knownSitios={knownSitios}
+            progressFromResidente={editingProject?.progressSource === "residente-de-obra"}
           />
         )}
         {step === 2 && <StepSector sector={form.sector ?? null} onSelect={selectSector} />}
@@ -246,8 +247,10 @@ export default function NewProjectWizard({
 }
 
 function StepGeneral({
-  form, setForm, knownCities, cityDepartmentMap, knownManagers, knownSitios,
+  form, setForm, knownCities, cityDepartmentMap, knownManagers, knownSitios, progressFromResidente = false,
 }: {
+  /** El avance lo marca Residente de Obra: el campo se muestra pero no se edita. */
+  progressFromResidente?: boolean;
   form: ProjectInput;
   setForm: (f: ProjectInput) => void;
   knownCities: string[];
@@ -391,7 +394,10 @@ function StepGeneral({
       </CRow>
       <div className="mb-1">
         <CFormLabel>Avance (%)</CFormLabel>
-        <CFormInput type="number" min={0} max={100} step={1} required placeholder="0" value={form.progress === 0 ? "" : form.progress} onChange={(e) => setForm({ ...form, progress: Number(e.target.value) })} />
+        <CFormInput type="number" min={0} max={100} step={1} required placeholder="0" disabled={progressFromResidente} value={form.progress === 0 ? "" : form.progress} onChange={(e) => setForm({ ...form, progress: Number(e.target.value) })} />
+        {progressFromResidente && (
+          <div className="form-hint mb-0">Avance según Residente de Obra: se actualiza al importar sus partes, no se cambia a mano.</div>
+        )}
       </div>
     </>
   );

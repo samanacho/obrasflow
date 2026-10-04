@@ -1,0 +1,60 @@
+{
+  "formato": "residente-de-obra/export",
+  "version": 1,
+  "generado_at": "2026-10-03T21:15:00-03:00",
+  "obra": {
+    "codigo": "OBRA-PRUEBA",
+    "nombre": "Edificio de prueba (datos inventados)"
+  },
+  "avance_obra": {
+    "porcentaje": 42.5,
+    "calculado_at": "2026-10-03T21:15:00-03:00"
+  },
+  "partes": [
+    {
+      "id": "prt_0001",
+      "fecha": "2026-10-01",
+      "autor": "Juan Benítez",
+      "actualizado_at": "2026-10-01T18:40:00-03:00",
+      "clima": "Soleado, 31 °C",
+      "dotacion": 12,
+      "observaciones": "Hormigonado de losa del 2º piso, sector B. Llegó el hierro de 10 mm.",
+      "avance": [
+        { "item": "Losa 2º piso", "cantidad": 45, "unidad": "m²" },
+        { "item": "Columnas 3º piso", "cantidad": 6, "unidad": "u" }
+      ],
+      "fotos": [
+        { "url": "https://residente-de-obra.example/fotos/f_0001", "descripcion": "Losa sector B" },
+        { "url": "https://residente-de-obra.example/fotos/f_0002", "descripcion": "Hierro recibido" }
+      ],
+      "url": "https://residente-de-obra.example/partes/prt_0001"
+    },
+    {
+      "id": "prt_0002",
+      "fecha": "2026-10-01",
+      "autor": "María Gómez",
+      "actualizado_at": "2026-10-02T05:50:00-03:00",
+      "dotacion": 4,
+      "observaciones": "Instalación eléctrica: cañerías del 1º piso. Falta caja de paso en baño 3.",
+      "avance": [
+        { "item": "Cañería eléctrica 1º piso", "cantidad": 120, "unidad": "m" }
+      ],
+      "fotos": [],
+      "url": "https://residente-de-obra.example/partes/prt_0002"
+    },
+    {
+      "id": "prt_0003",
+      "fecha": "2026-10-02",
+      "autor": "Juan Benítez",
+      "actualizado_at": "2026-10-02T17:05:00-03:00",
+      "clima": "Lluvia por la tarde",
+      "dotacion": 9,
+      "observaciones": "Se suspendió el hormigonado a las 14:00 por lluvia. Se cubrió la losa.",
+      "avance": [],
+      "fotos": [
+        { "url": "https://residente-de-obra.example/fotos/f_0003", "descripcion": "Losa cubierta" }
+      ],
+      "url": "https://residente-de-obra.example/partes/prt_0003"
+    }
+  ]
+}

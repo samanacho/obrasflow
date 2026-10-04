@@ -92,7 +92,7 @@ export default function QuickActions({
                   className={project.status === s ? "on" : ""}
                   aria-pressed={project.status === s}
                   disabled={busy !== null}
-                  onClick={() => s !== project.status && patch(s === "finalizado" ? { status: s, progress: 100 } : { status: s }, `estado ${STATUS_LABEL[s].toLowerCase()}`)}
+                  onClick={() => s !== project.status && patch(s === "finalizado" && !project.progressSource ? { status: s, progress: 100 } : { status: s }, `estado ${STATUS_LABEL[s].toLowerCase()}`)}
                 >
                   {STATUS_LABEL[s]}
                 </button>
@@ -104,6 +104,11 @@ export default function QuickActions({
             <div className="of-qa-label">
               Avance de obra <strong className="ms-1">{progress}&nbsp;%</strong>
             </div>
+            {project.progressSource === "residente-de-obra" ? (
+              <p className="small text-body-secondary mb-0">
+                Avance según Residente de Obra: se actualiza al importar sus partes, no se cambia a mano.
+              </p>
+            ) : (
             <div className="d-flex align-items-center gap-3">
               <input
                 type="range"
@@ -125,6 +130,7 @@ export default function QuickActions({
                 {busy?.startsWith("avance") ? <CSpinner size="sm" /> : "Guardar"}
               </CButton>
             </div>
+            )}
           </div>
 
           <div className="text-end">

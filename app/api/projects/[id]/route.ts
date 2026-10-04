@@ -4,8 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { serializeProject } from "@/lib/serialize";
 import { parseProjectInput, ValidationError } from "@/lib/validate";
 import { reprocessPending } from "@/lib/integraciones/residente/process";
+import { SOURCE as RESIDENTE_SOURCE } from "@/lib/integraciones/residente/types";
 import { resolveSitioId } from "@/lib/sitios";
-import { APP_SOURCE, diffProject, logChanges } from "@/lib/history";
+import { diffProject, logChanges } from "@/lib/history";
+import { appSource } from "@/lib/auth/server";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +20,7 @@ const SITIO_INCLUDE = { sitio: { select: { nombre: true, responsable: true } } }
 /** Anota en el historial de la obra cada campo que cambió (nunca tira error). */
 async function logFieldChanges(projectId: string, before: Parameters<typeof diffProject>[0], after: Parameters<typeof diffProject>[1]) {
   const diffs = diffProject(before, after);
-  await logChanges(prisma, projectId, diffs.map((d) => ({ action: "campo" as const, ...d })), APP_SOURCE);
+  await logChanges(prisma, projectId, diffs.map((d) => ({ action: "campo" as const, ...d })), await appSource());
 }
 
 export async function GET(_req: NextRequest, { params }: Params) {
@@ -35,6 +37,9 @@ export async function PUT(req: NextRequest, { params }: Params) {
     const sitioId = await resolveSitioId(sitioNombre ?? null, data.manager);
     // Versión anterior, para anotar en el historial qué cambió.
     const before = await prisma.project.findUnique({ where: { id: params.id } });
+    // El avance de las obras de Residente de Obra lo marca esa app (al
+    // importar): el formulario de edición no lo puede pisar.
+    if (before?.progressSource === RESIDENTE_SOURCE) data.progress = before.progress;
     const updated = await prisma.project.update({
       where: { id: params.id },
       data: {
@@ -96,7 +101,24 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       }
       data.coordinates = body.coordinates.trim();
     }
-    if (typeof body.progress === "number") data.progress = Math.max(0, Math.min(100, Math.round(body.progress)));
+    if (typeof body.progress === "number") {
+      const progress = Math.max(0, Math.min(100, Math.round(body.progress)));
+      const actual = await prisma.project.findUnique({ where: { id: params.id }, select: { progress: true, progressSource: true } });
+      if (actual?.progressSource === RESIDENTE_SOURCE) {
+        // El avance lo marca Residente de Obra. Si solo se pidió cambiar el
+        // avance, se avisa; si viene junto con otra cosa (ej. el estado), se
+        // guarda lo demás y el avance queda como está.
+        const otros = ["status", "coordinates", "budget", "sitioNombre"].some((k) => body[k] !== undefined);
+        if (!otros && progress !== actual.progress) {
+          return NextResponse.json(
+            { error: "El avance de esta obra lo calcula Residente de Obra y se actualiza al importar sus partes. No se cambia a mano." },
+            { status: 409 }
+          );
+        }
+      } else {
+        data.progress = progress;
+      }
+    }
     if (body.budget !== undefined) {
       const budget = Number(body.budget);
       if (!Number.isFinite(budget) || budget < 0) {
