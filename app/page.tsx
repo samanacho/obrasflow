@@ -11,11 +11,9 @@ import {
   CBadge, CAlert, CInputGroup, CFormInput,
 } from "@coreui/react";
 import { CChartDoughnut, CChartBar } from "@coreui/react-chartjs";
-import CIcon from "@coreui/icons-react";
-import {
-  cilPlus, cilArrowLeft, cilArrowRight, cilCloudDownload, cilPencil, cilTrash,
-  cilPeople, cilSpeedometer, cilFlagAlt, cilCalculator, cilListRich, cilViewColumn, cilLightbulb, cilBalanceScale, cilExternalLink,
-} from "@coreui/icons";
+import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
+import { ArrowLeft, ArrowRight, ArrowSquareOut, Calculator, Flag, Gauge, Kanban, Lightbulb, ListBullets, PencilSimple, Plus, Scales, UsersThree } from "@phosphor-icons/react";
+import Icon from "@/components/ui/Icon";
 import AppShell from "@/components/AppShell";
 import ProjectsTable from "@/components/home/ProjectsTable";
 import PlotlyGauge from "@/components/PlotlyGauge";
@@ -277,7 +275,7 @@ function HomeInner() {
         <>
           {saveState && <span className="text-body-secondary small d-none d-md-inline">{saveState}</span>}
           <CButton color="primary" size="sm" onClick={() => openModal(null)}>
-            <CIcon icon={cilPlus} className="me-1" /> Nuevo proyecto
+            <Icon icon={Plus} size={16} className="me-1" /> Nuevo proyecto
           </CButton>
         </>
       }
@@ -330,7 +328,7 @@ function HomeInner() {
 function Kpi({
   label, value, sub, icon, href, valueColor, external,
 }: {
-  label: string; value: string | number; sub: string; icon?: any; href?: string; valueColor?: string;
+  label: string; value: string | number; sub: string; icon?: PhosphorIcon; href?: string; valueColor?: string;
   /** Si href apunta afuera de la app (ej. un sitio externo) — abre en pestaña nueva en vez de navegar con next/link. */
   external?: boolean;
 }) {
@@ -339,7 +337,7 @@ function Kpi({
       <CCardBody>
         <div className="d-flex justify-content-between align-items-start">
           <div className="text-uppercase text-body-secondary small mb-1">{label}</div>
-          {icon && <CIcon icon={icon} className="text-body-secondary" />}
+          {icon && <Icon icon={icon} size={16} className="text-body-secondary" />}
         </div>
         <div className="fs-3 fw-bold mono" style={valueColor ? { color: valueColor } : undefined}>{value}</div>
         <div className="text-body-secondary small">{sub}</div>
@@ -412,7 +410,7 @@ function DashboardView({
       <div className="row g-3 mb-4">
         <div className="col-md-6">
           <Link href="/rubros" className="home-module">
-            <CIcon icon={cilListRich} size="xl" />
+            <Icon icon={ListBullets} size={24} />
             <span>
               <span className="home-module-title">Todas las obras</span>
               <span className="home-module-sub">{projects.length} proyecto{projects.length === 1 ? "" : "s"} — clasificadas por rubro</span>
@@ -421,7 +419,7 @@ function DashboardView({
         </div>
         <div className="col-md-6">
           <Link href="/contratistas" className="home-module">
-            <CIcon icon={cilPeople} size="xl" />
+            <Icon icon={UsersThree} size={24} />
             <span>
               <span className="home-module-title">Contratistas</span>
               <span className="home-module-sub">Directorio global de contratistas</span>
@@ -432,7 +430,7 @@ function DashboardView({
 
       <div className="quick-actions mb-4">
         <button className="quick-action" onClick={onNewProject}>
-          <CIcon icon={cilPlus} /> Nuevo proyecto
+          <Icon icon={Plus} size={16} /> Nuevo proyecto
         </button>
       </div>
 
@@ -470,31 +468,31 @@ function DashboardView({
       )}
 
       <div className="row row-cols-2 row-cols-md-4 g-3 mb-3">
-        <div className="col"><Kpi label="Proyectos totales" value={projects.length} sub={`${active} en curso · ${finished} finalizados`} icon={cilLightbulb} href="/rubros" /></div>
-        <div className="col"><Kpi label="Presupuesto total" value={fmtMoney(totalBudget)} sub={`${fmtMoney(totalSpent)} ejecutado`} icon={cilCalculator} /></div>
-        <div className="col"><Kpi label="Ejecución presupuestaria" value={`${execPct}%`} sub={execPct > 100 ? "sobre presupuesto" : "del total planificado"} icon={cilCalculator} href="/ejecucion" /></div>
-        <div className="col"><Kpi label="Avance promedio" value={`${avgProgress}%`} sub={`sobre ${projects.length} proyectos`} icon={cilListRich} /></div>
+        <div className="col"><Kpi label="Proyectos totales" value={projects.length} sub={`${active} en curso · ${finished} finalizados`} icon={Lightbulb} href="/rubros" /></div>
+        <div className="col"><Kpi label="Presupuesto total" value={fmtMoney(totalBudget)} sub={`${fmtMoney(totalSpent)} ejecutado`} icon={Calculator} /></div>
+        <div className="col"><Kpi label="Ejecución presupuestaria" value={`${execPct}%`} sub={execPct > 100 ? "sobre presupuesto" : "del total planificado"} icon={Calculator} href="/ejecucion" /></div>
+        <div className="col"><Kpi label="Avance promedio" value={`${avgProgress}%`} sub={`sobre ${projects.length} proyectos`} icon={ListBullets} /></div>
       </div>
 
       <div className="row row-cols-2 row-cols-md-4 g-3 mb-4">
-        <div className="col"><Kpi label="Contratistas activos" value={summary?.contractorsActive ?? "—"} sub="en el directorio" icon={cilPeople} href="/contratistas" /></div>
+        <div className="col"><Kpi label="Contratistas activos" value={summary?.contractorsActive ?? "—"} sub="en el directorio" icon={UsersThree} href="/contratistas" /></div>
         <div className="col">
           <Kpi
             label="Costos vs. beneficios"
             value={`${totalBenefit < 0 ? "-" : ""}${fmtMoney(Math.abs(totalBenefit))}`}
             sub={totalBudget === 0 && generalNet === 0 ? "sin obras cargadas" : totalBenefit >= 0 ? "ganancia sobre presupuesto" : "pérdida sobre presupuesto"}
-            icon={cilBalanceScale}
+            icon={Scales}
             valueColor={totalBudget === 0 && generalNet === 0 ? undefined : totalBenefit >= 0 ? "var(--ok)" : "var(--crit)"}
             href="/movimientos"
           />
         </div>
-        <div className="col"><Kpi label="Cotizaciones pendientes" value={summary?.pendingCotizaciones ?? "—"} sub="esperando decisión" icon={cilFlagAlt} /></div>
+        <div className="col"><Kpi label="Cotizaciones pendientes" value={summary?.pendingCotizaciones ?? "—"} sub="esperando decisión" icon={Flag} /></div>
         <div className="col">
           <Kpi
             label="Licitaciones"
             value="DNCP ↗"
             sub="Buscador de licitaciones públicas"
-            icon={cilExternalLink}
+            icon={ArrowSquareOut}
             href="https://www.contrataciones.gov.py/buscador/licitaciones.html"
             external
           />
@@ -633,10 +631,10 @@ function DashboardView({
           ) : (
             <>
               <div className="row row-cols-2 row-cols-md-4 g-3 mb-3">
-                <div className="col"><Kpi label="Lotes en proceso" value={lotesEnProceso} sub="en curado, listos o en ensayo" icon={cilSpeedometer} href="/postes" /></div>
-                <div className="col"><Kpi label="Postes en stock" value={postesEnStock} sub="aprobados, sin despachar" icon={cilSpeedometer} href="/postes" /></div>
-                <div className="col"><Kpi label="Fiscalizaciones próximas" value={fiscalizacionesProximas.length} sub="ANDE, próximos 7 días" icon={cilSpeedometer} href="/postes" /></div>
-                <div className="col"><Kpi label="Capacidad de hoy" value={`${capacityForDate(new Date())} postes`} sub={FACTORY_SCHEDULE_LABEL} icon={cilSpeedometer} /></div>
+                <div className="col"><Kpi label="Lotes en proceso" value={lotesEnProceso} sub="en curado, listos o en ensayo" icon={Gauge} href="/postes" /></div>
+                <div className="col"><Kpi label="Postes en stock" value={postesEnStock} sub="aprobados, sin despachar" icon={Gauge} href="/postes" /></div>
+                <div className="col"><Kpi label="Fiscalizaciones próximas" value={fiscalizacionesProximas.length} sub="ANDE, próximos 7 días" icon={Gauge} href="/postes" /></div>
+                <div className="col"><Kpi label="Capacidad de hoy" value={`${capacityForDate(new Date())} postes`} sub={FACTORY_SCHEDULE_LABEL} icon={Gauge} /></div>
               </div>
 
               {fiscalizacionesProximas.length > 0 && (
@@ -695,10 +693,10 @@ function BoardView({
       <div className="d-flex justify-content-end mb-3">
         <CButtonGroup role="group">
           <CButton color="secondary" variant={view === "board" ? undefined : "outline"} onClick={() => setView("board")}>
-            <CIcon icon={cilViewColumn} className="me-1" /> Tablero
+            <Icon icon={Kanban} size={16} className="me-1" /> Tablero
           </CButton>
           <CButton color="secondary" variant={view === "timeline" ? undefined : "outline"} onClick={() => setView("timeline")}>
-            <CIcon icon={cilListRich} className="me-1" /> Cronograma
+            <Icon icon={ListBullets} size={16} className="me-1" /> Cronograma
           </CButton>
         </CButtonGroup>
       </div>
@@ -759,9 +757,9 @@ function KanbanView({
                       </div>
                       {p.reference && <div className="item-row-sub text-end">REF: {p.reference}</div>}
                       <div className="card-actions">
-                        <CButton size="sm" color="secondary" variant="outline" onClick={() => onEdit(p)}><CIcon icon={cilPencil} size="sm" /></CButton>
-                        {idx > 0 && <CButton size="sm" color="secondary" variant="outline" onClick={() => onMove(p, -1)}><CIcon icon={cilArrowLeft} size="sm" /></CButton>}
-                        {idx < STATUS_ORDER.length - 1 && <CButton size="sm" color="secondary" variant="outline" onClick={() => onMove(p, 1)}><CIcon icon={cilArrowRight} size="sm" /></CButton>}
+                        <CButton size="sm" color="secondary" variant="outline" onClick={() => onEdit(p)}><Icon icon={PencilSimple} size={16} label="Editar" /></CButton>
+                        {idx > 0 && <CButton size="sm" color="secondary" variant="outline" onClick={() => onMove(p, -1)}><Icon icon={ArrowLeft} size={16} label="Mover a la etapa anterior" /></CButton>}
+                        {idx < STATUS_ORDER.length - 1 && <CButton size="sm" color="secondary" variant="outline" onClick={() => onMove(p, 1)}><Icon icon={ArrowRight} size={16} label="Mover a la etapa siguiente" /></CButton>}
                       </div>
                     </div>
                   );

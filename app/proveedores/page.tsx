@@ -6,8 +6,8 @@ import {
   CForm, CFormLabel, CFormInput, CFormSelect, CFormTextarea, CFormCheck,
   CBadge, CAlert, CRow, CCol,
 } from "@coreui/react";
-import CIcon from "@coreui/icons-react";
-import { cilPlus, cilLocationPin, cilPhone, cilUser } from "@coreui/icons";
+import { MapPin, Phone, Plus, User } from "@phosphor-icons/react";
+import Icon from "@/components/ui/Icon";
 import AppShell from "@/components/AppShell";
 import { confirmarAccion } from "@/lib/ui/alerts";
 import { PARAGUAY_DEPARTMENTS } from "@/lib/departments";
@@ -129,7 +129,7 @@ export default function ProveedoresPage() {
       crumbs={[{ label: "Proveedores" }]}
       headerActions={
         <CButton color="primary" size="sm" onClick={() => openModal(null)}>
-          <CIcon icon={cilPlus} className="me-1" /> Nuevo proveedor
+          <Icon icon={Plus} size={16} className="me-1" /> Nuevo proveedor
         </CButton>
       }
     >
@@ -170,12 +170,12 @@ export default function ProveedoresPage() {
                 </div>
                 {s.contactName && (
                   <div className="text-body-secondary small">
-                    <CIcon icon={cilUser} size="sm" className="me-1" />{s.contactName}
+                    <Icon icon={User} size={14} className="me-1" />{s.contactName}
                   </div>
                 )}
                 <div className="contractor-meta">
-                  {s.city && <span><CIcon icon={cilLocationPin} size="sm" className="me-1" />{s.city}{s.department ? `, ${s.department}` : ""}</span>}
-                  {s.phone && <span><CIcon icon={cilPhone} size="sm" className="me-1" />{s.phone}</span>}
+                  {s.city && <span><Icon icon={MapPin} size={14} className="me-1" />{s.city}{s.department ? `, ${s.department}` : ""}</span>}
+                  {s.phone && <span><Icon icon={Phone} size={14} className="me-1" />{s.phone}</span>}
                 </div>
                 <div className="d-flex gap-2 mt-1">
                   <CButton size="sm" color="secondary" variant="outline" onClick={() => openModal(s)}>Editar</CButton>

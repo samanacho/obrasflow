@@ -7,8 +7,8 @@ import {
   CForm, CFormLabel, CFormInput, CFormSelect, CFormTextarea, CFormCheck,
   CBadge, CAlert, CRow, CCol,
 } from "@coreui/react";
-import CIcon from "@coreui/icons-react";
-import { cilPlus, cilLocationPin, cilPhone, cilUser } from "@coreui/icons";
+import { MapPin, Phone, Plus, User } from "@phosphor-icons/react";
+import Icon from "@/components/ui/Icon";
 import AppShell from "@/components/AppShell";
 import { confirmarAccion } from "@/lib/ui/alerts";
 import { PARAGUAY_DEPARTMENTS } from "@/lib/departments";
@@ -146,7 +146,7 @@ export default function ContratistasPage() {
       crumbs={[{ label: "Contratistas" }]}
       headerActions={
         <CButton color="primary" size="sm" onClick={() => openModal(null)}>
-          <CIcon icon={cilPlus} className="me-1" /> Nuevo contratista
+          <Icon icon={Plus} size={16} className="me-1" /> Nuevo contratista
         </CButton>
       }
     >
@@ -187,12 +187,12 @@ export default function ContratistasPage() {
                 </div>
                 {c.contactName && (
                   <div className="text-body-secondary small">
-                    <CIcon icon={cilUser} size="sm" className="me-1" />{c.contactName}
+                    <Icon icon={User} size={14} className="me-1" />{c.contactName}
                   </div>
                 )}
                 <div className="contractor-meta">
-                  {c.city && <span><CIcon icon={cilLocationPin} size="sm" className="me-1" />{c.city}{c.department ? `, ${c.department}` : ""}</span>}
-                  {c.phone && <span><CIcon icon={cilPhone} size="sm" className="me-1" />{c.phone}</span>}
+                  {c.city && <span><Icon icon={MapPin} size={14} className="me-1" />{c.city}{c.department ? `, ${c.department}` : ""}</span>}
+                  {c.phone && <span><Icon icon={Phone} size={14} className="me-1" />{c.phone}</span>}
                 </div>
                 <Stars value={c.rating ?? c.avgRating} />
                 <div className="d-flex gap-2 mt-1">

@@ -7,8 +7,8 @@ import {
   CForm, CFormLabel, CFormInput, CFormSelect, CFormTextarea, CFormCheck, CBadge, CAlert, CRow, CCol,
   CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell,
 } from "@coreui/react";
-import CIcon from "@coreui/icons-react";
-import { cilPlus, cilPencil, cilTrash } from "@coreui/icons";
+import { PencilSimple, Plus, Trash } from "@phosphor-icons/react";
+import Icon from "@/components/ui/Icon";
 import AppShell from "@/components/AppShell";
 import { confirmarAccion } from "@/lib/ui/alerts";
 import { fmtGs } from "@/lib/currency";
@@ -224,10 +224,10 @@ export default function PoleSpecDetailPage({ params }: { params: { id: string } 
       headerActions={
         <>
           <CButton color="secondary" variant="outline" size="sm" onClick={openEdit}>
-            <CIcon icon={cilPencil} className="me-1" /> Editar
+            <Icon icon={PencilSimple} size={16} className="me-1" /> Editar
           </CButton>
           <CButton color="danger" variant="outline" size="sm" onClick={handleDelete} disabled={deleting}>
-            <CIcon icon={cilTrash} className="me-1" /> {deleting ? "Eliminando…" : "Eliminar"}
+            <Icon icon={Trash} size={16} className="me-1" /> {deleting ? "Eliminando…" : "Eliminar"}
           </CButton>
         </>
       }
@@ -273,7 +273,7 @@ export default function PoleSpecDetailPage({ params }: { params: { id: string } 
             <p className="module-desc mb-0">Materia prima que entra en UN poste de este tipo — se usa para calcular costo estimado y, al crear un lote, para congelar el consumo real.</p>
           </div>
           <CButton color="primary" size="sm" onClick={openRecipeCreate} disabled={availableMaterials.length === 0}>
-            <CIcon icon={cilPlus} className="me-1" /> Agregar material
+            <Icon icon={Plus} size={16} className="me-1" /> Agregar material
           </CButton>
         </CCardHeader>
         <CCardBody>
@@ -304,8 +304,8 @@ export default function PoleSpecDetailPage({ params }: { params: { id: string } 
                       <CTableDataCell className="mono">{fmtGs(r.costoUnitarioGs)}</CTableDataCell>
                       <CTableDataCell className="mono">{fmtGs(r.subtotalGs)}</CTableDataCell>
                       <CTableDataCell className="text-end">
-                        <CButton size="sm" color="secondary" variant="outline" className="me-1" onClick={() => openRecipeEdit(r)}><CIcon icon={cilPencil} size="sm" /></CButton>
-                        <CButton size="sm" color="danger" variant="outline" onClick={() => performDeleteRecipe(r)}><CIcon icon={cilTrash} size="sm" /></CButton>
+                        <CButton size="sm" color="secondary" variant="outline" className="me-1" onClick={() => openRecipeEdit(r)}><Icon icon={PencilSimple} size={16} label="Editar" /></CButton>
+                        <CButton size="sm" color="danger" variant="outline" onClick={() => performDeleteRecipe(r)}><Icon icon={Trash} size={16} label="Eliminar" /></CButton>
                       </CTableDataCell>
                     </CTableRow>
                   ))}

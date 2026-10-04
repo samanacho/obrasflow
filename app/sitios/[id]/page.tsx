@@ -7,8 +7,8 @@ import {
   CCard, CCardBody, CCardHeader, CBadge, CButton, CRow, CCol,
   CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter, CForm, CFormLabel, CFormInput, CFormSelect, CFormTextarea, CAlert,
 } from "@coreui/react";
-import CIcon from "@coreui/icons-react";
-import { cilPencil, cilTrash, cilLinkBroken, cilPlus } from "@coreui/icons";
+import { LinkBreak, PencilSimple, Plus, Trash } from "@phosphor-icons/react";
+import Icon from "@/components/ui/Icon";
 import AppShell from "@/components/AppShell";
 import { confirmarAccion, notificar } from "@/lib/ui/alerts";
 import type { SitioDTO, SitioInput, ProjectDTO, ProjectType, ProjectStatus } from "@/lib/types";
@@ -190,10 +190,10 @@ export default function SitioDetailPage() {
           {sitio.notas && <p className="module-desc mt-2 mb-0">{sitio.notas}</p>}
           <div className="d-flex gap-2 mt-3">
             <CButton size="sm" color="secondary" variant="outline" onClick={openEdit}>
-              <CIcon icon={cilPencil} className="me-1" /> Editar
+              <Icon icon={PencilSimple} size={16} className="me-1" /> Editar
             </CButton>
             <CButton size="sm" color="danger" variant="outline" onClick={handleDelete}>
-              <CIcon icon={cilTrash} className="me-1" /> Eliminar sitio
+              <Icon icon={Trash} size={16} className="me-1" /> Eliminar sitio
             </CButton>
           </div>
         </div>
@@ -231,7 +231,7 @@ export default function SitioDetailPage() {
                   </div>
                 </div>
                 <CButton size="sm" color="secondary" variant="outline" onClick={() => handleRemove(p)}>
-                  <CIcon icon={cilLinkBroken} className="me-1" /> Quitar del sitio
+                  <Icon icon={LinkBreak} size={16} className="me-1" /> Quitar del sitio
                 </CButton>
               </div>
             ))}
@@ -247,7 +247,7 @@ export default function SitioDetailPage() {
                 </CFormSelect>
               </div>
               <CButton color="primary" size="sm" disabled={!addingId || addBusy} onClick={handleAssign}>
-                <CIcon icon={cilPlus} className="me-1" /> {addBusy ? "Agregando…" : "Agregar"}
+                <Icon icon={Plus} size={16} className="me-1" /> {addBusy ? "Agregando…" : "Agregar"}
               </CButton>
             </div>
           )}

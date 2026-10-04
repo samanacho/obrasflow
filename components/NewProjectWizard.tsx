@@ -7,8 +7,8 @@ import {
   CForm, CFormLabel, CFormInput, CFormSelect, CFormTextarea,
   CButton, CAlert, CProgress, CRow, CCol,
 } from "@coreui/react";
-import CIcon from "@coreui/icons-react";
-import { cilArrowLeft, cilBriefcase, cilHome } from "@coreui/icons";
+import { ArrowLeft, Briefcase, House } from "@phosphor-icons/react";
+import Icon from "@/components/ui/Icon";
 import type { ProjectDTO, ProjectInput, ProjectStatus, ProjectType, ProjectSector } from "@/lib/types";
 import { PUBLIC_FIELDS, PRIVATE_FIELDS, SectorField } from "@/lib/sectorFields";
 import { PARAGUAY_DEPARTMENTS } from "@/lib/departments";
@@ -229,7 +229,7 @@ export default function NewProjectWizard({
         <div>
           {step > 1 && (
             <CButton color="secondary" variant="ghost" onClick={goBack}>
-              <CIcon icon={cilArrowLeft} className="me-1" /> Atrás
+              <Icon icon={ArrowLeft} size={16} className="me-1" /> Atrás
             </CButton>
           )}
         </div>
@@ -410,14 +410,14 @@ function StepSector({ sector, onSelect }: { sector: ProjectSector | null; onSele
       <CRow className="g-3">
         <CCol md={6}>
           <button type="button" className={"sector-pick" + (sector === "privado" ? " active" : "")} onClick={() => onSelect("privado")}>
-            <CIcon icon={cilHome} size="xl" />
+            <Icon icon={House} size={24} />
             <span className="sector-pick-title">Privada</span>
             <span className="sector-pick-sub">Cliente o comitente privado, sin licitación</span>
           </button>
         </CCol>
         <CCol md={6}>
           <button type="button" className={"sector-pick" + (sector === "publico" ? " active" : "")} onClick={() => onSelect("publico")}>
-            <CIcon icon={cilBriefcase} size="xl" />
+            <Icon icon={Briefcase} size={24} />
             <span className="sector-pick-title">Pública</span>
             <span className="sector-pick-sub">Licitación con un organismo del Estado</span>
           </button>

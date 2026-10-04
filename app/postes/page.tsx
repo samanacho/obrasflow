@@ -10,8 +10,8 @@ import {
   CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell,
 } from "@coreui/react";
 import { CChartDoughnut } from "@coreui/react-chartjs";
-import CIcon from "@coreui/icons-react";
-import { cilPlus, cilPencil, cilTrash } from "@coreui/icons";
+import { PencilSimple, Plus, Trash } from "@phosphor-icons/react";
+import Icon from "@/components/ui/Icon";
 import AppShell from "@/components/AppShell";
 import { confirmarAccion, notificar } from "@/lib/ui/alerts";
 import { useIsDarkTheme } from "@/lib/useIsDarkTheme";
@@ -278,7 +278,7 @@ function SpecsView({
           <p className="module-desc mb-0">Catálogo de tipos de poste que produce la fábrica — longitud, esfuerzo nominal, diámetro y calidad del hormigón.</p>
         </div>
         <CButton color="primary" size="sm" onClick={() => openModal(null)}>
-          <CIcon icon={cilPlus} className="me-1" /> Nueva especificación
+          <Icon icon={Plus} size={16} className="me-1" /> Nueva especificación
         </CButton>
       </CCardHeader>
       <CCardBody>
@@ -311,8 +311,8 @@ function SpecsView({
                     <CTableDataCell className="mono">{s.lotCount}</CTableDataCell>
                     <CTableDataCell><CBadge color={s.activo ? "success" : "secondary"}>{s.activo ? "Activa" : "Inactiva"}</CBadge></CTableDataCell>
                     <CTableDataCell className="text-end">
-                      <CButton size="sm" color="secondary" variant="outline" className="me-1" onClick={() => openModal(s)}><CIcon icon={cilPencil} size="sm" /></CButton>
-                      <CButton size="sm" color="danger" variant="outline" onClick={() => performDelete(s)}><CIcon icon={cilTrash} size="sm" /></CButton>
+                      <CButton size="sm" color="secondary" variant="outline" className="me-1" onClick={() => openModal(s)}><Icon icon={PencilSimple} size={16} label="Editar" /></CButton>
+                      <CButton size="sm" color="danger" variant="outline" onClick={() => performDelete(s)}><Icon icon={Trash} size={16} label="Eliminar" /></CButton>
                     </CTableDataCell>
                   </CTableRow>
                 ))}
@@ -455,7 +455,7 @@ function MaterialesView({
           <p className="module-desc mb-0">Insumos usados en las recetas de fabricación — cemento, hierro, arena, etc. — con su costo unitario vigente.</p>
         </div>
         <CButton color="primary" size="sm" onClick={() => openModal(null)}>
-          <CIcon icon={cilPlus} className="me-1" /> Nueva materia prima
+          <Icon icon={Plus} size={16} className="me-1" /> Nueva materia prima
         </CButton>
       </CCardHeader>
       <CCardBody>
@@ -490,8 +490,8 @@ function MaterialesView({
                     <CTableDataCell className="mono">{`${m.stockDisponible} ${m.unidad}`}</CTableDataCell>
                     <CTableDataCell><CBadge color={m.activo ? "success" : "secondary"}>{m.activo ? "Activa" : "Inactiva"}</CBadge></CTableDataCell>
                     <CTableDataCell className="text-end">
-                      <CButton size="sm" color="secondary" variant="outline" className="me-1" onClick={() => openModal(m)}><CIcon icon={cilPencil} size="sm" /></CButton>
-                      <CButton size="sm" color="danger" variant="outline" onClick={() => performDelete(m)}><CIcon icon={cilTrash} size="sm" /></CButton>
+                      <CButton size="sm" color="secondary" variant="outline" className="me-1" onClick={() => openModal(m)}><Icon icon={PencilSimple} size={16} label="Editar" /></CButton>
+                      <CButton size="sm" color="danger" variant="outline" onClick={() => performDelete(m)}><Icon icon={Trash} size={16} label="Eliminar" /></CButton>
                     </CTableDataCell>
                   </CTableRow>
                 ))}
@@ -629,7 +629,7 @@ function PurchasesView({
           <p className="module-desc mb-0">Historial de compras — de acá sale el stock disponible de cada materia prima.</p>
         </div>
         <CButton color="primary" size="sm" onClick={openModal} disabled={materials.length === 0}>
-          <CIcon icon={cilPlus} className="me-1" /> Registrar compra
+          <Icon icon={Plus} size={16} className="me-1" /> Registrar compra
         </CButton>
       </CCardHeader>
       <CCardBody>
@@ -675,7 +675,7 @@ function PurchasesView({
                     <CTableDataCell className="mono">{fmtGs(p.costoUnitarioGs)}</CTableDataCell>
                     <CTableDataCell className="mono">{fmtGs(p.costoTotalGs)}</CTableDataCell>
                     <CTableDataCell className="text-end">
-                      <CButton size="sm" color="danger" variant="outline" onClick={() => performDelete(p)}><CIcon icon={cilTrash} size="sm" /></CButton>
+                      <CButton size="sm" color="danger" variant="outline" onClick={() => performDelete(p)}><Icon icon={Trash} size={16} label="Eliminar" /></CButton>
                     </CTableDataCell>
                   </CTableRow>
                 ))}
@@ -826,7 +826,7 @@ function LotesView({
           <p className="module-desc mb-0">Cada lote recorre curado → ensayo → aprobación ANDE → despacho. Entrá a un lote para cargar sus ensayos.</p>
         </div>
         <CButton color="primary" size="sm" onClick={() => openModal(null)} disabled={specs.length === 0}>
-          <CIcon icon={cilPlus} className="me-1" /> Nuevo lote
+          <Icon icon={Plus} size={16} className="me-1" /> Nuevo lote
         </CButton>
       </CCardHeader>
       <CCardBody>
@@ -874,8 +874,8 @@ function LotesView({
                     <CTableDataCell className="mono">{fmtGs(l.costoMaterialTotalGs)}</CTableDataCell>
                     <CTableDataCell>{l.andeAprobado ? <CBadge color="success">Aprobado</CBadge> : <span className="text-body-secondary">—</span>}</CTableDataCell>
                     <CTableDataCell className="text-end">
-                      <CButton size="sm" color="secondary" variant="outline" className="me-1" onClick={() => openModal(l)}><CIcon icon={cilPencil} size="sm" /></CButton>
-                      <CButton size="sm" color="danger" variant="outline" onClick={() => performDelete(l)}><CIcon icon={cilTrash} size="sm" /></CButton>
+                      <CButton size="sm" color="secondary" variant="outline" className="me-1" onClick={() => openModal(l)}><Icon icon={PencilSimple} size={16} label="Editar" /></CButton>
+                      <CButton size="sm" color="danger" variant="outline" onClick={() => performDelete(l)}><Icon icon={Trash} size={16} label="Eliminar" /></CButton>
                     </CTableDataCell>
                   </CTableRow>
                 ))}
