@@ -52,5 +52,8 @@ riesgo, y el PR deja escrito qué entró.
   Ignacio y los usuarios tienen que reaprender.
 - **Una ruta nueva que anote historial usa `appSource()`**. Por qué: el
   historial muestra quién hizo cada cambio.
+- **Cuando Ignacio toma una decisión de producto, anotala en
+  `docs/decisiones.md`** en el mismo turno, con lo que descartó. Por qué: si no,
+  semanas después se le vuelve a proponer lo que ya dijo que no.
 - Toda regla nueva que agregues a este archivo lleva su "Por qué": qué pasó o
   qué se evita. Si no lo sabés, preguntale a Ignacio antes de escribirla.
