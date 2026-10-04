@@ -168,7 +168,8 @@ export function buildTools(ctx: TurnContext) {
       name: "cancelar_propuesta",
       description: "Cancela una propuesta pendiente (cuando el usuario dice que no va, o que la descartes).",
       inputSchema: z.object({ propuestaId: z.string() }),
-      run: async (i) => actions.cancelPendingAction(ctx.user.phone, i.propuestaId),
+      // fromModel: el modelo no puede rechazar pedidos de compra (eso es "No" del dueño en la tarjeta).
+      run: async (i) => actions.cancelPendingAction(ctx.user.phone, i.propuestaId, { fromModel: true }),
     }),
     defineTool({
       name: "proponer_movimiento_obra",
