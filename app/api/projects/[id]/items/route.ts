@@ -39,6 +39,13 @@ export async function POST(req: NextRequest, { params }: Params) {
     const title = String(body.title ?? "").trim();
     if (!title) return NextResponse.json({ error: "El título es obligatorio." }, { status: 400 });
 
+    // Movimientos: sin estado por defecto (un "Pendiente" no suma al
+    // Ejecutado), así que quien carga tiene que elegirlo sí o sí.
+    const status = typeof body.status === "string" ? body.status.trim() : "";
+    if (kind === "change_order" && !(config.statusOptions ?? []).includes(status)) {
+      return NextResponse.json({ error: "Elegí si el gasto está pagado o pendiente." }, { status: 400 });
+    }
+
     let data = body.data;
     if (kind === "change_order") {
       const n = normalizeMovimientoData(data);
@@ -56,7 +63,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       projectId: params.id,
       kind,
       title,
-      status: body.status ? String(body.status) : null,
+      status: status || null,
       data: (data as any) ?? {},
       source: await appSource(),
     });

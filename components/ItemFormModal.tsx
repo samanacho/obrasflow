@@ -58,6 +58,11 @@ export default function ItemFormModal({
   const cfg = ITEM_KINDS[kind];
   const [title, setTitle] = useState(existing?.title ?? initialTitle ?? "");
   const [status, setStatus] = useState(existing?.status ?? initialStatus ?? cfg.defaultStatus ?? "");
+  // Movimientos de Ejecución: sin estado por defecto (change_order no tiene
+  // defaultStatus) y, al crear, hay que elegirlo — un "Pendiente" no suma al
+  // Ejecutado, y antes el valor por defecto dejaba pendientes gastos ya pagados.
+  const esMovimiento = kind === "change_order";
+  const estadoObligatorio = esMovimiento && !existing;
   // Parte Diario: un registro nuevo arranca con la fecha de hoy ya
   // cargada — es lo primero que se pide y no tiene sentido hacer que el
   // usuario la escriba a mano cada vez que solo quiere dejar algo del día.
@@ -156,6 +161,7 @@ export default function ItemFormModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) { setError("Completá el título."); return; }
+    if (estadoObligatorio && !status) { setError("Elegí si el gasto está pagado o pendiente."); return; }
     setSaving(true);
     setError(null);
     try {
@@ -241,9 +247,18 @@ export default function ItemFormModal({
           {cfg.statusOptions && (
             <div className="mb-3">
               <CFormLabel htmlFor="item-estado">Estado</CFormLabel>
-              <CFormSelect id="item-estado" value={status} onChange={(e) => setStatus(e.target.value)}>
+              <CFormSelect id="item-estado" value={status} onChange={(e) => setStatus(e.target.value)} required={estadoObligatorio}>
+                {/* Opción vacía: al crear obliga a elegir; al editar un registro viejo sin estado, lo muestra tal cual. */}
+                {esMovimiento && !status && (
+                  <option value="" disabled={estadoObligatorio}>
+                    {estadoObligatorio ? "Elegí si está pagado o pendiente…" : "Sin estado (cuenta como pagado)"}
+                  </option>
+                )}
                 {cfg.statusOptions.map((s) => <option key={s} value={s}>{s}</option>)}
               </CFormSelect>
+              {esMovimiento && (
+                <p className="form-hint mb-0 mt-1">Un movimiento Pendiente no suma al Ejecutado hasta que lo marques pagado.</p>
+              )}
             </div>
           )}
           {cfg.fields.filter((f) => !f.showIf || f.showIf(data)).map((f: ItemField) => {

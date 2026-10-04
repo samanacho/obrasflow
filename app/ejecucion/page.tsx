@@ -8,10 +8,11 @@ import {
   CFormInput, CFormSelect, CButton, CRow, CCol, CBadge, CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell,
 } from "@coreui/react";
 import { CChartDoughnut, CChartLine } from "@coreui/react-chartjs";
-import { ArrowLeft, Coins, DownloadSimple, FileText, Paperclip } from "@phosphor-icons/react";
+import { ArrowLeft, CheckCircle, Coins, DownloadSimple, FileText, HourglassMedium, Paperclip } from "@phosphor-icons/react";
 import Icon from "@/components/ui/Icon";
 import AppShell from "@/components/AppShell";
-import { MOVIMIENTO_TIPOS } from "@/lib/movimientos";
+import { MOVIMIENTO_TIPOS, ESTADO_PAGADO, aporteAlEjecutado, cuentaEnEjecutado, esPendiente, resumenPendientes } from "@/lib/movimientos";
+import { confirmarAccion, notificar } from "@/lib/ui/alerts";
 import { useIsDarkTheme } from "@/lib/useIsDarkTheme";
 import type { ProjectDTO, ProjectItemDTO, ProjectType, ProjectStatus } from "@/lib/types";
 import { todayLocal } from "@/lib/dates";
@@ -31,9 +32,6 @@ const TYPE_COLOR: Record<ProjectType, string> = { civil: "info", electrico: "war
 const STATUS_LABEL: Record<ProjectStatus, string> = { planificado: "Planificado", en_curso: "En curso", pausado: "Pausado", finalizado: "Finalizado" };
 const STATUS_COLOR: Record<ProjectStatus, string> = { planificado: "info", en_curso: "warning", pausado: "secondary", finalizado: "success" };
 
-// Mismo mapeo que lib/spent.ts (servidor) y app/project/[id]/page.tsx — acá
-// se usa para armar el resumen/gráficos del lado del cliente.
-const EFFECT_BY_TIPO: Record<string, string> = Object.fromEntries(MOVIMIENTO_TIPOS.map((t) => [t.value, t.effect]));
 const CHART_COLORS_LIGHT = ["#4a6b85", "#a9803d", "#726c61", "#8172a3", "#5f8362", "#a0564d"];
 const CHART_COLORS_DARK = ["#8ca9c2", "#d3af6e", "#b3ac9e", "#b3a4cc", "#8fb491", "#c98980"];
 const MESES_CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
@@ -117,6 +115,19 @@ function EjecucionInner() {
       .finally(() => { if (vivo) setLoadingItems(false); });
     return () => { vivo = false; };
   }, [selectedId, reintento]);
+
+  // Recarga sin "Cargando…" (después de "Marcar pagado"): trae los movimientos
+  // y el Ejecutado nuevo que recalculó el servidor, sin perder filtros ni orden.
+  async function refrescar() {
+    const id = selectedId;
+    if (!id) return;
+    const [ps, its] = await Promise.all([
+      fetch("/api/projects").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(`/api/projects/${id}/items?kind=change_order`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ]);
+    if (ps) setProjects(ps);
+    if (its) setItems(its);
+  }
 
   function selectProject(id: string) {
     setSelectedId(id);
@@ -247,7 +258,7 @@ function EjecucionInner() {
               <CButton color="primary" variant="outline" size="sm" onClick={() => setReintento((n) => n + 1)}>Reintentar</CButton>
             </div>
           )}
-          {!loadingItems && !errorItems && tab === "gastos" && <PlanillaGastosView project={selected} items={items} />}
+          {!loadingItems && !errorItems && tab === "gastos" && <PlanillaGastosView project={selected} items={items} onChanged={refrescar} />}
           {!loadingItems && !errorItems && tab === "archivos" && <ArchivosView items={items} />}
           {!loadingItems && !errorItems && tab === "resumen" && <ResumenView project={selected} items={items} />}
         </>
@@ -276,17 +287,47 @@ function exportGastosCSV(items: ProjectItemDTO[], projectName: string) {
   URL.revokeObjectURL(url);
 }
 
-function PlanillaGastosView({ project, items }: { project: ProjectDTO; items: ProjectItemDTO[] }) {
+function PlanillaGastosView({ project, items, onChanged }: { project: ProjectDTO; items: ProjectItemDTO[]; onChanged: () => Promise<void> }) {
   const [search, setSearch] = useState("");
   const [filterTipo, setFilterTipo] = useState("");
   const [sortBy, setSortBy] = useState<"fecha_desc" | "fecha_asc" | "monto_desc" | "monto_asc">("fecha_desc");
 
-  const sumByTipo = (tipo: string) => items.filter((i) => i.data?.tipo === tipo).reduce((acc, i) => acc + Number(i.data?.monto ?? 0), 0);
+  // Un adelanto "Pendiente" todavía no se entregó: no cuenta (misma regla que el Ejecutado).
+  const sumByTipo = (tipo: string) =>
+    items.filter((i) => i.data?.tipo === tipo && cuentaEnEjecutado(i.status)).reduce((acc, i) => acc + Number(i.data?.monto ?? 0), 0);
+  // Gastos "Pendiente": no suman al Ejecutado hasta marcarlos pagados.
+  const pendientes = resumenPendientes(items);
+  const [soloPendientes, setSoloPendientes] = useState(false);
+
+  // "Marcar pagado": el PUT exige el título; sin `data` conserva la existente,
+  // y el servidor recalcula el Ejecutado al cambiar el estado.
+  async function marcarPagado(item: ProjectItemDTO) {
+    const ok = await confirmarAccion({
+      titulo: "Marcar como pagado",
+      texto: `"${item.title}" (${fmtMoney(Number(item.data?.monto ?? 0))}) pasa a Pagado y empieza a sumar al Ejecutado.`,
+      confirmar: "Marcar pagado",
+      accion: async () => {
+        const res = await fetch(`/api/items/${item.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: item.title, status: ESTADO_PAGADO }),
+        }).catch(() => null);
+        if (!res || !res.ok) {
+          const body = res ? await res.json().catch(() => ({})) : {};
+          throw new Error(body.error || "No se pudo marcar como pagado. Probá de nuevo.");
+        }
+      },
+    });
+    if (!ok) return;
+    await onChanged();
+    notificar("Marcado como pagado: ya suma al Ejecutado", "success");
+  }
   const adelantado = sumByTipo("Adelanto");
   const saldoDisponible = project.budget - project.spent;
 
   const visibleItems = items
     .filter((i) => !filterTipo || i.data?.tipo === filterTipo)
+    .filter((i) => !soloPendientes || esPendiente(i.status))
     .filter((i) => {
       if (!search) return true;
       const q = search.toLowerCase();
@@ -309,7 +350,7 @@ function PlanillaGastosView({ project, items }: { project: ProjectDTO; items: Pr
       <CCardHeader className="module-panel-head">
         <div>
           <span className="fw-semibold fs-5">Planilla de gastos</span>
-          <p className="module-desc mb-0">Todos los movimientos cargados en la Ejecución de esta obra. Para agregar o editar, entrá a la ficha de la obra.</p>
+          <p className="module-desc mb-0">Todos los movimientos cargados en la Ejecución de esta obra. Para agregar o editar, entrá a la ficha de la obra; los pendientes se pueden marcar pagados desde acá.</p>
         </div>
         <CButton color="secondary" variant="outline" size="sm" onClick={() => exportGastosCSV(items, project.name)} disabled={items.length === 0}>
           <Icon icon={DownloadSimple} size={16} className="me-1" /> Exportar CSV
@@ -334,6 +375,21 @@ function PlanillaGastosView({ project, items }: { project: ProjectDTO; items: Pr
               <span className="qb-label">Saldo disponible</span>
               <span className={"qb-value mono" + (saldoDisponible < 0 ? " alert-text" : "")}>{fmtMoney(saldoDisponible)}</span>
             </div>
+          </div>
+        )}
+
+        {pendientes.cantidad > 0 && (
+          <div className="of-pendientes-aviso" role="status">
+            <Icon icon={HourglassMedium} size={22} />
+            <span>
+              <strong>
+                {pendientes.cantidad} gasto{pendientes.cantidad === 1 ? "" : "s"} pendiente{pendientes.cantidad === 1 ? "" : "s"} por {fmtMoney(pendientes.monto)}
+              </strong>
+              {" — no suma" + (pendientes.cantidad === 1 ? "" : "n") + " al Ejecutado hasta marcarl" + (pendientes.cantidad === 1 ? "o pagado." : "os pagados.")}{" "}
+              <button type="button" className="btn btn-sm btn-link p-0 align-baseline" onClick={() => setSoloPendientes((v) => !v)}>
+                {soloPendientes ? "Ver todos los gastos" : "Ver solo los pendientes"}
+              </button>
+            </span>
           </div>
         )}
 
@@ -377,8 +433,10 @@ function PlanillaGastosView({ project, items }: { project: ProjectDTO; items: Pr
                 </CTableRow>
               </CTableHead>
               <CTableBody>
-                {visibleItems.map((i) => (
-                  <CTableRow key={i.id}>
+                {visibleItems.map((i) => {
+                  const pendiente = esPendiente(i.status);
+                  return (
+                  <CTableRow key={i.id} className={pendiente ? "of-fila-pendiente" : undefined}>
                     <CTableDataCell className="mono">{itemDate(i)}</CTableDataCell>
                     <CTableDataCell>{i.data?.tipo || "—"}</CTableDataCell>
                     <CTableDataCell>
@@ -396,10 +454,22 @@ function PlanillaGastosView({ project, items }: { project: ProjectDTO; items: Pr
                     <CTableDataCell>{i.data?.categoria || "—"}</CTableDataCell>
                     <CTableDataCell className="mono">{fmtMoney(Number(i.data?.monto ?? 0))}</CTableDataCell>
                     <CTableDataCell>{i.data?.medioPago || "—"}</CTableDataCell>
-                    <CTableDataCell>{i.status && <span className={"status-chip status-generic status-" + i.status.toLowerCase().replace(/\s+/g, "_")}>{i.status}</span>}</CTableDataCell>
+                    <CTableDataCell>
+                      {pendiente ? (
+                        <div className="d-flex flex-column align-items-start gap-1">
+                          <span className="of-pendiente-tag"><Icon icon={HourglassMedium} size={14} weight="bold" />Pendiente · no suma al Ejecutado</span>
+                          <CButton size="sm" color="success" variant="outline" className="d-inline-flex align-items-center gap-1" onClick={() => marcarPagado(i)}>
+                            <Icon icon={CheckCircle} size={16} /> Marcar pagado
+                          </CButton>
+                        </div>
+                      ) : (
+                        i.status && <span className={"status-chip status-generic status-" + i.status.toLowerCase().replace(/\s+/g, "_")}>{i.status}</span>
+                      )}
+                    </CTableDataCell>
                     <CTableDataCell>{i.attachment || i.data?.comprobante ? <Icon icon={Paperclip} size={16} label="Tiene comprobante" /> : "—"}</CTableDataCell>
                   </CTableRow>
-                ))}
+                  );
+                })}
               </CTableBody>
             </CTable>
           </div>
@@ -484,24 +554,23 @@ function ResumenView({ project, items }: { project: ProjectDTO; items: ProjectIt
   const saldoDisponible = project.budget - project.spent;
 
   const categoriaSums: Record<string, number> = {};
-  // Mismo criterio que monthlyTotals: lo que no mueve el gasto no suma, y lo
-  // que lo descuenta resta. Una torta no muestra negativos: quedan afuera.
+  // Misma regla que el Ejecutado (lib/movimientos.ts): lo que no mueve el
+  // gasto no suma, lo que lo descuenta resta y un "Pendiente" no cuenta hasta
+  // pagarse. Una torta no muestra negativos: quedan afuera.
   items.forEach((i) => {
-    const effect = EFFECT_BY_TIPO[i.data?.tipo ?? ""];
-    if (effect !== "add" && effect !== "subtract") return;
+    const aporte = aporteAlEjecutado(i);
+    if (aporte === 0) return;
     const cat = i.data?.categoria || "Sin categoría";
-    const monto = Number(i.data?.monto ?? 0) * (effect === "subtract" ? -1 : 1);
-    categoriaSums[cat] = (categoriaSums[cat] ?? 0) + monto;
+    categoriaSums[cat] = (categoriaSums[cat] ?? 0) + aporte;
   });
   const categoriaLabels = Object.keys(categoriaSums).filter((c) => categoriaSums[c] > 0);
 
   const monthlyTotals = new Map<string, number>();
   items.forEach((i) => {
-    const effect = EFFECT_BY_TIPO[i.data?.tipo ?? ""];
-    if (effect !== "add" && effect !== "subtract") return;
+    const aporte = aporteAlEjecutado(i);
+    if (aporte === 0) return;
     const month = (i.data?.fecha || i.createdAt).slice(0, 7);
-    const monto = Number(i.data?.monto ?? 0) * (effect === "subtract" ? -1 : 1);
-    monthlyTotals.set(month, (monthlyTotals.get(month) ?? 0) + monto);
+    monthlyTotals.set(month, (monthlyTotals.get(month) ?? 0) + aporte);
   });
   const monthKeys = Array.from(monthlyTotals.keys()).sort();
   let runningTotal = 0;

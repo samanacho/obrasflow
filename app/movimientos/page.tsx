@@ -7,7 +7,7 @@ import {
   CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell,
   CBadge, CNav, CNavItem, CNavLink,
 } from "@coreui/react";
-import { ArrowsLeftRight, DownloadSimple, FilePdf, FileText, Lightning, LockSimple, LockSimpleOpen, PencilSimple, Plus, Trash } from "@phosphor-icons/react";
+import { ArrowsLeftRight, DownloadSimple, HourglassMedium, FilePdf, FileText, Lightning, LockSimple, LockSimpleOpen, PencilSimple, Plus, Trash } from "@phosphor-icons/react";
 import Icon from "@/components/ui/Icon";
 import DataTable, { celdas } from "@/components/ui/DataTable";
 import ImageViewer from "@/components/ui/ImageViewer";
@@ -15,7 +15,7 @@ import AppShell from "@/components/AppShell";
 import { confirmarAccion, notificar } from "@/lib/ui/alerts";
 import ItemFormModal from "@/components/ItemFormModal";
 import GeneralMovementFormModal from "@/components/GeneralMovementFormModal";
-import { MOVIMIENTO_TIPOS } from "@/lib/movimientos";
+import { MOVIMIENTO_TIPOS, esPendiente } from "@/lib/movimientos";
 import type { MovimientoDTO, ProjectItemDTO, ProjectType, GeneralMovementDTO, GeneralMovementTipo } from "@/lib/types";
 import { todayLocal } from "@/lib/dates";
 
@@ -405,6 +405,8 @@ export default function MovimientosPage() {
   // Total de volumen (obra + general), sin restar por ingreso/egreso — la
   // ganancia neta de la empresa se calcula en Inicio, no acá.
   const totalMonto = rows.reduce((sum, r) => sum + r.monto, 0);
+  // Gastos de obra en "Pendiente": no suman al Ejecutado (decisión 2026-10-04), se resaltan.
+  const pendientesObra = rows.filter((r) => r.source === "obra" && esPendiente(r.estado));
 
   const visible = rows
     .filter((r) => !filterObra || r.obraId === filterObra)
@@ -534,7 +536,11 @@ export default function MovimientosPage() {
         <CCardHeader className="module-panel-head">
           <div>
             <span className="fw-semibold fs-5">Movimientos</span>
-            <p className="module-desc mb-0">{rows.length} movimiento{rows.length === 1 ? "" : "s"} cargados — total {fmtMoney(totalMonto)}.</p>
+            <p className="module-desc mb-0">{rows.length} movimiento{rows.length === 1 ? "" : "s"} cargados — total {fmtMoney(totalMonto)}.
+              {pendientesObra.length > 0 && (
+                <> <span className="of-pendiente-tag ms-1"><Icon icon={HourglassMedium} size={14} weight="bold" />{pendientesObra.length} de obra pendiente{pendientesObra.length === 1 ? "" : "s"} · no suman al Ejecutado</span></>
+              )}
+            </p>
           </div>
           <div className="d-flex gap-2">
             <Link href="/registro-rapido" className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1"><Icon icon={Lightning} size={16} /> Clasificar registros rápidos</Link>
@@ -649,7 +655,15 @@ export default function MovimientosPage() {
                     { data: null, title: "Comprobante", orderable: false },
                     { data: null, title: "Acciones", orderable: false },
                   ]}
-                  options={{ order: [[0, "desc"]], searching: false }}
+                  options={{
+                    order: [[0, "desc"]],
+                    searching: false,
+                    // Fila resaltada para los gastos de obra pendientes (mismo estilo que Ejecución).
+                    createdRow: (tr, data) => {
+                      const row = data as LedgerRow;
+                      if (row.source === "obra" && esPendiente(row.estado)) (tr as HTMLElement).classList.add("of-fila-pendiente");
+                    },
+                  }}
                   slots={celdas<LedgerRow>({
                     0: (_: unknown, row: LedgerRow) => <>{row.fechaLabel}</>,
                     1: (_: unknown, row: LedgerRow) =>
@@ -677,7 +691,9 @@ export default function MovimientosPage() {
                       ),
                     7: (_: unknown, row: LedgerRow) => <>{row.medioPago || "—"}</>,
                     8: (_: unknown, row: LedgerRow) =>
-                      row.estado ? <span className={"status-chip status-generic status-" + row.estado.toLowerCase().replace(/\s+/g, "_")}>{row.estado}</span> : <></>,
+                      row.source === "obra" && esPendiente(row.estado) ? (
+                        <span className="of-pendiente-tag"><Icon icon={HourglassMedium} size={14} weight="bold" />Pendiente · no suma</span>
+                      ) : row.estado ? <span className={"status-chip status-generic status-" + row.estado.toLowerCase().replace(/\s+/g, "_")}>{row.estado}</span> : <></>,
                     9: (_: unknown, row: LedgerRow) => <>{row.procesadoPor || "—"}</>,
                     10: (_: unknown, row: LedgerRow) => <>{row.responsable || "—"}</>,
                     11: (_: unknown, row: LedgerRow) =>

@@ -806,3 +806,13 @@ a.of-dropzone-file-icon{color:var(--crit);}
   .of-user-name{display:none;}
   .of-user-btn{padding:3px;min-width:40px;min-height:40px;justify-content:center;}
 }
+
+/* Movimientos "Pendiente" (decisión del dueño, 2026-10-04): no suman al
+   Ejecutado hasta marcarlos pagados, así que se resaltan con el tono de
+   advertencia para que no pasen desapercibidos. */
+.of-pendientes-aviso{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--warn-soft);border:1px solid var(--warn);border-left-width:4px;border-radius:8px;padding:10px 14px;margin-bottom:16px;color:var(--ink);}
+.of-pendientes-aviso .of-icon{color:var(--warn);flex-shrink:0;}
+.of-pendiente-tag{display:inline-flex;align-items:center;gap:4px;font-size:.72rem;font-weight:600;line-height:1.4;color:var(--warn);background:var(--warn-soft);border:1px solid var(--warn);border-radius:999px;padding:1px 8px;white-space:nowrap;}
+.item-row.item-row-pendiente{background:var(--warn-soft) !important;box-shadow:inset 4px 0 0 var(--warn);padding-left:14px !important;padding-right:10px !important;}
+.of-fila-pendiente > td{background-color:var(--warn-soft) !important;--cui-table-bg-state:var(--warn-soft);}
+.of-fila-pendiente > td:first-child{box-shadow:inset 4px 0 0 var(--warn) !important;}
