@@ -15,12 +15,14 @@ Se carga solo cuando trabajás en `worker/`. Las reglas generales están en el
   `E:\Desarrollos\ObrasFlow-versiones\iniciar-memby.cmd` (config en
   `memby.env`, fuera del repo; log en `logs/memby.log`). El QR se ve en la app
   local: http://localhost/agente-whatsapp.
-- **Corre desde una copia aparte del repo**: `iniciar-memby.cmd` entra a
-  `E:\Desarrollos\ObrasFlow-versiones\A` (un clon de GitHub), no a este
-  repo. Un cambio en `worker/` o en lo que importa de `lib/` llega a Memby
-  recién cuando esa copia se actualiza (`git pull` en `A`, con el cambio ya
-  mergeado en `main`) y Memby se reinicia. Hacelo solo con el OK de Ignacio y
-  avisale que Memby se corta unos segundos.
+- **Corre desde una copia aparte**: `iniciar-memby.cmd` entra a
+  `E:\Desarrollos\ObrasFlow-versiones\A`, un *worktree* de este mismo repo
+  fijado en un commit (`git worktree list` lo muestra). Un cambio en
+  `worker/` o en lo que importa de `lib/` llega a Memby recién cuando ese
+  worktree pasa al commit nuevo (`git -C ../ObrasFlow-versiones/A checkout
+  --detach origin/main`, con el cambio ya mergeado; si cambiaron las
+  dependencias, también `npm ci` ahí) y Memby se reinicia. Hacelo solo con
+  el OK de Ignacio y avisale que Memby se corta unos segundos.
 - Memby (conector, `worker/`): notas de voz transcriptas en la PC con Whisper
   (`worker/transcribe.mts`, modelo en `.local-models/`), avisos automáticos
   (`worker/notices.mts`, tabla `WhatsAppNotice`). Opciones en `.env.local`:
