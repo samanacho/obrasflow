@@ -5,7 +5,7 @@
 
 import {
   SquaresFour, Buildings, ArrowsLeftRight, Factory, UsersThree, Truck, Package,
-  IdentificationBadge, ChatCircleDots, type Icon,
+  IdentificationBadge, ChatCircleDots, ShoppingCart, type Icon,
 } from "@phosphor-icons/react";
 
 export type NavFlagKey = "obras" | "movimientos" | "postes";
@@ -29,6 +29,8 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "inicio", label: "Inicio", href: "/", icon: SquaresFour },
   { key: "obras", label: "Obras", href: "/rubros", icon: Buildings, also: ["/project", "/sitios", "/ejecucion"], flag: "obras" },
   { key: "movimientos", label: "Movimientos", href: "/movimientos", icon: ArrowsLeftRight, also: ["/registro-rapido"], flag: "movimientos" },
+  // Pedidos de compra: pedido → aprobación → pago → factura (lib/compras/core.ts).
+  { key: "compras", label: "Compras", href: "/compras", icon: ShoppingCart },
   { key: "postes", label: "Fábrica de postes", href: "/postes", icon: Factory, flag: "postes" },
   { key: "contratistas", label: "Contratistas", href: "/contratistas", icon: UsersThree, groupStart: true },
   { key: "proveedores", label: "Proveedores", href: "/proveedores", icon: Truck },

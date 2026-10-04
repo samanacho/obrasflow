@@ -82,6 +82,40 @@ export async function confirmarAccion(o: OpcionesConfirmar & { accion: () => Pro
   return r.isConfirmed;
 }
 
+/**
+ * Como confirmarAccion, pero con un campo de texto (por ejemplo, el motivo de
+ * un rechazo). El texto puede quedar vacío salvo que `obligatorio` sea true.
+ * `accion` recibe lo escrito. Devuelve true si se hizo.
+ */
+export async function confirmarConTexto(
+  o: OpcionesConfirmar & { etiqueta: string; placeholder?: string; obligatorio?: boolean; accion: (texto: string) => Promise<unknown> }
+) {
+  const r = await base.fire({
+    ...opciones(o),
+    input: "textarea",
+    inputLabel: o.etiqueta,
+    inputPlaceholder: o.placeholder,
+    inputAttributes: { "aria-label": o.etiqueta },
+    showLoaderOnConfirm: true,
+    allowOutsideClick: () => !Swal.isLoading(),
+    preConfirm: async (valor: string) => {
+      const texto = String(valor ?? "").trim();
+      if (o.obligatorio && !texto) {
+        Swal.showValidationMessage("Escribí algo para seguir.");
+        return false;
+      }
+      try {
+        await o.accion(texto);
+        return true;
+      } catch (err: any) {
+        Swal.showValidationMessage(err?.message || "No se pudo completar. Probá de nuevo.");
+        return false;
+      }
+    },
+  });
+  return r.isConfirmed;
+}
+
 /** Aviso con un solo botón. */
 export function avisar(titulo: string, texto?: string, tipo: Tipo = "info") {
   return base.fire({ title: titulo, text: texto, icon: tipo, confirmButtonText: "Entendido" });

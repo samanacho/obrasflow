@@ -11,13 +11,14 @@ import {
   CDropdown, CDropdownToggle, CDropdownMenu, CDropdownItem,
 } from "@coreui/react";
 import { CChartDoughnut, CChartLine } from "@coreui/react-chartjs";
-import { PencilSimple, Trash, Plus, MapPin, CalendarBlank, FilePdf, Check, DotsThree, ArrowBendDownRight } from "@phosphor-icons/react";
+import { PencilSimple, Trash, Plus, MapPin, CalendarBlank, FilePdf, Check, DotsThree, ArrowBendDownRight, Calculator } from "@phosphor-icons/react";
 import Icon from "@/components/ui/Icon";
 import ImageViewer from "@/components/ui/ImageViewer";
 import { kindIcon, TIPO_INSUMO_ICON } from "@/components/ui/kindIcons";
 import { ITEMS_CHANGED } from "@/components/GastoObraButton";
 import AppShell from "@/components/AppShell";
 import NewProjectWizard from "@/components/NewProjectWizard";
+import BudgetPanel from "@/components/project/BudgetPanel";
 import { confirmarAccion, notificar } from "@/lib/ui/alerts";
 import ItemFormModal from "@/components/ItemFormModal";
 import { useIsDarkTheme } from "@/lib/useIsDarkTheme";
@@ -58,6 +59,11 @@ const EFFECT_BY_TIPO: Record<string, string> = Object.fromEntries(MOVIMIENTO_TIP
 // colores que TYPE_HEX en app/page.tsx, para el donut de gastos por categoría.
 const CHART_COLORS_LIGHT = ["#4a6b85", "#a9803d", "#726c61", "#8172a3", "#5f8362", "#a0564d"];
 const CHART_COLORS_DARK = ["#8ca9c2", "#d3af6e", "#b3ac9e", "#b3a4cc", "#8fb491", "#c98980"];
+
+// Pestañas de la ficha: los tipos de registro y, después de Ejecución, el
+// presupuesto por ítem (components/project/BudgetPanel.tsx, módulo Compras).
+const PRESUPUESTO_TAB = "presupuesto";
+const TABS: string[] = ITEM_KIND_ORDER.flatMap((k) => (k === "change_order" ? [k, PRESUPUESTO_TAB] : [k]));
 
 const MESES_CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
@@ -105,7 +111,7 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
   const [tab, setTab] = useState<string>("rfi");
   useEffect(() => {
     const pedido = new URLSearchParams(window.location.search).get("tab");
-    if (pedido && ITEM_KIND_ORDER.includes(pedido)) setTab(pedido);
+    if (pedido && TABS.includes(pedido)) setTab(pedido);
   }, []);
   const [editOpen, setEditOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -358,19 +364,20 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
       })()}
 
       <CNav variant="underline" className="mb-4 module-tabs">
-        {ITEM_KIND_ORDER.map((k) => {
-          const cfg = ITEM_KINDS[k];
-          return (
-            <CNavItem key={k}>
-              <CNavLink active={tab === k} onClick={() => setTab(k)} className="d-inline-flex align-items-center gap-2" style={{ cursor: "pointer", whiteSpace: "nowrap" }}>
-                <Icon icon={kindIcon(k)} size={18} /> {cfg.label}
-              </CNavLink>
-            </CNavItem>
-          );
-        })}
+        {TABS.map((k) => (
+          <CNavItem key={k}>
+            <CNavLink active={tab === k} onClick={() => setTab(k)} className="d-inline-flex align-items-center gap-2" style={{ cursor: "pointer", whiteSpace: "nowrap" }}>
+              <Icon icon={k === PRESUPUESTO_TAB ? Calculator : kindIcon(k)} size={18} /> {k === PRESUPUESTO_TAB ? "Presupuesto" : ITEM_KINDS[k].label}
+            </CNavLink>
+          </CNavItem>
+        ))}
       </CNav>
 
-      <ModuleView key={tab} projectId={id} kind={tab} project={project} onProjectChanged={refreshProject} showToast={(m) => notificar(m, "error")} />
+      {tab === PRESUPUESTO_TAB ? (
+        <BudgetPanel projectId={id} />
+      ) : (
+        <ModuleView key={tab} projectId={id} kind={tab} project={project} onProjectChanged={refreshProject} showToast={(m) => notificar(m, "error")} />
+      )}
 
       <NewProjectWizard
         visible={editOpen}

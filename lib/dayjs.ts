@@ -33,6 +33,11 @@ export function fmtFechaHora(iso: string | Date): string {
   return dayjs(iso).tz(TZ).format("DD/MM/YYYY HH:mm");
 }
 
+/** Instante (ISO) -> "24/09/2026": el día en Paraguay (fmtFecha cortaría la fecha en UTC: después de las 21 h sería mañana). */
+export function fmtDia(iso: string | Date): string {
+  return dayjs(iso).tz(TZ).format("DD/MM/YYYY");
+}
+
 /** Instante (ISO) -> "hace 3 días", "en 2 horas". */
 export function haceCuanto(iso: string | Date): string {
   return dayjs(iso).fromNow();

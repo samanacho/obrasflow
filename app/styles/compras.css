@@ -1,0 +1,104 @@
+/* Módulo Compras (pedidos de compra y presupuesto por ítem). Solo tokens de
+   app/globals.css, así claro y oscuro salen solos. */
+
+/* Tono de los chips de estado (sobre .status-chip). Siempre con texto: el
+   color acompaña, nunca es lo único que informa. */
+.of-chip-warn{background:var(--warn-soft);color:var(--warn);}
+.of-chip-accent{background:var(--accent-soft);color:var(--accent-ink);}
+.of-chip-ok{background:var(--ok-soft);color:var(--ok);}
+.of-chip-crit{background:var(--crit-soft);color:var(--crit);}
+.of-chip-muted{background:var(--paper);color:var(--ink-soft);border:1px solid var(--line);}
+
+/* Filtro por estado: botones grandes con el número (pantalla de pedidos). */
+.cmp-filtros{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;}
+.cmp-filtro{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:6px 12px;border:1px solid var(--line);border-radius:6px;
+  background:var(--surface);color:var(--ink);font-size:.92rem;cursor:pointer;}
+.cmp-filtro:hover{border-color:color-mix(in srgb, var(--accent) 45%, var(--line));}
+.cmp-filtro[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink);font-weight:600;box-shadow:inset 0 -3px 0 var(--accent);}
+.cmp-filtro .n{min-width:22px;padding:0 6px;border-radius:4px;background:var(--paper);font-size:.8rem;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;}
+.cmp-filtro .n.is-warn{background:var(--warn-soft);color:var(--warn);}
+.cmp-filtro[aria-pressed="true"] .n{background:var(--surface);}
+
+/* Filas de la tabla que llevan al detalle. */
+.cmp-tabla tbody tr{cursor:pointer;}
+.cmp-tabla .cmp-num{font-weight:700;}
+
+/* Tarjetas de pedido (celular). */
+.cmp-cards{display:flex;flex-direction:column;gap:8px;list-style:none;margin:0;padding:0;}
+.cmp-card{display:block;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);text-decoration:none;}
+.cmp-card:hover,.cmp-card:focus-visible{border-color:var(--accent);color:var(--ink);}
+.cmp-card-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px;}
+.cmp-card-mats{font-size:.92rem;margin:4px 0;}
+.cmp-card-meta{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.8rem;color:var(--ink-soft);}
+.cmp-monto{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;}
+
+/* Detalle: "Qué sigue" (estado explicado + la acción que corresponde). */
+.cmp-siguiente{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;margin-bottom:16px;
+  border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;background:var(--surface);}
+.cmp-siguiente.tono-warn{border-left-color:var(--warn);}
+.cmp-siguiente.tono-ok{border-left-color:var(--ok);}
+.cmp-siguiente.tono-crit{border-left-color:var(--crit);}
+.cmp-siguiente.tono-muted{border-left-color:var(--line);}
+.cmp-siguiente-texto strong{display:block;font-size:1.05rem;}
+.cmp-siguiente-texto span{color:var(--ink-soft);font-size:.9rem;}
+.cmp-siguiente-acciones{display:flex;flex-wrap:wrap;gap:8px;}
+.cmp-siguiente-acciones .btn{min-height:44px;}
+
+.cmp-mensaje{margin:0 0 16px;border:1px solid var(--line);border-radius:8px;background:var(--surface);}
+.cmp-mensaje summary{padding:10px 14px;cursor:pointer;color:var(--accent-ink);font-weight:600;}
+.cmp-mensaje blockquote{margin:0;padding:0 14px 12px;white-space:pre-wrap;font-size:.92rem;color:var(--ink);}
+
+.cmp-datos{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px 20px;margin:0;}
+.cmp-datos dt{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);}
+.cmp-datos dd{margin:2px 0 0;}
+
+/* Comparación con el presupuesto, por renglón. */
+.cmp-lineas td,.cmp-lineas th{vertical-align:middle;}
+.cmp-lineas .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.cmp-pasa{color:var(--crit);font-weight:700;}
+.cmp-fuera{color:var(--ink-soft);font-style:italic;font-size:.85rem;}
+.cmp-linea-card{padding:10px 0;border-bottom:1px solid var(--line);}
+.cmp-linea-card:last-child{border-bottom:0;}
+.cmp-linea-card .fila{display:flex;justify-content:space-between;gap:8px;font-size:.88rem;}
+.cmp-linea-card .fila span:first-child{color:var(--ink-soft);}
+
+/* Renglones editables (nuevo pedido / editar materiales). */
+.cmp-renglon{display:grid;grid-template-columns:minmax(0,3fr) minmax(70px,1fr) minmax(70px,1fr) minmax(0,3fr) auto;gap:8px;align-items:start;margin-bottom:8px;}
+.cmp-renglon-head{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-bottom:4px;}
+.cmp-renglon .btn{min-height:38px;}
+@media (max-width: 767px){
+  .cmp-renglon{grid-template-columns:1fr 1fr auto;padding:10px;border:1px solid var(--line);border-radius:8px;}
+  .cmp-renglon > .r-desc,.cmp-renglon > .r-item{grid-column:1 / -1;}
+  .cmp-renglon-head{display:none;}
+}
+.cmp-renglon .r-label{display:none;font-size:.75rem;color:var(--ink-soft);margin-bottom:2px;}
+@media (max-width: 767px){.cmp-renglon .r-label{display:block;}}
+
+/* Línea de tiempo del pedido. */
+.cmp-tiempo{list-style:none;margin:0;padding:0;}
+.cmp-tiempo li{position:relative;padding:0 0 14px 22px;}
+.cmp-tiempo li::before{content:"";position:absolute;left:5px;top:6px;width:9px;height:9px;border-radius:50%;background:var(--accent);}
+.cmp-tiempo li::after{content:"";position:absolute;left:9px;top:17px;bottom:0;width:1px;background:var(--line);}
+.cmp-tiempo li:last-child::after{display:none;}
+.cmp-tiempo li.is-crit::before{background:var(--crit);}
+.cmp-tiempo li.is-ok::before{background:var(--ok);}
+.cmp-tiempo .cuando{color:var(--ink-soft);font-size:.82rem;}
+
+/* Presupuesto por ítem (ficha de la obra). */
+.bud-alta{display:grid;grid-template-columns:minmax(60px,.7fr) minmax(0,3fr) minmax(60px,.8fr) minmax(70px,1fr) minmax(90px,1.2fr) auto;gap:8px;align-items:end;
+  padding:10px;margin-bottom:14px;border:1px dashed var(--line);border-radius:8px;}
+.bud-alta label{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-bottom:2px;}
+@media (max-width: 767px){
+  .bud-alta{grid-template-columns:1fr 1fr;}
+  .bud-alta .b-desc{grid-column:1 / -1;}
+  .bud-alta .b-btn{grid-column:1 / -1;}
+}
+.bud-preview{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:6px;}
+.bud-preview table{margin:0;font-size:.85rem;}
+.bud-preview thead th{position:sticky;top:0;background:var(--surface);z-index:1;}
+.bud-preview tr.is-error td{background:var(--crit-soft);}
+.bud-preview tr.is-titulo td{color:var(--ink-soft);font-style:italic;}
+
+/* Chips dentro de tablas: en una sola línea. */
+.of-dtable .status-chip,.cmp-lineas .status-chip{white-space:nowrap;}
+.of-dtable td.bud-desc{min-width:220px;}
