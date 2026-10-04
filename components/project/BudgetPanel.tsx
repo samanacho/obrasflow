@@ -328,7 +328,13 @@ export default function BudgetPanel({ projectId }: { projectId: string }) {
         onClose={() => setImportando(false)}
         onImported={(r) => {
           setImportando(false);
-          notificar(`${r.agregados} ${r.agregados === 1 ? "ítem cargado" : "ítems cargados"}${r.borrados ? ` · ${r.borrados} reemplazados` : ""}`);
+          notificar(
+            [
+              r.agregados ? `${r.agregados} ${r.agregados === 1 ? "ítem cargado" : "ítems cargados"}` : null,
+              r.actualizados ? `${r.actualizados} ${r.actualizados === 1 ? "actualizado" : "actualizados"}` : null,
+              r.borrados ? `${r.borrados} ${r.borrados === 1 ? "borrado" : "borrados"}` : null,
+            ].filter(Boolean).join(" · ") || "Sin cambios"
+          );
           cargar();
         }}
       />
