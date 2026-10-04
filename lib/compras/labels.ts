@@ -66,8 +66,9 @@ export function parseNumero(raw: unknown): number | null {
     s = (s.match(/,/g)!.length > 1 ? s.replace(/,/g, "") : s.replace(",", "."));
   } else if (lastDot >= 0) {
     // "45.000" o "1.234.567" = miles (costumbre local); "12.5" = decimal.
+    // "0.500" es decimal: nadie escribe miles empezando con cero.
     const dots = s.match(/\./g)!.length;
-    if (dots > 1 || /\.\d{3}$/.test(s)) s = s.replace(/\./g, "");
+    if (dots > 1 || (/\.\d{3}$/.test(s) && !/^-?0\./.test(s))) s = s.replace(/\./g, "");
   }
   const n = Number(s);
   return Number.isFinite(n) ? n : null;

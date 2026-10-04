@@ -2,6 +2,8 @@
 // guaraníes. Viven separados de core.ts para poder probarlos solos
 // (lib/compras/calculos.test.ts).
 
+import { fmtGs } from "../agent/format";
+
 export class CompraError extends Error {}
 
 export const ESTADO_LABEL: Record<string, string> = {
@@ -14,6 +16,9 @@ export const ESTADO_LABEL: Record<string, string> = {
 
 // ------------------------------- pago -------------------------------
 
+/** Lo máximo que entra en las columnas de plata (Decimal(14,2)). */
+export const MONTO_MAXIMO = 999_999_999_999;
+
 /**
  * Controla que el pedido se pueda pagar y devuelve el monto en guaraníes
  * enteros. Solo un pedido aprobado, con obra elegida y monto mayor a cero.
@@ -25,7 +30,24 @@ export function validarPago(o: { status: string; numero: number; projectId: stri
   if (!o.projectId) throw new CompraError("Elegí a qué obra va el pedido antes de pagarlo.");
   const monto = Math.round(Number(montoIngresado));
   if (!(monto > 0)) throw new CompraError("El monto pagado tiene que ser mayor a cero.");
+  // Infinity pasa el "> 0" y un monto enorme no entra en Decimal(14,2):
+  // mejor un aviso claro que un error 500 al guardar.
+  if (!Number.isFinite(monto) || monto > MONTO_MAXIMO) throw new CompraError("El monto pagado es demasiado grande: revisá que esté bien escrito.");
   return monto;
+}
+
+/**
+ * El IVA de la factura no puede superar lo que correspondería si todo el
+ * total fuera de esa tasa (10 % → total/11, 5 % → total/21), como ya controla
+ * el agente al cargar gastos. +1 de tolerancia por el redondeo.
+ */
+export function validarIva(total: number, iva10: number | null | undefined, iva5: number | null | undefined) {
+  if ((iva10 ?? 0) > Math.round(total / 11) + 1) {
+    throw new CompraError(`El IVA 10 % (${fmtGs(iva10!)}) es más de lo que corresponde a un total de ${fmtGs(total)}: revisá la liquidación del IVA.`);
+  }
+  if ((iva5 ?? 0) > Math.round(total / 21) + 1) {
+    throw new CompraError(`El IVA 5 % (${fmtGs(iva5!)}) es más de lo que corresponde a un total de ${fmtGs(total)}: revisá la liquidación del IVA.`);
+  }
 }
 
 // ------------------------------- presupuesto -------------------------------

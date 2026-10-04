@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { CCard, CCardBody, CCardHeader, CBadge, CButton, CForm, CFormInput, CAlert, CSpinner } from "@coreui/react";
 import { confirmarAccion } from "@/lib/ui/alerts";
 import type { PanelData } from "./page";
+import { useVisiblePolling } from "./useVisiblePolling";
 
 // Vista de la conexión por QR (Baileys): estado de la conexión, el QR para
 // vincular la cuenta y los pasos para dejar el conector funcionando. El
@@ -85,11 +86,7 @@ export default function BaileysView({
     }
   }, [panelKey]);
 
-  useEffect(() => {
-    poll();
-    const id = setInterval(poll, 4000);
-    return () => clearInterval(id);
-  }, [poll]);
+  useVisiblePolling(poll, 4000);
 
   async function unlock(e: React.FormEvent) {
     e.preventDefault();

@@ -6,6 +6,7 @@ describe("parseLine (renglones de un pedido de compra)", () => {
     expect(parseLine("- 50 bolsas de cemento")).toEqual({ cantidad: 50, unidad: "bolsa", descripcion: "cemento" });
     expect(parseLine("- 20 varillas 10 mm")).toEqual({ cantidad: 20, unidad: "varilla", descripcion: "varillas 10 mm" });
     expect(parseLine("1.500 ladrillos")?.cantidad).toBe(1500);
+    expect(parseLine("0.500 kg alambre")).toEqual({ cantidad: 0.5, unidad: "kg", descripcion: "alambre" }); // antes 500 kg
     expect(parseLine("2,5 m3 de arena")).toEqual({ cantidad: 2.5, unidad: "m3", descripcion: "arena" });
     expect(parseLine("cemento: 50")).toEqual({ cantidad: 50, unidad: null, descripcion: "cemento" });
     expect(parseLine("Hierro del 8 - 30 varillas")).toEqual({ cantidad: 30, unidad: "varilla", descripcion: "Hierro del 8" });

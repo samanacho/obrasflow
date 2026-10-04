@@ -38,6 +38,19 @@ describe("leerPlanilla (presupuesto pegado de Excel)", () => {
     expect(r.conTitulos).toBe(false);
     expect(r.filas[0]).toMatchObject({ descripcion: "Cemento", unidad: "bolsa", cantidad: 100, precioUnitario: 60_000 });
   });
+
+  it("un capítulo con su subtotal es título de grupo, no un ítem sin cantidad", () => {
+    const r = leerPlanilla([
+      ["Código", "Descripción", "Unidad", "Cantidad", "Precio unitario", "Total"],
+      ["1", "OBRAS PRELIMINARES", "", "", "", "15.000.000"],
+      ["1.1", "Limpieza del terreno", "m2", "500", "30.000", "15.000.000"],
+      ["2", "Excavación", "m3", "", "", "2.000.000"], // con unidad: es un ítem al que le falta la cantidad
+    ]);
+    expect(r.filas.map((f) => f.tipo)).toEqual(["titulo", "item", "error"]);
+    expect(r.filas[0].categoria).toBe("OBRAS PRELIMINARES");
+    expect(r.filas[1]).toMatchObject({ cantidad: 500, precioUnitario: 30_000, categoria: "OBRAS PRELIMINARES" });
+    expect(r.filas[2].error).toBe("Falta la cantidad");
+  });
 });
 
 describe("celdasDeTexto", () => {

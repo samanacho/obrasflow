@@ -3,7 +3,7 @@ import { parseGs, parseNumero } from "./labels";
 // Lectura de un presupuesto pegado desde Excel (o leído de un .xlsx/.csv):
 // busca la fila de títulos, reconoce qué columna es cada cosa por el nombre
 // y arma los ítems. Las filas con descripción pero sin cantidad ni precio
-// ("1. OBRAS PRELIMINARES") se toman como títulos de grupo: pasan a ser la
+// ("1. OBRAS PRELIMINARES", aunque traigan su subtotal) se toman como títulos de grupo: pasan a ser la
 // categoría de los ítems que siguen. Sin dependencias: corre en el navegador.
 
 export type Campo = "codigo" | "descripcion" | "unidad" | "cantidad" | "precioUnitario" | "total" | "categoria";
@@ -141,7 +141,10 @@ export function leerPlanilla(celdas: unknown[][]): ResultadoPlanilla {
     if (/^(sub\s*)?total(es)?\b/i.test(sinTildes(descripcion))) continue; // filas de totales de la planilla
     const sinCant = !texto(cantRaw);
     const sinPrecio = !texto(precioRaw) && total === null;
-    if (sinCant && sinPrecio) {
+    // Capítulo con su subtotal ("1 | OBRAS PRELIMINARES | | | 15.000.000"):
+    // solo descripción y total, sin cantidad, precio ni unidad → también es título.
+    const capituloConSubtotal = sinCant && !texto(precioRaw) && !unidad && total !== null;
+    if ((sinCant && sinPrecio) || capituloConSubtotal) {
       categoria = descripcion.replace(/^[\d.\s)-]+/, "").trim() || descripcion;
       out.push({ ...base, tipo: "titulo", categoria });
       continue;

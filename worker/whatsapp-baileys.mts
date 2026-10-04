@@ -61,6 +61,8 @@ const logger = pino({ level: process.env.BAILEYS_LOG_LEVEL || "warn" });
 let sock: WASocket | null = null;
 let stopping = false;
 let reconnectTimer: NodeJS.Timeout | null = null;
+/** Espera ante un corte desconocido: se duplica en cada intento (tope 60 s) y vuelve a 3 s al conectar. */
+let unknownCloseDelayMs = 3_000;
 
 /** Mensajes recientes por id: para marcar leído y bajar fotos/PDF. */
 const recent = new Map<string, WAMessage>();
@@ -251,6 +253,7 @@ async function connect() {
         const rest = process.env.WHATSAPP_ALLOWED_NUMBERS?.trim();
         process.env.WHATSAPP_ALLOWED_NUMBERS = rest ? `${owner},${rest}` : owner;
       }
+      unknownCloseDelayMs = 3_000;
       await setSession({ status: "conectado", qr: null, phone, name: current.user?.name ?? null, lastError: null });
       console.log(`✅ Conectado como ${current.user?.name ?? ""} (${phone ?? "?"}).`);
       console.log("💬 Escribile al agente en tu chat \"Tú\" (mensaje a vos mismo).");
@@ -269,9 +272,17 @@ async function connect() {
         await setSession({ status: "desconectado", lastError: "Otra instancia del conector abrió esta misma sesión. Dejá corriendo uno solo." });
         console.log("⚠️ Otra instancia del conector tomó la sesión. Reintento en 60 s.");
         scheduleReconnect(60_000);
+      } else if (code === DisconnectReason.restartRequired) {
+        await setSession({ status: "conectando", lastError: null });
+        scheduleReconnect(500);
       } else {
-        await setSession({ status: "conectando", lastError: code === DisconnectReason.restartRequired ? null : `Conexión cortada (código ${code ?? "?"}). Reconectando…` });
-        scheduleReconnect(code === DisconnectReason.restartRequired ? 500 : 3_000);
+        // Si el corte se repite (sin internet, WhatsApp caído), cada vez se
+        // espera el doble: reintentar cada 3 s para siempre llena el log y
+        // puede hacer que WhatsApp frene la cuenta.
+        const wait = unknownCloseDelayMs;
+        unknownCloseDelayMs = Math.min(unknownCloseDelayMs * 2, 60_000);
+        await setSession({ status: "conectando", lastError: `Conexión cortada (código ${code ?? "?"}). Reconectando en ${Math.round(wait / 1000)} s…` });
+        scheduleReconnect(wait);
       }
     }
   });

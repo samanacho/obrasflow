@@ -4,7 +4,7 @@ import { createProjectItem } from "../items";
 import { logChanges } from "../history";
 import { fmtGs, normalizeText } from "../agent/format";
 import { todayInParaguay } from "../dates";
-import { CompraError, ESTADO_LABEL, compararPresupuesto, validarPago, type ComparacionPresupuesto } from "./calculos";
+import { CompraError, ESTADO_LABEL, compararPresupuesto, validarIva, validarPago, type ComparacionPresupuesto } from "./calculos";
 
 export { CompraError, ESTADO_LABEL, type BudgetRowDTO } from "./calculos";
 
@@ -507,9 +507,21 @@ export function mergeInvoiceIntoGasto(
 
 /** Datos de la factura (y el archivo). Si el pedido ya se pagó, también se completan en el gasto de Ejecución. */
 export async function registerInvoice(id: string, input: InvoiceInput) {
-  const o = await prisma.purchaseOrder.findUnique({ where: { id }, select: { id: true, numero: true, status: true, gastoItemId: true, projectId: true } });
+  const o = await prisma.purchaseOrder.findUnique({
+    where: { id },
+    select: { id: true, numero: true, status: true, gastoItemId: true, projectId: true, montoPagado: true, iva10: true, iva5: true },
+  });
   if (!o) throw new CompraError("Ese pedido ya no existe.");
   if (["rechazado", "anulado"].includes(o.status)) throw new CompraError("Ese pedido está rechazado o anulado.");
+  // Solo contra lo pagado: el monto estimado sale de precios del presupuesto
+  // y la factura real puede ser más cara, así que frenaría facturas válidas.
+  if (o.montoPagado !== null && (input.iva10 !== undefined || input.iva5 !== undefined)) {
+    validarIva(
+      Number(o.montoPagado),
+      input.iva10 !== undefined ? input.iva10 : num(o.iva10),
+      input.iva5 !== undefined ? input.iva5 : num(o.iva5)
+    );
+  }
   const fecha = /^\d{4}-\d{2}-\d{2}$/.test(input.fecha ?? "") ? new Date(`${input.fecha}T12:00:00-03:00`) : undefined;
   const numero = input.numero?.trim() || null;
   await prisma.purchaseOrder.update({

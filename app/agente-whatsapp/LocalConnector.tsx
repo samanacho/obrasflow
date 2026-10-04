@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { CCard, CCardBody, CCardHeader, CButton, CAlert, CSpinner } from "@coreui/react";
 import { confirmar, notificar } from "@/lib/ui/alerts";
 import { haceCuanto } from "@/lib/dayjs";
 import AgentChat from "./AgentChat";
 import MembyAvatar from "./MembyAvatar";
+import { useVisiblePolling } from "./useVisiblePolling";
 
 // Pantalla de Memby cuando la app corre en la misma PC que el conector (modo
 // local): encabezado con el estado, chat en vivo, QR para vincular y datos
@@ -25,16 +26,18 @@ export function useLocalConnector() {
   const refresh = useCallback(async () => {
     try {
       const r = await fetch("/api/whatsapp/local/state", { cache: "no-store" });
+      // Una respuesta de error (sesión vencida, 500) no trae el estado: se
+      // mantiene el último conocido, y si no había ninguno, "no disponible".
+      if (!r.ok) {
+        setState((prev) => prev ?? ({ available: false } as LocalState));
+        return;
+      }
       setState(await r.json());
     } catch {
       setState({ available: false } as LocalState);
     }
   }, []);
-  useEffect(() => {
-    refresh();
-    const id = setInterval(refresh, 3000);
-    return () => clearInterval(id);
-  }, [refresh]);
+  useVisiblePolling(refresh, 3000);
   return { state, refresh };
 }
 

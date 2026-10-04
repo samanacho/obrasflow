@@ -617,6 +617,9 @@ function appUrl(path: string): string | null {
   return base ? `${base}${path}` : null;
 }
 
+/** Una propuesta "ejecutando" más vieja que esto quedó colgada (la función se cortó a mitad). */
+const EJECUTANDO_COLGADA_MS = 2 * 60_000;
+
 /**
  * Registra en firme una propuesta. La transición pendiente -> ejecutando es
  * atómica (updateMany con condición de estado): un doble toque en
@@ -640,7 +643,23 @@ export async function executePendingAction(user: AgentUser, id: string): Promise
     if (!a) return "No encontré esa propuesta.";
     if (a.status === "confirmada") return "✅ Eso ya estaba registrado (no lo registré de nuevo).";
     if (a.status === "cancelada") return "Esa propuesta estaba cancelada, así que no registré nada. Si querés, pedímela de nuevo.";
-    if (a.status === "ejecutando") return "Eso se está registrando en este momento.";
+    if (a.status === "ejecutando") {
+      // Si Vercel cortó la función después de reclamarla, queda en
+      // "ejecutando" para siempre. Pasados 2 min (el registro dura segundos)
+      // se da por fallida, condicionado al estado para no pisar un final que
+      // llegue justo ahora. Nunca se reintenta: pudo haberse guardado.
+      const limite = new Date(Date.now() - EJECUTANDO_COLGADA_MS);
+      if (a.updatedAt < limite) {
+        const marcada = await prisma.whatsAppPendingAction.updateMany({
+          where: { id, status: "ejecutando", updatedAt: { lt: limite } },
+          data: { status: "fallida", error: "Se cortó mientras se registraba." },
+        });
+        if (marcada.count === 1) {
+          return "⚠️ Esa propuesta se cortó mientras se registraba y no sé si llegó a guardarse. Fijate en la app si quedó cargada antes de pedírmela de nuevo.";
+        }
+      }
+      return "Eso se está registrando en este momento.";
+    }
     if (a.status === "fallida") {
       return `Esa propuesta había fallado (${a.error ?? "error desconocido"}). Antes de pedirla de nuevo, fijate en la app que no haya quedado cargada.`;
     }

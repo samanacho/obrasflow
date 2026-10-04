@@ -1,6 +1,6 @@
 import { prisma } from "../prisma";
 import { MOVIMIENTO_TIPOS } from "../movimientos";
-import { fmtYmd } from "../dates";
+import { BUSINESS_TIME_ZONE, fmtYmd } from "../dates";
 import { normalizeText } from "./format";
 
 // Consultas de SOLO LECTURA que el agente de WhatsApp puede hacer (ver
@@ -198,10 +198,13 @@ export async function listarMovimientos(opts: {
   });
 
   type Row = { fecha: string; obra: string; concepto: string; tipo: string | null; monto: number; medioPago: string | null; estado: string | null; proveedor: string | null; efecto: string };
+  // Sin fecha cargada se usa el día de creación en Paraguay: el día UTC
+  // (toISOString) ya es "mañana" entre las 21:00 y las 24:00.
+  const diaParaguay = new Intl.DateTimeFormat("en-CA", { timeZone: BUSINESS_TIME_ZONE });
   const rows: Row[] = items.map((i) => {
     const d = (i.data as any) ?? {};
     return {
-      fecha: String(d.fecha || i.createdAt.toISOString()).slice(0, 10),
+      fecha: String(d.fecha || diaParaguay.format(i.createdAt)).slice(0, 10),
       obra: `${i.project.name}${i.project.reference ? ` (REF: ${i.project.reference})` : ""}`,
       concepto: i.title,
       tipo: d.tipo ?? null,

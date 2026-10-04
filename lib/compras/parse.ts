@@ -77,9 +77,9 @@ function unitOf(word: string): string | null {
 }
 
 function parseNumber(s: string): number {
-  // "1.500" (miles) / "2,5" (decimal) / "2.5"
+  // "1.500" (miles) / "2,5" (decimal) / "2.5"; "0.500" es decimal (miles no empiezan con 0)
   const t = s.trim();
-  if (/^\d{1,3}(\.\d{3})+$/.test(t)) return Number(t.replace(/\./g, ""));
+  if (/^[1-9]\d{0,2}(\.\d{3})+$/.test(t)) return Number(t.replace(/\./g, ""));
   return Number(t.replace(",", "."));
 }
 
