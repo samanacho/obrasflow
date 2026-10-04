@@ -65,12 +65,14 @@ Haríamos lo mismo para ustedes:
 
 ```
 POST https://obrasflow-app.vercel.app/api/integraciones/residente-de-obra/webhook
-Headers: X-Signature: sha256=<HMAC del cuerpo>, X-Event: parte.cerrado, X-Delivery-Id: <uuid>
+Headers: X-Signature: sha256=<HMAC del cuerpo>
 ```
 
 - Verificamos la firma sobre el cuerpo crudo, respondemos 2xx rápido y
   procesamos.
-- `X-Delivery-Id` (o el `id` del evento) lo guardamos para ignorar repetidos.
+- Para ignorar repetidos usamos el `id` del evento, que viene **dentro del
+  cuerpo firmado**. Un header tipo `X-Delivery-Id` no lo usamos: no va
+  firmado, así que cualquiera podría inventarlo. Si lo mandan, se ignora.
 - Preferimos el patrón que proponen: **el webhook avisa, la API da el detalle**
   (`GET /api/v1/obras/{codigo}/partes?desde=`). Pero si en el cuerpo del
   evento ya viene el parte completo, mejor: nos ahorra una ida y vuelta y

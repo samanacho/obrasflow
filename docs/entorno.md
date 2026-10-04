@@ -12,11 +12,25 @@ Lo de Memby (conector de WhatsApp) está en `worker/CLAUDE.md`.
   - Estado: http://localhost:3000/__salud (app, base y conector). Logs con hora.
   - El conector se reinicia solo al cambiar `worker/` o lo que importa de `lib/`
     (la sesión de `.baileys-auth/` se conserva). Ctrl+C apaga todo en orden.
-  - Arranque con Windows: `scripts/start-local.cmd [dev|prod]` (log en
-    `logs/conector-whatsapp.log`). Hasta hacer el cambio, el acceso de la
-    carpeta Inicio sigue lanzando el viejo `scripts/start-conector.cmd` →
-    `scripts/local-stack.mjs` (next start).
-  Pantalla del agente: http://localhost:3000/agente-whatsapp
+  - Si Memby de producción está prendido: `npm run local -- --sin-conector`
+    (comparten la sesión de WhatsApp; ver `worker/CLAUDE.md`). Otra opción:
+    `--sin-web` (no levanta la app).
+  - Pantalla del agente: http://localhost:3000/agente-whatsapp
+- Uso diario en esta PC (arranque con Windows): el acceso
+  "ObrasFlow conector WhatsApp.vbs" de la carpeta Inicio lanza tres cosas:
+  - `scripts/start-local.cmd [dev|prod]`: **solo la base local**
+    (`local.mjs --sin-web --sin-conector`), en un bucle que la reinicia si se
+    cae (log en `logs/conector-whatsapp.log`).
+  - `E:\Desarrollos\ObrasFlow-versiones\iniciar-principal.cmd`: la app en
+    http://localhost (puerto 80), desde la copia `ObrasFlow-versiones\A`,
+    con esa base local.
+  - `E:\Desarrollos\ObrasFlow-versiones\iniciar-memby.cmd`: Memby contra
+    producción (ver `worker/CLAUDE.md`).
+  Por qué `start-local.cmd` no levanta app ni conector: la app ya la sirve la
+  copia principal, y un segundo conector usaría la misma sesión de WhatsApp
+  (`.baileys-auth/`) que Memby y se pisarían. El viejo
+  `scripts/start-conector.cmd` → `scripts/local-stack.mjs` (base + app con
+  `next start` + conector) ya no lo lanza el arranque; queda en el repo.
 - Tests: `npm test` (Vitest, `vitest.config.ts`). Solo lógica pura, sin base
   ni red: plata y compras (`lib/compras/*.test.ts`), fechas y validaciones,
   login y app local (`lib/auth/`), Memby y WhatsApp (`lib/memby/`,
@@ -61,8 +75,10 @@ Nunca borrar `main`.
 - Login (`middleware.ts`, `lib/auth/`): usuario y contraseña por persona, sin
   roles. Cookie firmada de 12 h que se renueva hasta 30 días ("Recordarme")
   si el usuario sigue activo. Quedan afuera del login: `/api/memby/*`,
-  `/api/backup`, los webhooks de WhatsApp y de Residente, `/privacidad`,
-  `/terminos` y `/ingresar`. La app local (`OBRASFLOW_LOCAL=1`) no pide login.
+  `/api/backup`, los webhooks de WhatsApp y de Residente, `/api/auth/*`,
+  `/privacidad`, `/terminos` y `/ingresar`. La app local
+  (`OBRASFLOW_LOCAL=1`) no pide login, pero solo acepta pedidos de la misma
+  PC (`lib/auth/local.ts`).
   Usuarios nuevos: pantalla Usuarios → "Invitar a alguien" (link de un solo
   uso). El primero: `node --env-file=..\ObrasFlow-versiones\memby.env
   scripts/invitar-usuario.mjs "Nombre"`. El historial guarda el nombre de

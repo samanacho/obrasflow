@@ -88,7 +88,7 @@ async function main() {
   log(`✅ PostgreSQL local en 127.0.0.1:${DB_PORT}`);
 
   // La IA por defecto es Claude Code; si se cambia desde la pantalla, se respeta lo guardado.
-  const hasBackend = existsSync(ENV_FILE) && /^s*AGENT_BACKENDs*=/m.test(readFileSync(ENV_FILE, "utf8"));
+  const hasBackend = existsSync(ENV_FILE) && /^\s*AGENT_BACKEND\s*=/m.test(readFileSync(ENV_FILE, "utf8"));
   ensureEnv({
     POSTGRES_PRISMA_URL: DB_URL,
     POSTGRES_URL_NON_POOLING: DB_URL,

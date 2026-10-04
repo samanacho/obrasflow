@@ -6,9 +6,14 @@
 //   node --env-file=.env.local scripts/simular-webhook-residente.mjs --obra OF-001
 //   node --env-file=.env.local scripts/simular-webhook-residente.mjs --obra OF-001 --fecha 2026-10-02
 //   node --env-file=.env.local scripts/simular-webhook-residente.mjs --obra OF-001 --parte <uuid>   (reenvía el mismo parte: no duplica)
-//   ... --url https://obrasflow-app.vercel.app   (por defecto http://localhost:3000)
+//   ... --url https://<link-del-preview>.vercel.app   (por defecto http://localhost:3000)
 //
 // Necesita RESIDENTE_WEBHOOK_SECRET (el mismo que tiene la app).
+//
+// NUNCA contra producción (obrasflow-app.vercel.app): crea partes ficticios en
+// las obras reales. Probá en la app local o en el preview de una rama (que
+// tiene su propia copia de la base). Contra producción el script se niega a
+// correr, salvo que se agregue --si-produccion a propósito.
 
 import { createHmac, randomUUID } from "node:crypto";
 
@@ -26,6 +31,18 @@ if (!args.obra) {
 }
 
 const base = (args.url || "http://localhost:3000").replace(/\/+$/, "");
+let host = "";
+try {
+  host = new URL(base).hostname.toLowerCase();
+} catch {
+  console.error(`--url no es una dirección válida: ${base}`);
+  process.exit(1);
+}
+if (host === "obrasflow-app.vercel.app" && !("si-produccion" in args)) {
+  console.error("Esa es la app de producción: el parte simulado quedaría en las obras reales. No se mandó nada.");
+  console.error("Probá en local (sin --url) o en el preview de una rama. Si de verdad querés producción, agregá --si-produccion.");
+  process.exit(1);
+}
 const fecha = args.fecha || new Date().toISOString().slice(0, 10);
 const parteId = args.parte || randomUUID();
 

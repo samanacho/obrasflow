@@ -1,27 +1,29 @@
+# Dependencias y compilaciones
 node_modules
-.next
-# compilación del modo dev local (server/local-server.mjs)
-.next-dev/
-.next-*/
-.env
-.env*.local
 dist
-*.log
-.vercel
-
 tsconfig.tsbuildinfo
+.next
+# compilaciones del modo local (server/local-server.mjs): .next-dev/ y otras .next-*/
+.next-*/
+
+# Logs
+*.log
+logs/
+
+# Variables de entorno: se ignoran todas (.env, .env.local, etc.), menos la
+# plantilla .env.example, que sí va al repo. Los secretos van en .env.local.
+.env*
+!.env.example
+
+# Configuración local de la CLI de Vercel
+.vercel
 
 # sesión de WhatsApp vinculada por QR (conector Baileys) — es una credencial
 .baileys-auth/
 
-.vercel
-.env*
-!.env.example
-logs/
+# Base de datos local (modo local) y modelos de voz de Whisper
 .local-db/
+.local-models/
 
 # Prompts de trabajo locales (no se publican)
 docs/prompt-*.md
-.local-models/
-
-.env*
