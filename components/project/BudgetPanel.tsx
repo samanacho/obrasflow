@@ -9,7 +9,7 @@ import { Calculator, FileArrowUp, PencilSimple, Plus, ShoppingCart, Trash } from
 import Icon from "@/components/ui/Icon";
 import DataTable, { celdas } from "@/components/ui/DataTable";
 import BudgetImportModal from "./BudgetImportModal";
-import { fmtCant, fmtGs, fmtMiles, parseNumero } from "@/lib/compras/labels";
+import { fmtCant, fmtGs, fmtMiles, parseGs, parseNumero } from "@/lib/compras/labels";
 import { confirmarAccion, notificar } from "@/lib/ui/alerts";
 import type { BudgetRowDTO } from "@/lib/compras/core";
 import "@/app/styles/compras.css";
@@ -40,7 +40,7 @@ function leerForm(f: ItemForm): { error: string } | { datos: Record<string, unkn
   if (!f.descripcion.trim()) return { error: "Escribí la descripción del ítem." };
   const cantidad = parseNumero(f.cantidad);
   if (cantidad === null || cantidad < 0) return { error: "Escribí la cantidad presupuestada (un número)." };
-  const precioUnitario = parseNumero(f.precioUnitario);
+  const precioUnitario = parseGs(f.precioUnitario);
   if (precioUnitario === null || precioUnitario < 0) return { error: "Escribí el precio unitario (un número)." };
   return {
     datos: {

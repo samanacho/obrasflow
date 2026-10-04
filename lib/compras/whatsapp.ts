@@ -95,7 +95,12 @@ export function approvalCardBody(o: PurchaseOrderDTO): string {
   if (o.fechaNecesaria) lines.push(`📅 Para: ${fechaCorta(o.fechaNecesaria)}`);
   lines.push("", ...orderLinesText(o));
   if (o.lines.some((l) => !(l.cantidad > 0))) lines.push("⚠️ Hay materiales sin cantidad: completalos en la app.");
-  if (o.montoEstimado) lines.push("", `💵 Estimado con precios del presupuesto: *${fmtGs(o.montoEstimado)}*`);
+  if (o.montoEstimado) {
+    // Si hay materiales sin precio (fuera del presupuesto), el estimado es parcial: que no parezca el total.
+    const sinPrecio = o.lines.filter((l) => l.precioUnitario === null && !l.presupuesto).length;
+    const parcial = sinPrecio ? ` (sin contar ${sinPrecio === 1 ? "1 material sin precio" : `${sinPrecio} materiales sin precio`})` : "";
+    lines.push("", `💵 Estimado con precios del presupuesto: *${fmtGs(o.montoEstimado)}*${parcial}`);
+  }
   if (o.proveedorNombre) lines.push(`🏪 Proveedor: ${o.proveedorNombre}`);
   if (o.notas) lines.push(`📝 ${o.notas.slice(0, 200)}`);
   const url = appUrl(`/compras/${o.id}`);
@@ -139,8 +144,21 @@ export interface GroupResult {
 
 /** Procesa un "Pedido de compra" del grupo: lo registra y prepara la tarjeta de aprobación. */
 export async function handleGroupPurchaseRequest(msg: GroupMessage, ownerPhone: string): Promise<GroupResult> {
-  const dup = await prisma.purchaseOrder.findUnique({ where: { waMessageId: msg.waMessageId }, select: { id: true } });
-  if (dup) return { groupReply: null, card: null };
+  const dup = await prisma.purchaseOrder.findUnique({ where: { waMessageId: msg.waMessageId }, select: { id: true, status: true } });
+  if (dup) {
+    // Reentrega del mismo mensaje. Si la vez anterior se registró el pedido
+    // pero se cortó antes de crear la tarjeta, se la crea ahora (si no, el
+    // pedido quedaba pendiente para siempre sin que el dueño se enterara).
+    if (dup.status !== "pendiente") return { groupReply: null, card: null };
+    const card = await prisma.whatsAppPendingAction.findFirst({
+      where: { kind: "aprobar_pedido", payload: { path: ["pedidoId"], equals: dup.id } },
+      select: { id: true },
+    });
+    if (card) return { groupReply: null, card: null };
+    const order = await getOrder(dup.id);
+    if (!order) return { groupReply: null, card: null };
+    return { groupReply: null, card: await createApprovalCard(await serializeOrder(order), ownerPhone) };
+  }
 
   const today = todayInParaguay();
   const obras = await prisma.project.findMany({
@@ -194,6 +212,19 @@ export async function handleGroupPurchaseRequest(msg: GroupMessage, ownerPhone: 
     throw err;
   }
   const dto = await serializeOrder(order);
+  const card = await createApprovalCard(dto, ownerPhone);
+  const cuantos = dto.lines.length === 1 ? "1 material" : `${dto.lines.length} materiales`;
+  const groupReply = [
+    `📝 Pedido *#${dto.numero}* recibido${dto.projectName ? ` · ${dto.projectName}` : ""} · ${cuantos}.`,
+    dto.projectName ? null : "No reconocí la obra: la va a elegir el encargado de aprobar.",
+    "Queda esperando aprobación; les aviso acá.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+  return { groupReply, card };
+}
+
+async function createApprovalCard(dto: PurchaseOrderDTO, ownerPhone: string): Promise<{ actionId: string; body: string }> {
   const body = approvalCardBody(dto);
   const action = await prisma.whatsAppPendingAction.create({
     data: {
@@ -204,22 +235,20 @@ export async function handleGroupPurchaseRequest(msg: GroupMessage, ownerPhone: 
       expiresAt: new Date(Date.now() + APPROVAL_TTL_MS),
     },
   });
-  const cuantos = dto.lines.length === 1 ? "1 material" : `${dto.lines.length} materiales`;
-  const groupReply = [
-    `📝 Pedido *#${dto.numero}* recibido${dto.projectName ? ` · ${dto.projectName}` : ""} · ${cuantos}.`,
-    dto.projectName ? null : "No reconocí la obra: la va a elegir el encargado de aprobar.",
-    "Queda esperando aprobación; les aviso acá.",
-  ]
-    .filter(Boolean)
-    .join("\n");
-  return { groupReply, card: { actionId: action.id, body } };
+  return { actionId: action.id, body };
 }
 
 /** "Factura pedido 14" (foto o PDF en el grupo) → número de pedido; null si no es una factura de pedido. */
 export function invoiceOrderNumber(caption: string | null | undefined): number | null {
   if (!caption || !/factura/i.test(caption)) return null;
-  const m = /(?:pedido|#|n[°ºo.]?)\s*#?\s*(\d{1,6})/i.exec(caption) ?? /\b(\d{1,6})\b/.exec(caption);
-  return m ? Number(m[1]) : null;
+  const pedido = /pedido\s*(?:n[°ºo.]?|nro\.?)?\s*#?\s*(\d{1,6})\b/i.exec(caption);
+  if (pedido) return Number(pedido[1]);
+  const hash = /#\s*(\d{1,6})\b/.exec(caption);
+  if (hash) return Number(hash[1]);
+  // "Factura 14" solo si es el único número del texto: "Factura 001-001-0001234"
+  // (el número de la factura) o "Factura 12/10" no dicen a qué pedido va.
+  const solo = /^\W*factura\s*(?:n[°ºo.]?|nro\.?)?\s*(\d{1,6})\W*$/i.exec(caption.trim());
+  return solo && (caption.match(/\d+/g) ?? []).length === 1 ? Number(solo[1]) : null;
 }
 
 /** Factura que llega al grupo: se guarda en el pedido (y en su gasto, si ya se pagó). */

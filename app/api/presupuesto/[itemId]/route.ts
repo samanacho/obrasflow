@@ -9,7 +9,8 @@ interface Params {
 
 /** Edita un ítem del presupuesto: { codigo?, descripcion?, unidad?, cantidad?, precioUnitario?, categoria? } */
 export async function PATCH(req: NextRequest, { params }: Params) {
-  const b = (await req.json()) as Record<string, any>;
+  const b = (await req.json().catch(() => null)) as Record<string, any> | null;
+  if (!b || typeof b !== "object") return NextResponse.json({ error: "Datos inválidos." }, { status: 400 });
   const data: Record<string, unknown> = {};
   for (const k of ["codigo", "unidad", "categoria"]) if (k in b) data[k] = b[k] ? String(b[k]).trim() || null : null;
   if ("descripcion" in b) {

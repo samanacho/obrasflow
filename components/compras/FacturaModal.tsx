@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   CAlert, CButton, CCol, CForm, CFormInput, CFormLabel, CFormSelect, CModal, CModalBody, CModalFooter, CModalHeader, CModalTitle, CRow,
 } from "@coreui/react";
-import { TIPOS_COMPROBANTE, fmtGs, fmtMiles, hoyPy, parseNumero } from "@/lib/compras/labels";
+import { TIPOS_COMPROBANTE, fmtGs, fmtMiles, hoyPy, parseGs } from "@/lib/compras/labels";
 import type { PurchaseOrderDTO } from "@/lib/compras/core";
 
 const MAX_BYTES = 4 * 1024 * 1024;
@@ -67,8 +67,8 @@ export default function FacturaModal({
       fd.set("numero", numero.trim());
       fd.set("ruc", ruc.trim());
       if (fecha) fd.set("fecha", fecha);
-      fd.set("iva10", String(parseNumero(iva10) ?? ""));
-      fd.set("iva5", String(parseNumero(iva5) ?? ""));
+      fd.set("iva10", String(parseGs(iva10) ?? ""));
+      fd.set("iva5", String(parseGs(iva5) ?? ""));
       if (archivo) fd.set("file", archivo);
       const res = await fetch(`/api/compras/${order.id}/factura`, { method: "POST", body: fd });
       const body = await res.json().catch(() => ({}));

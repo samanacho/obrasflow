@@ -73,6 +73,20 @@ export function parseNumero(raw: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * Monto en guaraníes (sin decimales). Igual que parseNumero, salvo que una
+ * coma seguida de exactamente 3 dígitos es separador de miles: "150,000" →
+ * 150000 (parseNumero lo leía como 150 y se registraba un pago de Gs. 150).
+ */
+export function parseGs(raw: unknown): number | null {
+  if (typeof raw !== "number") {
+    // Sin lo que rodea al número ("Gs. " deja un punto adelante).
+    const s = String(raw ?? "").replace(/[^\d.,-]/g, "").replace(/^[^\d-]+|\D+$/g, "");
+    if (/^-?\d{1,3}(,\d{3})+$/.test(s)) return Number(s.replace(/,/g, ""));
+  }
+  return parseNumero(raw);
+}
+
 /** Hoy en Paraguay como "YYYY-MM-DD" (para los campos de fecha). */
 export function hoyPy(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Asuncion" }).format(new Date());

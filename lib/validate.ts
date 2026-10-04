@@ -1,11 +1,35 @@
 import type { ProjectInput } from "./types";
 import { PARAGUAY_DEPARTMENTS } from "./departments";
+import { isValidYmd } from "./dates";
+
+/** Tope de las columnas Decimal(14,2) de montos: más que eso, Postgres falla con "numeric overflow". */
+export const MAX_MONTO_GS = 999_999_999_999;
 
 const TYPES = ["civil", "electrico", "vial", "otro"];
 const STATUSES = ["planificado", "en_curso", "pausado", "finalizado"];
 const SECTORS = ["privado", "publico"];
 
 export class ValidationError extends Error {}
+
+/**
+ * Monto de un movimiento de Ejecución (data.monto de un ProjectItem
+ * change_order): guaraníes enteros, ni negativo ni texto. Antes se aceptaba
+ * cualquier cosa: "-500000" en un Gasto bajaba el Ejecutado y "abc" se
+ * ignoraba sin aviso al sumar. Devuelve el data con el monto redondeado.
+ */
+export function normalizeMovimientoData(data: unknown): { data: Record<string, unknown> } | { error: string } {
+  if (data === undefined || data === null) return { data: {} };
+  if (typeof data !== "object" || Array.isArray(data)) return { error: "Datos del movimiento inválidos." };
+  const d = { ...(data as Record<string, unknown>) };
+  if (d.monto === undefined || d.monto === null || d.monto === "") return { data: d };
+  const monto = Number(d.monto);
+  if (!Number.isFinite(monto)) return { error: "El monto tiene que ser un número." };
+  // Una orden de cambio puede achicar el alcance (negativa); no suma al Ejecutado.
+  if (monto < 0 && d.tipo !== "Orden de cambio") return { error: "El monto no puede ser negativo." };
+  if (Math.abs(monto) > MAX_MONTO_GS) return { error: "El monto es demasiado grande: revisá que no sobren ceros." };
+  d.monto = Math.round(monto);
+  return { data: d };
+}
 
 /** Valida y normaliza el body entrante (create o update completo). Lanza ValidationError con mensaje legible. */
 export function parseProjectInput(body: unknown): ProjectInput {
@@ -52,14 +76,17 @@ export function parseProjectInput(body: unknown): ProjectInput {
 
   const start = String(b.start ?? "");
   const end = String(b.end ?? "");
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) throw new ValidationError("Fecha de inicio inválida.");
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(end)) throw new ValidationError("Fecha de fin inválida.");
+  if (!isValidYmd(start)) throw new ValidationError("Fecha de inicio inválida.");
+  if (!isValidYmd(end)) throw new ValidationError("Fecha de fin inválida.");
+  if (end < start) throw new ValidationError("La fecha de fin no puede ser anterior a la de inicio.");
 
   const budget = Number(b.budget);
   const spent = Number(b.spent);
   const progress = Number(b.progress);
   if (!Number.isFinite(budget) || budget < 0) throw new ValidationError("Presupuesto inválido.");
+  if (budget > MAX_MONTO_GS) throw new ValidationError("El presupuesto es demasiado grande: revisá que no sobren ceros.");
   if (!Number.isFinite(spent) || spent < 0) throw new ValidationError("Ejecutado inválido.");
+  if (spent > MAX_MONTO_GS) throw new ValidationError("El ejecutado es demasiado grande: revisá que no sobren ceros.");
   if (!Number.isFinite(progress) || progress < 0 || progress > 100) {
     throw new ValidationError("El avance debe estar entre 0 y 100.");
   }
