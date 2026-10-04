@@ -114,6 +114,24 @@ async function saveOutgoing(phone: string, text: string, extra: { proposalId?: s
   });
 }
 
+/**
+ * Tarjeta de aprobación de un pedido de compra (la propuesta ya está creada,
+ * ver lib/compras/whatsapp.ts): se manda al dueño con su código y queda en
+ * el historial vinculada, así un "Sí"/"No" a secas la resuelve.
+ */
+export async function sendApprovalCard(t: Transport, phone: string, actionId: string, body: string) {
+  const code = await assignConfirmCode(phone, actionId);
+  const text = t.buttons ? body : `${body}\n\n${codeInstructions(code, "¿Lo aprobás?")}`;
+  const wamid = await t.sendProposal(phone, text, actionId, code);
+  await saveOutgoing(phone, text, { proposalId: actionId, waMessageId: wamid });
+}
+
+/** Aviso suelto al dueño (queda en su historial con Memby). */
+export async function sendOwnerNotice(t: Transport, phone: string, text: string) {
+  const wamid = await t.sendText(phone, text);
+  await saveOutgoing(phone, text, { waMessageId: wamid });
+}
+
 async function reply(t: Transport, user: AgentUser, text: string) {
   const wamid = await t.sendText(user.phone, text);
   await saveOutgoing(user.phone, text, { waMessageId: wamid });

@@ -22,7 +22,7 @@ const SERVER = "obrasflow";
  * sesión de Claude (p. ej. si el conector se lanzó desde la app de Claude),
  * que redirigen la autenticación y hacen fallar con "Not logged in".
  */
-function cleanEnv(): Record<string, string | undefined> {
+export function cleanEnv(): Record<string, string | undefined> {
   const out: Record<string, string | undefined> = {};
   for (const [k, v] of Object.entries(process.env)) {
     if (k === "CLAUDE_CODE_OAUTH_TOKEN") out[k] = v;

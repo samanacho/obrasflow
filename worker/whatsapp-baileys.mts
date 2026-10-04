@@ -28,7 +28,17 @@ import makeWASocket, {
   type WASocket,
 } from "@whiskeysockets/baileys";
 import { prisma, isRemoteDb } from "../lib/prisma";
-import { handleInbound } from "../lib/whatsapp/handle";
+import { handleInbound, sendApprovalCard, sendOwnerNotice } from "../lib/whatsapp/handle";
+import { MAX_MEDIA_BYTES } from "../lib/agent/actions";
+import { normalizeText } from "../lib/agent/format";
+import {
+  handleGroupInvoice,
+  handleGroupPurchaseRequest,
+  invoiceOrderNumber,
+  isPurchaseRequest,
+  markGroupNotified,
+  pendingGroupNotices,
+} from "../lib/compras/whatsapp";
 import type { InboundMessage } from "../lib/whatsapp/parse";
 import type { Transport } from "../lib/whatsapp/transport";
 import { getAllowedNumbers } from "../lib/whatsapp/config";
@@ -271,6 +281,13 @@ async function connect() {
     for (const m of messages) {
       if (!m.key.id) continue;
       const jid = m.key.remoteJid ?? "";
+      // Grupo de pedidos de compra: lo único que Memby lee de un grupo.
+      if (jid.endsWith("@g.us")) {
+        if (COMPRAS_OFF || Date.now() / 1000 - timestampOf(m) > 300) continue;
+        if (m.key.fromMe ? botSent.has(m.key.id) : type !== "notify") continue;
+        queue = queue.then(() => handleGroupMessage(m)).catch((err) => console.error("Compras: error con un mensaje del grupo", err));
+        continue;
+      }
       // Solo chats individuales: grupos, estados y canales no se contestan.
       if (!isPnUser(jid) && !isLidUser(jid)) continue;
       let phone: string | null;
@@ -301,6 +318,108 @@ async function connect() {
         .catch((err) => console.error("WhatsApp: error procesando mensaje", err));
     }
   });
+}
+
+// ------------------------- grupo de pedidos de compra -------------------------
+// Memby lee UN grupo de WhatsApp (por nombre: MEMBY_GRUPO_COMPRAS, por defecto
+// "Pedidos de compra") donde obra manda los pedidos con el formato acordado.
+// Registra cada "Pedido de compra", le manda al dueño la tarjeta para aprobar
+// (en su chat "Tú") y avisa en el grupo cada cambio de estado. Las fotos o PDF
+// con "Factura pedido 14" se guardan como la factura de ese pedido.
+// Se apaga con MEMBY_COMPRAS=off. Ver lib/compras/whatsapp.ts.
+
+const COMPRAS_OFF = process.env.MEMBY_COMPRAS?.trim().toLowerCase() === "off";
+const GRUPO_COMPRAS = normalizeText(process.env.MEMBY_GRUPO_COMPRAS?.trim() || "Pedidos de compra");
+const groupNames = new Map<string, { name: string; at: number }>();
+
+async function isPurchaseGroup(jid: string): Promise<boolean> {
+  if (!sock) return false;
+  let g = groupNames.get(jid);
+  if (!g || Date.now() - g.at > 10 * 60 * 1000) {
+    try {
+      const meta = await sock.groupMetadata(jid);
+      g = { name: meta.subject ?? "", at: Date.now() };
+      groupNames.set(jid, g);
+    } catch {
+      return false;
+    }
+  }
+  return normalizeText(g.name) === GRUPO_COMPRAS;
+}
+
+async function sendToGroup(jid: string, text: string, quoted?: WAMessage) {
+  if (!sock) return;
+  const sent = await sock.sendMessage(jid, { text: BOT_PREFIX + text }, quoted ? { quoted } : undefined);
+  if (sent?.key.id) {
+    botSent.add(sent.key.id);
+    if (botSent.size > 500) botSent.delete(botSent.values().next().value!);
+  }
+}
+
+function innerOf(m: WAMessage) {
+  const c = m.message;
+  return c?.ephemeralMessage?.message ?? c?.viewOnceMessage?.message ?? c?.viewOnceMessageV2?.message ?? c?.documentWithCaptionMessage?.message ?? c;
+}
+
+async function handleGroupMessage(m: WAMessage) {
+  const jid = m.key.remoteJid!;
+  if (!ownPhone || !(await isPurchaseGroup(jid))) return;
+  const inner = innerOf(m);
+  if (!inner) return;
+  const text = inner.conversation ?? inner.extendedTextMessage?.text ?? null;
+  if (m.key.fromMe && text?.startsWith(BOT_PREFIX.trim())) return;
+  const caption = inner.imageMessage?.caption ?? inner.documentMessage?.caption ?? null;
+  const pJid = m.key.participant ?? "";
+  const pAlt = m.key.participantAlt ?? "";
+  const senderPhone = m.key.fromMe ? ownPhone : isPnUser(pJid) ? digits(pJid) : isPnUser(pAlt) ? digits(pAlt) : null;
+  const senderName = m.pushName?.trim() || (m.key.fromMe ? sock?.user?.name ?? "Dueño" : senderPhone ? `+${senderPhone}` : "Alguien del grupo");
+
+  if (text && isPurchaseRequest(text)) {
+    console.log(`🛒 Pedido de compra de ${senderName} en el grupo`);
+    await sock?.sendPresenceUpdate("composing", jid).catch(() => {});
+    const r = await handleGroupPurchaseRequest({ text, groupJid: jid, waMessageId: m.key.id!, senderName, senderPhone }, ownPhone);
+    if (r.groupReply) await sendToGroup(jid, r.groupReply, m);
+    if (r.card) await sendApprovalCard(transport, ownPhone, r.card.actionId, r.card.body);
+    return;
+  }
+
+  const numero = inner.imageMessage || inner.documentMessage ? invoiceOrderNumber(caption) : null;
+  if (numero && sock) {
+    const mimeType = (inner.imageMessage?.mimetype ?? inner.documentMessage?.mimetype ?? "application/octet-stream").split(";")[0];
+    if (!/^image\/(jpeg|png|webp)$|^application\/pdf$/.test(mimeType)) {
+      await sendToGroup(jid, "Mandá la factura en foto o PDF, por favor.", m);
+      return;
+    }
+    const data = await downloadMediaMessage(m, "buffer", {}, { logger, reuploadRequest: sock.updateMediaMessage });
+    if (data.length > MAX_MEDIA_BYTES) {
+      await sendToGroup(jid, `Esa factura pesa más de ${Math.round(MAX_MEDIA_BYTES / 1024 / 1024)} MB. Mandala como foto normal (no como documento).`, m);
+      return;
+    }
+    const media = await prisma.inboundMedia.create({
+      data: { phone: senderPhone ?? "grupo", waMediaId: m.key.id!, mimeType, filename: inner.documentMessage?.fileName ?? null, size: data.length, data },
+    });
+    const r = await handleGroupInvoice(numero, media.id, senderName);
+    await sendToGroup(jid, r.groupReply, m);
+    if (r.ownerNotice) await sendOwnerNotice(transport, ownPhone, r.ownerNotice);
+  }
+}
+
+/** Avisa en el grupo los pedidos aprobados, rechazados, pagados o anulados (desde WhatsApp o desde la app). */
+let groupTickRunning = false;
+async function purchaseGroupTick() {
+  if (COMPRAS_OFF || groupTickRunning || !sock || local.status !== "conectado") return;
+  groupTickRunning = true;
+  try {
+    for (const n of await pendingGroupNotices()) {
+      // Se marca antes de mandar: ante un error se pierde un aviso, pero nunca se repite en loop.
+      await markGroupNotified(n.id, n.status);
+      if (n.text) await sendToGroup(n.groupJid, n.text);
+    }
+  } catch (err) {
+    console.error("Compras: avisos al grupo:", (err as Error).message);
+  } finally {
+    groupTickRunning = false;
+  }
 }
 
 /**
@@ -462,6 +581,10 @@ async function main() {
     if (avisosActivos()) console.log(`🔔 Avisos automáticos activos (resumen diario a las ${process.env.MEMBY_RESUMEN_HORA?.trim() || 19}:00).`);
   }
   if (process.env.MEMBY_VOZ?.trim().toLowerCase() !== "off") warmUpTranscriber();
+  if (!COMPRAS_OFF) {
+    setInterval(() => void purchaseGroupTick(), 45_000);
+    console.log(`🛒 Pedidos de compra: leo el grupo "${process.env.MEMBY_GRUPO_COMPRAS?.trim() || "Pedidos de compra"}".`);
+  }
   await connect();
 }
 

@@ -133,6 +133,16 @@ export function buildTools(ctx: TurnContext) {
       run: async () => json(await q.registrosRapidosPendientes()),
     }),
     defineTool({
+      name: "ver_pedidos_compra",
+      description:
+        "Pedidos de compra de materiales (módulo Compras; llegan por el grupo de WhatsApp de pedidos). Sin filtros: los que están por aprobar, por pagar y los pagados sin factura. Se aprueban con la tarjeta que manda el sistema (Sí/No) o desde la app; el pago y la factura se registran en la app, en /compras.",
+      inputSchema: z.object({
+        estado: z.enum(["pendiente", "aprobado", "pagado", "rechazado", "anulado", "falta_factura"]).optional().describe("Filtrar por estado."),
+        numero: z.number().int().optional().describe("Un pedido puntual por su número (#14 = 14)."),
+      }),
+      run: async (i) => json(await q.pedidosCompra(i.estado, i.numero)),
+    }),
+    defineTool({
       name: "ver_comprobante",
       description:
         "Vuelve a mostrarte una foto o PDF de comprobante que el usuario mandó antes (por su comprobanteId del historial). Usalo cuando necesites datos del comprobante que no tenés a la vista.",

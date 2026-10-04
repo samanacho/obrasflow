@@ -288,3 +288,36 @@ export async function registrosRapidosPendientes() {
     conComprobante: Boolean(q.comprobanteMediaId),
   }));
 }
+
+/** Pedidos de compra para el agente: por defecto, lo que espera algo del dueño. */
+export async function pedidosCompra(estado?: string, numero?: number) {
+  const { ORDER_INCLUDE, serializeOrder, lineLabel } = await import("../compras/core");
+  const where =
+    numero !== undefined
+      ? { numero }
+      : estado === "falta_factura"
+        ? { status: "pagado", facturaNumero: null }
+        : estado
+          ? { status: estado }
+          : { OR: [{ status: { in: ["pendiente", "aprobado"] } }, { status: "pagado", facturaNumero: null }] };
+  const rows = await prisma.purchaseOrder.findMany({ where, include: ORDER_INCLUDE, orderBy: { numero: "desc" }, take: 25 });
+  const out = [];
+  for (const r of rows) {
+    const o = await serializeOrder(r, numero !== undefined);
+    out.push({
+      numero: o.numero,
+      estado: o.statusLabel,
+      obra: o.projectName ?? (o.obraTexto ? `sin identificar ("${o.obraTexto}")` : "sin obra"),
+      pide: o.solicitante,
+      fecha: o.createdAt.slice(0, 10),
+      materiales: o.lines.map((l) => lineLabel(l.cantidad, l.unidad, l.descripcion) + (l.presupuesto && l.presupuesto.restante < 0 ? " (se pasa del presupuesto)" : "")),
+      estimado: o.montoEstimado,
+      pagado: o.montoPagado,
+      proveedor: o.proveedorNombre,
+      faltaFactura: o.faltaFactura,
+      factura: o.facturaNumero,
+      motivoRechazo: o.rechazoMotivo,
+    });
+  }
+  return out.length ? out : "No hay pedidos de compra con ese filtro.";
+}

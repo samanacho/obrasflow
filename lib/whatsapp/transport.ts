@@ -21,8 +21,8 @@ export interface Transport {
 }
 
 /** Texto que se agrega a la tarjeta cuando el canal no tiene botones. */
-export function codeInstructions(code: string) {
-  return `¿Lo registro? Respondé *Sí* o *No*\n(o *OK ${code}* / *NO ${code}* si respondés más tarde)`;
+export function codeInstructions(code: string, pregunta = "¿Lo registro?") {
+  return `${pregunta} Respondé *Sí* o *No*\n(o *OK ${code}* / *NO ${code}* si respondés más tarde)`;
 }
 
 export function cloudTransport(cfg: WhatsAppConfig): Transport {

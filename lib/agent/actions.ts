@@ -7,6 +7,7 @@ import { PARTNERS } from "../profitShare";
 import { createProjectItem } from "../items";
 import { todayInParaguay, daysBetween, fmtYmd, weekdayOf } from "../dates";
 import { fmtGs, normalizeText } from "./format";
+import { CompraError, approveOrder, rejectOrder } from "../compras/core";
 
 // ---------------------------------------------------------------------------
 // Escrituras del agente de WhatsApp, en dos fases:
@@ -45,7 +46,8 @@ export interface AgentUser {
   name: string;
 }
 
-export type ActionKind = "movimiento_obra" | "movimiento_general" | "registro_rapido";
+/** "aprobar_pedido": tarjeta de aprobación de un pedido de compra del grupo (la crea lib/compras/whatsapp.ts). */
+export type ActionKind = "movimiento_obra" | "movimiento_general" | "registro_rapido" | "aprobar_pedido";
 
 interface MovimientoObraPayload {
   obraId: string;
@@ -557,7 +559,20 @@ export async function cancelPendingAction(phone: string, id: string): Promise<st
     where: { id, phone, status: "pendiente" },
     data: { status: "cancelada" },
   });
-  if (res.count === 1) return "❌ Cancelado. No se registró nada.";
+  if (res.count === 1) {
+    const done = await prisma.whatsAppPendingAction.findUnique({ where: { id }, select: { kind: true, payload: true } });
+    if (done?.kind === "aprobar_pedido") {
+      // "No" a la tarjeta de un pedido de compra = rechazarlo (el conector avisa en el grupo).
+      const { pedidoId, numero } = done.payload as { pedidoId: string; numero: number };
+      try {
+        await rejectOrder(pedidoId, "WhatsApp", null, { closeCards: false });
+        return `❌ Pedido #${numero} rechazado. Les aviso en el grupo. Si querés dejar el motivo, escribilo en la app.`;
+      } catch (err) {
+        return err instanceof CompraError ? `No cambié nada: ${err.message}` : `No pude rechazar el pedido #${numero}. Hacelo desde la app.`;
+      }
+    }
+    return "❌ Cancelado. No se registró nada.";
+  }
   const a = await prisma.whatsAppPendingAction.findFirst({ where: { id, phone } });
   if (!a) return "No encontré esa propuesta.";
   if (a.status === "confirmada") return "Esa propuesta ya estaba confirmada y registrada — para anularla hay que borrar el movimiento desde la app.";
@@ -798,6 +813,27 @@ async function runAction(user: AgentUser, kind: ActionKind, payload: any): Promi
     if (pend) lines.push(pend);
     if (url) lines.push("", `🔗 ${url}`);
     return { resultId: q.id, message: lines.join("\n") };
+  }
+
+  if (kind === "aprobar_pedido") {
+    const p = payload as { pedidoId: string; numero: number };
+    try {
+      const o = await approveOrder(p.pedidoId, procesadoPor, { closeCards: false });
+      const url = appUrl(`/compras/${o.id}`);
+      return {
+        resultId: o.id,
+        message: [
+          `✅ *Pedido #${o.numero} aprobado.* Les aviso en el grupo que ya pueden comprar.`,
+          o.projectId ? "Cuando lo pagues, registrá el pago en la app (ahí queda el gasto en la obra)." : "⚠️ Falta elegir la obra en la app antes de pagarlo.",
+          url ? `🔗 ${url}` : null,
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      };
+    } catch (err) {
+      if (err instanceof CompraError) throw new NothingWrittenError(err.message);
+      throw err;
+    }
   }
 
   throw new NothingWrittenError(`tipo de propuesta desconocido (${kind}).`);

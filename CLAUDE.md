@@ -78,6 +78,13 @@ cerrá cada respuesta con "Qué necesito de vos" y "Próximos pasos recomendados
   (`worker/transcribe.mts`, modelo en `.local-models/`), avisos automáticos
   (`worker/notices.mts`, tabla `WhatsAppNotice`). Opciones en `.env.local`:
   `MEMBY_VOZ=off`, `MEMBY_AVISOS=off`, `MEMBY_RESUMEN_HORA=19`, `WHISPER_MODEL`.
+- Compras (`lib/compras/`, pantalla /compras, pestaña Presupuesto de la obra):
+  Memby lee SOLO el grupo de WhatsApp `MEMBY_GRUPO_COMPRAS` (por defecto
+  "Pedidos de compra"): cada "Pedido de compra" se registra, al dueño le llega
+  la tarjeta Sí/No (`aprobar_pedido`) y el conector avisa en el grupo cada
+  cambio de estado. Pagar crea el gasto en Ejecución; la factura se agrega
+  después (también por el grupo: foto con "Factura pedido 14").
+  `MEMBY_COMPRAS=off` lo apaga.
 - Producción: https://obrasflow-app.vercel.app (base Neon, se despliega con
   cada push a `main`). El build corre `prisma db push --accept-data-loss`:
   los cambios de esquema tienen que ser aditivos.
