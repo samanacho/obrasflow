@@ -1,0 +1,93 @@
+/* Ingreso, invitación y usuarios. Solo tokens de app/globals.css, así claro y
+   oscuro salen solos. */
+
+/* ---------- Pantallas sin la app (ingresar, invitación) ---------- */
+/* Fondo de plano técnico (la misma cuadrícula de la barra superior): se
+   reconoce la app antes de entrar. La tarjeta es plana, con borde fino. */
+.of-auth{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:32px 16px;
+  background-color:var(--paper);
+  background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
+  background-size:16px 16px;}
+.of-auth-box{width:100%;max-width:400px;}
+.of-auth-brand{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:18px;color:var(--ink);text-decoration:none;}
+.of-auth-brand .of-brand-mark{width:38px;height:38px;margin:0;}
+.of-auth-brand .of-brand-text{font-size:1.7rem;}
+.of-auth-card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:24px;}
+.of-auth-card h1{font-size:1.65rem;margin:0 0 4px;}
+.of-auth-sub{color:var(--ink-soft);font-size:.92rem;margin:0 0 20px;}
+/* 16 px en los campos: el celular no hace zoom al tocar, y 44 px de alto para acertar con el dedo. */
+.of-auth .form-control{min-height:44px;font-size:1rem;}
+.of-auth .form-check{display:flex;align-items:center;gap:8px;min-height:44px;margin-bottom:12px;padding-left:0;}
+.of-auth .form-check .form-check-input{float:none;margin:0;width:1.2em;height:1.2em;flex:none;}
+.of-auth-submit{width:100%;min-height:48px;font-weight:600;}
+.of-auth-note{margin:16px 4px 0;text-align:center;color:var(--ink-soft);font-size:.86rem;}
+.of-auth-note a{color:var(--accent-ink);}
+
+/* Error del formulario: texto en tinta (contraste alto) y el rojo en el borde y el ícono. */
+.of-form-error{display:flex;gap:8px;align-items:flex-start;padding:10px 12px;margin-bottom:16px;border-radius:8px;
+  background:var(--crit-soft);border-left:3px solid var(--crit);color:var(--ink);font-size:.92rem;}
+.of-form-error .of-icon{color:var(--crit);margin-top:2px;}
+.of-form-info{display:flex;gap:8px;align-items:flex-start;padding:10px 12px;margin-bottom:16px;border-radius:8px;
+  background:var(--accent-soft);border-left:3px solid var(--accent);color:var(--ink);font-size:.92rem;}
+.of-form-info .of-icon{color:var(--accent-ink);margin-top:2px;}
+
+/* Debajo de un campo: el problema (rojo + texto) o una ayuda corta. */
+.of-field-error{margin-top:4px;color:var(--crit);font-size:.85rem;}
+.of-field-hint{margin-top:4px;color:var(--ink-soft);font-size:.82rem;}
+.of-pass .of-pass-ver{min-width:44px;display:inline-flex;align-items:center;justify-content:center;}
+
+/* ---------- Pantalla Usuarios ---------- */
+.usr-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:18px;}
+.usr-head .of-page-title{margin:4px 0;}
+.usr-head .btn{min-height:44px;}
+.usr-section{margin-top:28px;}
+.usr-section > h2{font-size:1.3rem;margin:0 0 4px;}
+.usr-section > .module-desc{margin:0 0 12px;}
+
+/* Una fila por persona. En escritorio, columnas; en el celular, se apila. */
+.usr-list{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:10px;background:var(--surface);}
+.usr-row{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) auto minmax(0,auto);align-items:center;gap:8px 16px;padding:12px 16px;}
+.usr-row + .usr-row{border-top:1px solid var(--line);}
+.usr-row.is-off .usr-name{color:var(--ink-soft);}
+.usr-who{display:flex;align-items:center;gap:12px;min-width:0;}
+.usr-who-text{min-width:0;}
+.usr-avatar{flex:none;display:inline-grid;place-items:center;width:36px;height:36px;border-radius:50%;
+  background:var(--accent-soft);color:var(--accent-ink);font-weight:700;font-size:.95rem;}
+.usr-row.is-off .usr-avatar{background:var(--paper);color:var(--ink-soft);border:1px solid var(--line);}
+.usr-name{font-weight:600;overflow-wrap:anywhere;}
+.usr-user{color:var(--ink-soft);font-size:.85rem;overflow-wrap:anywhere;}
+.usr-yo{display:inline-block;margin-left:6px;padding:0 6px;border-radius:4px;background:var(--accent-soft);color:var(--accent-ink);font-size:.74rem;font-weight:700;vertical-align:1px;}
+.usr-when{color:var(--ink-soft);font-size:.88rem;}
+.usr-when strong{display:block;color:var(--ink);font-weight:500;}
+.usr-estado{display:inline-flex;align-items:center;gap:5px;font-size:.78rem;font-weight:600;padding:2px 8px;border-radius:4px;white-space:nowrap;}
+.usr-estado.is-on{background:var(--ok-soft);color:var(--ok);}
+.usr-estado.is-off{background:var(--paper);color:var(--ink-soft);border:1px solid var(--line);}
+.usr-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;}
+.usr-actions .btn{min-height:36px;}
+.usr-self{color:var(--ink-soft);font-size:.82rem;align-self:center;}
+
+.usr-inv{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 16px;padding:10px 16px;}
+.usr-inv + .usr-inv{border-top:1px solid var(--line);}
+.usr-inv .meta{color:var(--ink-soft);font-size:.86rem;}
+
+.usr-pass{max-width:420px;}
+.usr-pass .form-control{min-height:44px;}
+
+@media (max-width: 767px){
+  .usr-row{grid-template-columns:minmax(0,1fr) auto;padding:12px;}
+  .usr-row .usr-when{grid-column:1 / -1;padding-left:48px;}
+  .usr-row .usr-estado{grid-row:1;grid-column:2;}
+  .usr-row .usr-actions{grid-column:1 / -1;justify-content:flex-start;padding-left:48px;}
+  .usr-actions .btn{min-height:44px;}
+  .usr-head .btn{width:100%;}
+}
+
+/* ---------- Diálogo "Compartir link" (lib/ui/alerts.ts) ---------- */
+.of-share{text-align:left;color:var(--ink);}
+.of-share p{margin:0 0 10px;}
+.of-share-link{padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);font-size:.86rem;line-height:1.45;overflow-wrap:anywhere;user-select:all;cursor:text;}
+.of-share-acciones{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+.of-share-acciones .btn{flex:1 1 160px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;}
+.of-share-estado{min-height:1.4em;margin:8px 0 0 !important;color:var(--ok);font-size:.88rem;}
+.of-share-nota{margin:6px 0 0 !important;color:var(--ink-soft);font-size:.86rem;}
+.of-share-estado.is-aviso{color:var(--ink);}

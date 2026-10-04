@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { budgetComparison } from "@/lib/compras/core";
-import { APP_SOURCE, logChanges } from "@/lib/history";
+import { logChanges } from "@/lib/history";
+import { appSource } from "@/lib/auth/server";
 
 export const dynamic = "force-dynamic";
 
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       await tx.budgetItem.createMany({ data: rows.map((r, i) => ({ ...r, projectId: params.id, orden: start + i })) });
       return { agregados: rows.length, borrados };
     });
-    await logChanges(prisma, params.id, [{ action: "registro_agregado", detail: `Presupuesto por ítem: ${result.agregados} ítem(s) agregado(s)${result.borrados ? `, ${result.borrados} reemplazado(s)` : ""}` }], APP_SOURCE);
+    await logChanges(prisma, params.id, [{ action: "registro_agregado", detail: `Presupuesto por ítem: ${result.agregados} ítem(s) agregado(s)${result.borrados ? `, ${result.borrados} reemplazado(s)` : ""}` }], await appSource());
     return NextResponse.json(result, { status: 201 });
   } catch (err) {
     console.error(err);

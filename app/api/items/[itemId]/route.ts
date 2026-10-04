@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { serializeItem } from "@/lib/serialize";
 import { ITEM_KINDS } from "@/lib/itemKinds";
 import { recomputeProjectSpent } from "@/lib/spent";
-import { APP_SOURCE, logChanges } from "@/lib/history";
+import { logChanges } from "@/lib/history";
+import { appSource } from "@/lib/auth/server";
 import { fmtGs } from "@/lib/agent/format";
 
 export const dynamic = "force-dynamic";
@@ -78,7 +79,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
     const detail = describeEdit(existing.kind, existing, updated);
     if (detail) {
-      await logChanges(prisma, existing.projectId, [{ action: "registro_editado", detail }], APP_SOURCE);
+      await logChanges(prisma, existing.projectId, [{ action: "registro_editado", detail }], await appSource());
     }
 
     return NextResponse.json(serializeItem(updated));
@@ -119,7 +120,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
             detail: `${cfg?.icon ?? "🗑️"} ${cfg?.singular ?? "registro"}: "${existing.title}"` + (hasValue(monto) ? ` · ${fmtMonto(monto)}` : ""),
           },
         ],
-        APP_SOURCE
+        await appSource()
       );
     }
     return new NextResponse(null, { status: 204 });

@@ -55,51 +55,54 @@ model Sitio {
 }
 
 model Project {
-  id          String         @id @default(cuid())
-  name        String
+  id             String         @id @default(cuid())
+  name           String
   /// Referencia corta para distinguir obras que de otro modo se ven
   /// idénticas en las tarjetas (mismo tipo, ciudad, responsable y hasta
   /// presupuesto) — ej. "Sucursal Norte", "Lote 3", "Fase 2". Puramente
   /// identificatoria, no afecta ningún cálculo.
-  reference   String?
+  reference      String?
   /// Código único de la obra para emparejarla con sistemas externos (hoy:
   /// Residente de Obra, que usa `obra.codigo`). Opcional: solo hace falta
   /// en las obras que se integran. Ver docs/RESPUESTA_HANDOFF_RESIDENTE_DE_OBRA.md.
-  code        String?        @unique
+  code           String?        @unique
   /// Sitio al que pertenece esta obra como frente (civil/eléctrico/etc.) de
   /// un mismo lugar — null en la inmensa mayoría de las obras, que son un
   /// sitio en sí mismas. Ver model Sitio.
-  sitioId     String?
-  sitio       Sitio?         @relation(fields: [sitioId], references: [id], onDelete: SetNull)
-  type        ProjectType
+  sitioId        String?
+  sitio          Sitio?         @relation(fields: [sitioId], references: [id], onDelete: SetNull)
+  type           ProjectType
   /// Rubro escrito a mano cuando `type` es "otro" — null para el resto.
-  customType  String?
-  status      ProjectStatus  @default(planificado)
-  manager     String
+  customType     String?
+  status         ProjectStatus  @default(planificado)
+  manager        String
   /// Ciudad donde se ejecuta la obra — distinto de sectorData.localidad
   /// (lista de ciudades para trámites de licitación pública): esto es la
   /// ubicación general de la obra, un solo valor, para cualquier sector.
-  city        String?
+  city           String?
   /// Departamento de esa ciudad — ver lib/departments.ts (lista fija, los
   /// 17 departamentos de Paraguay + Asunción capital).
-  department  String?
+  department     String?
   /// "lat,lng" del pin en el mapa — mismo formato que ProjectItem.data.coordenadas (Relevamiento).
-  coordinates String?
-  start       DateTime       @db.Date
-  end         DateTime       @db.Date
-  budget      Decimal        @default(0) @db.Decimal(14, 2)
-  spent       Decimal        @default(0) @db.Decimal(14, 2)
-  progress    Int            @default(0)
+  coordinates    String?
+  start          DateTime       @db.Date
+  end            DateTime       @db.Date
+  budget         Decimal        @default(0) @db.Decimal(14, 2)
+  spent          Decimal        @default(0) @db.Decimal(14, 2)
+  progress       Int            @default(0)
+  /// De dónde sale el avance: null = se carga a mano; "residente-de-obra" = lo
+  /// calcula Residente de Obra y se actualiza al importar (en la app no se edita).
+  progressSource String?
   /// Privado o público — null en proyectos creados antes de este campo.
-  sector      ProjectSector?
+  sector         ProjectSector?
   /// Respuestas del paso 3 del wizard (varían según `sector`): para
   /// público incluye entidadConvocante/nombreLicitacion/procedimiento +
   /// extras; para privado, los campos de client-intake. JSON en vez de
   /// columnas propias porque el set de campos es específico del sector y
   /// se decide/ajusta desde la config del wizard, no desde el schema.
-  sectorData  Json?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  sectorData     Json?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   items          ProjectItem[]
   /// Historial de cambios de la obra (ver model ProjectChange).
@@ -809,4 +812,33 @@ model PurchaseOrderLine {
 
   @@index([orderId])
   @@index([budgetItemId])
+}
+
+/// Persona que entra a ObrasFlow (pantalla /ingresar). Sin roles por ahora:
+/// todos pueden todo. La sesión es una cookie firmada (lib/auth/token.ts);
+/// el nombre es lo que aparece en el historial de cambios.
+model User {
+  id           String    @id @default(cuid())
+  /// Para entrar (minúsculas, sin espacios).
+  username     String    @unique
+  name         String
+  /// scrypt: "salt:hash" en hex (lib/auth/password.ts).
+  passwordHash String
+  active       Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+/// Invitación para crear un usuario: link de un solo uso que vence. El link
+/// lleva el token; acá se guarda solo su hash.
+model UserInvitation {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  /// Nombre sugerido de la persona invitada.
+  name      String
+  createdBy String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 }

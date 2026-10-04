@@ -24,6 +24,7 @@ import { NAV_ITEMS, isNavActive, type NavFlagKey } from "@/lib/navItems";
 import QuickExpenseButton, { QUICK_EXPENSES_CHANGED } from "@/components/QuickExpenseButton";
 import QuickSearch from "@/components/QuickSearch";
 import GastoObraButton, { GASTO_OBRA_OPEN } from "@/components/GastoObraButton";
+import UserMenu from "@/components/UserMenu";
 import { ACCEPTED_TYPES, MAX_SIZE_MB } from "@/components/FileDropZone";
 import { notificar } from "@/lib/ui/alerts";
 import type { ProjectDTO, PoleLotDTO, QuickExpenseDTO } from "@/lib/types";
@@ -240,14 +241,24 @@ export default function AppShell({
                 </CBreadcrumbItem>
               ))}
             </CBreadcrumb>
-            <div className="d-flex align-items-center gap-2">
-              <QuickSearch />
-              <QuickExpenseButton />
-              <GastoObraButton />
-              {headerActions}
-              <CButton color="secondary" variant="ghost" size="sm" className="d-inline-flex align-items-center" onClick={toggleTheme} title={theme === "dark" ? "Pasar a modo claro" : "Pasar a modo oscuro"}>
-                <Icon icon={theme === "dark" ? Sun : Moon} label={theme === "dark" ? "Modo claro" : "Modo oscuro"} />
-              </CButton>
+            {/* En el celular no entra todo en un renglón: las acciones bajan a
+                un segundo renglón (ver .of-hdr-actions en globals.css) y
+                arriba quedan la ruta, el buscador, el tema y la cuenta. */}
+            <div className="of-hdr-right">
+              <div className="of-hdr-search">
+                <QuickSearch />
+              </div>
+              <div className="of-hdr-actions">
+                <QuickExpenseButton />
+                <GastoObraButton />
+                {headerActions}
+              </div>
+              <div className="of-hdr-tools">
+                <CButton color="secondary" variant="ghost" size="sm" className="of-hdr-icon" onClick={toggleTheme} title={theme === "dark" ? "Pasar a modo claro" : "Pasar a modo oscuro"}>
+                  <Icon icon={theme === "dark" ? Sun : Moon} label={theme === "dark" ? "Modo claro" : "Modo oscuro"} />
+                </CButton>
+                <UserMenu />
+              </div>
             </div>
           </CContainer>
         </CHeader>

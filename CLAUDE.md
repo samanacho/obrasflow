@@ -109,6 +109,17 @@ cerrá cada respuesta con "Qué necesito de vos" y "Próximos pasos recomendados
     siempre respetando `prefers-reduced-motion`).
   - jQuery 4: SOLO con `lib/ui/useJQuery.ts` sobre contenedores que React no dibuja
     (plugins). Nunca para modificar elementos de React.
+- Login (`middleware.ts`, `lib/auth/`): usuario y contraseña por persona, sin
+  roles. Cookie firmada de 12 h que se renueva hasta 30 días ("Recordarme")
+  si el usuario sigue activo. Quedan afuera del login: `/api/memby/*`,
+  `/api/backup`, los webhooks de WhatsApp y de Residente, `/privacidad`,
+  `/terminos` y `/ingresar`. La app local (`OBRASFLOW_LOCAL=1`) no pide login.
+  Usuarios nuevos: pantalla Usuarios → "Invitar a alguien" (link de un solo
+  uso). El primero: `node --env-file=..\ObrasFlow-versiones\memby.env
+  scripts/invitar-usuario.mjs "Nombre"`. El historial guarda el nombre de
+  quien hizo el cambio (`appSource()`); una ruta nueva que anote historial
+  tiene que usarlo. `AUTH_SECRET` (opcional) cambia la firma y cierra todas
+  las sesiones.
 
 ## Reglas
 

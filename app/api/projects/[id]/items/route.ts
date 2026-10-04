@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { serializeItem } from "@/lib/serialize";
 import { ITEM_KINDS } from "@/lib/itemKinds";
 import { createProjectItem } from "@/lib/items";
+import { appSource } from "@/lib/auth/server";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       title,
       status: body.status ? String(body.status) : null,
       data: (body.data as any) ?? {},
+      source: await appSource(),
     });
 
     return NextResponse.json(serializeItem(created), { status: 201 });

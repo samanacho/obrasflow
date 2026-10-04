@@ -26,7 +26,7 @@ const { values: args } = parseArgs({
 });
 const MODO = args.prod ? "prod" : args.dev ? "dev" : process.env.OBRASFLOW_MODO === "prod" ? "prod" : "dev";
 const DEV = MODO === "dev";
-const HOST = "127.0.0.1"; // nunca 0.0.0.0: la app no tiene login
+const HOST = "127.0.0.1"; // nunca 0.0.0.0: la app local no pide login
 const PORT = Number(args.port || process.env.PORT || 3000);
 const CONECTOR_PORT = Number(process.env.CONNECTOR_PORT || 3099);
 
@@ -35,6 +35,9 @@ const CONECTOR_PORT = Number(process.env.CONNECTOR_PORT || 3099);
 for (const k of Object.keys(process.env)) {
   if (k !== "CLAUDE_CODE_OAUTH_TOKEN" && /^(CLAUDECODE|CLAUDE_CODE_|CLAUDE_AGENT_SDK|CLAUDE_PID|CLAUDE_EFFORT|CLAUDE_PREVIEW|ANTHROPIC_BASE_URL|BAGGAGE|AI_AGENT)/.test(k)) delete process.env[k];
 }
+
+// App local (solo 127.0.0.1, base local): no pide login (ver middleware.ts). En Vercel nunca existe.
+process.env.OBRASFLOW_LOCAL = "1";
 
 // Antes de cargar Next: modo y carpeta de compilación.
 process.env.NODE_ENV = DEV ? "development" : "production";

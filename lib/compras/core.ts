@@ -427,7 +427,7 @@ export async function payOrder(id: string, input: PayInput) {
   const precios = new Map((input.precios ?? []).filter((p) => Number(p.precioUnitario) >= 0).map((p) => [p.lineId, Number(p.precioUnitario)]));
 
   const item = await createProjectItem(
-    { projectId: o.projectId, kind: "change_order", title: input.rubro?.trim() || "Materiales", status: "Pagado", data: data as Prisma.InputJsonValue },
+    { projectId: o.projectId, kind: "change_order", title: input.rubro?.trim() || "Materiales", status: "Pagado", data: data as Prisma.InputJsonValue, source: input.por },
     async (tx, created) => {
       const claimed = await tx.purchaseOrder.updateMany({
         where: { id, status: "aprobado" },

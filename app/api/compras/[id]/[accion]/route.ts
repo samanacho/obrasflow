@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { APP_SOURCE } from "@/lib/history";
+import { appSource } from "@/lib/auth/server";
 import { CompraError, annulOrder, approveOrder, payOrder, registerInvoice, rejectOrder, serializeOrder } from "@/lib/compras/core";
 
 export const dynamic = "force-dynamic";
@@ -21,11 +21,12 @@ const numOrNull = (v: unknown) => (v === null || v === undefined || v === "" ? n
 export async function POST(req: NextRequest, { params }: Params) {
   try {
     const { id, accion } = params;
+    const por = await appSource();
     let order;
-    if (accion === "aprobar") order = await approveOrder(id, APP_SOURCE);
+    if (accion === "aprobar") order = await approveOrder(id, por);
     else if (accion === "rechazar") {
       const b = (await req.json().catch(() => ({}))) as { motivo?: string };
-      order = await rejectOrder(id, APP_SOURCE, b.motivo ?? null);
+      order = await rejectOrder(id, por, b.motivo ?? null);
     } else if (accion === "anular") order = await annulOrder(id);
     else if (accion === "pagar") {
       const b = (await req.json()) as Record<string, any>;
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         proveedorNombre: b.proveedorNombre ? String(b.proveedorNombre) : null,
         rubro: b.rubro ? String(b.rubro) : null,
         precios: Array.isArray(b.precios) ? b.precios.map((p: any) => ({ lineId: String(p.lineId), precioUnitario: Number(p.precioUnitario) })).filter((p: any) => Number.isFinite(p.precioUnitario)) : [],
-        por: APP_SOURCE,
+        por,
       });
     } else if (accion === "factura") {
       const form = await req.formData();
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         ...(form.has("iva10") ? { iva10: numOrNull(form.get("iva10")) } : {}),
         ...(form.has("iva5") ? { iva5: numOrNull(form.get("iva5")) } : {}),
         file: upload,
-        por: APP_SOURCE,
+        por,
       });
     } else {
       return NextResponse.json({ error: "Acción desconocida." }, { status: 404 });

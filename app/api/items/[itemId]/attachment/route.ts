@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { serializeAttachmentMeta } from "@/lib/serialize";
 import { ITEM_KINDS } from "@/lib/itemKinds";
-import { APP_SOURCE, logChanges } from "@/lib/history";
+import { logChanges } from "@/lib/history";
+import { appSource } from "@/lib/auth/server";
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       prisma,
       item.projectId,
       [{ action: "archivo", detail: `Se subió "${created.filename}" en ${cfg?.singular ?? "registro"} "${item.title}"` }],
-      APP_SOURCE
+      await appSource()
     );
 
     return NextResponse.json(serializeAttachmentMeta(created), { status: 201 });

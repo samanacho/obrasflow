@@ -854,5 +854,37 @@ a.of-dropzone-file-icon{color:var(--crit);}
 .of-header .breadcrumb{flex-wrap:nowrap;min-width:0;overflow:hidden;white-space:nowrap;}
 .of-header .breadcrumb-item{min-width:0;overflow:hidden;text-overflow:ellipsis;}
 .of-header .breadcrumb-item:not(:last-child){flex:none;max-width:14ch;}
-.of-header .d-flex.gap-2{flex:none;}
+.of-hdr-right,.of-hdr-search,.of-hdr-actions,.of-hdr-tools{display:flex;align-items:center;gap:8px;flex:none;}
+/* Último recurso en pantalla ancha (una pantalla con muchas acciones): las
+   acciones bajan de renglón antes que ensanchar la barra. */
+.of-header > .container-fluid > nav{min-width:72px;}
+.of-hdr-right{flex:0 1 auto;min-width:0;}
+.of-hdr-actions{flex:0 1 auto;min-width:0;flex-wrap:wrap;justify-content:flex-end;row-gap:6px;}
+.of-hdr-icon{display:inline-flex;align-items:center;justify-content:center;min-width:36px;min-height:36px;}
 @media (max-width: 1399px){.of-search-btn{min-width:0;}.of-search-btn .t{display:none;}}
+/* Celular, tablet y notebook chica (con el menú abierto no entra todo en un
+   renglón): dos renglones. Arriba la ruta, el buscador, el tema y la cuenta;
+   abajo las acciones (Registro rápido, Gasto de obra y las de la pantalla),
+   que pueden bajar de renglón pero nunca empujar la página de costado. */
+@media (max-width: 1199px){
+  .of-header > .container-fluid{flex-wrap:wrap;row-gap:6px;}
+  .of-header > .container-fluid > nav{flex:1 1 0;min-width:0;}
+  .of-hdr-right{display:contents;}
+  .of-hdr-actions{order:10;flex:1 1 100%;padding-bottom:4px;}
+}
+@media (max-width: 767px){.of-hdr-actions .btn{min-height:38px;}}
+
+/* Cuenta (components/UserMenu.tsx): inicial + nombre; en pantallas chicas, solo la inicial. */
+.of-user-btn{display:inline-flex;align-items:center;gap:8px;min-height:36px;max-width:220px;padding:2px 10px 2px 3px;border-radius:8px;}
+.of-user-btn.is-loading{display:inline-block;width:36px;height:36px;padding:0;}
+.of-user-avatar{flex:none;display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--accent);color:var(--on-accent);font-weight:700;font-size:.9rem;line-height:1;}
+.of-user-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.88rem;color:var(--ink);}
+.of-user-menu .dropdown-menu{min-width:230px;background:var(--surface);border-color:var(--line);box-shadow:var(--shadow-pop);
+  --cui-dropdown-link-color:var(--ink);--cui-dropdown-link-hover-bg:var(--paper);--cui-dropdown-link-hover-color:var(--ink);--cui-dropdown-link-active-bg:var(--accent-soft);--cui-dropdown-link-active-color:var(--accent-ink);--cui-dropdown-divider-bg:var(--line);}
+.of-user-menu .dropdown-item{min-height:40px;}
+.of-user-head{display:flex;flex-direction:column;padding:6px 16px 2px;line-height:1.35;}
+.of-user-head span{color:var(--ink-soft);font-size:.82rem;overflow-wrap:anywhere;}
+@media (max-width: 1199px){
+  .of-user-name{display:none;}
+  .of-user-btn{padding:3px;min-width:40px;min-height:40px;justify-content:center;}
+}

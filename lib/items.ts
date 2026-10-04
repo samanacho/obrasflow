@@ -20,6 +20,8 @@ export async function createProjectItem(
     /** Solo para registros que vienen de otro sistema (ver lib/integraciones/). */
     externalSource?: string;
     externalId?: string;
+    /** Quién lo cargó, para el historial (nombre de quien ingresó). Si no, se deduce de data.procesadoPor. */
+    source?: string;
   },
   /** Pasos extra dentro de la MISMA transacción (el agente marca ahí la captura rápida que clasifica). */
   alsoInTx?: (tx: Prisma.TransactionClient, created: ProjectItem) => Promise<void>
@@ -77,7 +79,7 @@ export async function createProjectItem(
           detail: `${config.icon} ${config.singular}: "${input.title}"` + (Number.isFinite(monto) ? ` · ${fmtGs(monto)}` : ""),
         },
       ],
-      sourceFromData(input.data)
+      input.source ?? sourceFromData(input.data)
     );
   }
   return created;
