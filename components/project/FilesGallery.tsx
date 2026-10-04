@@ -343,14 +343,25 @@ function FileCard({ entry, onOpenImage }: { entry: FileEntry; onOpenImage: (id: 
   );
 
   if (entry.isLink) {
-    return (
-      <a className="fg-card" href={entry.url} target="_blank" rel="noopener noreferrer" title={entry.url}>
+    const tile = (
+      <>
         <div className="fg-thumb fg-tile fg-tile-link">
           <span className="fg-tile-icon" aria-hidden>🔗</span>
           <span className="fg-tile-name">{hostOf(entry.url)}</span>
         </div>
         {meta}
+      </>
+    );
+    // Solo http(s) se vuelve enlace: un "javascript:..." guardado se
+    // ejecutaría al tocarlo. Cualquier otra cosa se muestra como texto.
+    return /^https?:\/\//i.test(entry.url.trim()) ? (
+      <a className="fg-card" href={entry.url} target="_blank" rel="noopener noreferrer" title={entry.url}>
+        {tile}
       </a>
+    ) : (
+      <div className="fg-card" title={entry.url}>
+        {tile}
+      </div>
     );
   }
 

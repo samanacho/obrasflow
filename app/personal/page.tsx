@@ -6,7 +6,9 @@ import {
   CCard, CCardBody, CCardHeader, CRow, CCol,
   CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell, CBadge,
 } from "@coreui/react";
+import { IdentificationBadge } from "@phosphor-icons/react";
 import AppShell from "@/components/AppShell";
+import Icon from "@/components/ui/Icon";
 import PinGate from "@/components/PinGate";
 import type { ProjectDTO, GeneralMovementDTO } from "@/lib/types";
 import { summarizeProfitShare, PARTNERS, SIN_RESPONSABLE_LABEL } from "@/lib/profitShare";
@@ -186,7 +188,7 @@ export default function PersonalPage() {
   return (
     <AppShell crumbs={[{ label: "Personal" }]}>
       <PinGate pin="9061" storageKey="obrasflow-personal-unlocked" title="Módulo Personal">
-        <h1 className="of-page-title">👤 Personal</h1>
+        <h1 className="of-page-title d-flex align-items-center gap-2"><Icon icon={IdentificationBadge} size={30} /> Personal</h1>
         <p className="module-desc mb-4">
           Todavía no maneja legajos, asistencia ni liquidaciones — está reservado a la espera de esa definición. Por
           ahora, el reparto de beneficios de cada obra e ingreso, neto de los egresos generales de la empresa.

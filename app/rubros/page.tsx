@@ -3,14 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CCard, CCardBody, CBadge, CButton, CInputGroup, CInputGroupText, CFormInput } from "@coreui/react";
-import { MagnifyingGlass, Plus } from "@phosphor-icons/react";
+import { Buildings, MagnifyingGlass, MapPin, Plus } from "@phosphor-icons/react";
 import Icon from "@/components/ui/Icon";
+import { TIPO_OBRA_ICON } from "@/components/ui/kindIcons";
 import AppShell from "@/components/AppShell";
 import NewProjectWizard from "@/components/NewProjectWizard";
 import type { ProjectDTO, ProjectType, ProjectStatus } from "@/lib/types";
 
 const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
-const TYPE_ICON: Record<ProjectType, string> = { civil: "🏢", electrico: "⚡", vial: "🛣️", otro: "🔧" };
 const TYPE_COLOR: Record<ProjectType, string> = { civil: "info", electrico: "warning", vial: "secondary", otro: "dark" };
 const TYPES: ProjectType[] = ["civil", "electrico", "vial", "otro"];
 const STATUS_LABEL: Record<ProjectStatus, string> = {
@@ -110,14 +110,14 @@ export default function RubrosPage() {
       crumbs={[{ label: "Obras por rubro" }]}
       headerActions={
         <div className="d-flex gap-2">
-          <Link href="/sitios" className="btn btn-outline-secondary btn-sm">📍 Sitios</Link>
+          <Link href="/sitios" className="btn btn-outline-secondary btn-sm"><Icon icon={MapPin} size={16} className="me-1" /> Sitios</Link>
           <CButton color="primary" size="sm" onClick={() => setModalOpen(true)}>
             <Icon icon={Plus} size={16} className="me-1" /> Nueva obra
           </CButton>
         </div>
       }
     >
-      <h1 className="of-page-title">📂 Obras por rubro</h1>
+      <h1 className="of-page-title d-flex align-items-center gap-2"><Icon icon={Buildings} size={30} /> Obras por rubro</h1>
       <p className="module-desc mb-4">
         Toda la cartera de proyectos, agrupada por rubro. Entrá a un rubro para ver sus obras
         proyectadas, en curso y terminadas, o buscá una obra puntual por nombre si no te acordás en cuál está.
@@ -152,7 +152,7 @@ export default function RubrosPage() {
                   <CCard className="kpi-card">
                     <CCardBody className="d-flex justify-content-between align-items-center flex-wrap gap-2 py-2">
                       <div className="d-flex align-items-center gap-2">
-                        <span className="rubro-card-icon">{TYPE_ICON[p.type]}</span>
+                        <span className="rubro-card-icon"><Icon icon={TIPO_OBRA_ICON[p.type]} size={26} /></span>
                         <div>
                           <div className="fw-semibold">
                             {p.name}
@@ -186,7 +186,7 @@ export default function RubrosPage() {
                   <CCard className="h-100 kpi-card">
                     <CCardBody>
                       <div className="d-flex justify-content-between align-items-start mb-2">
-                        <span className="rubro-card-icon">{TYPE_ICON[t]}</span>
+                        <span className="rubro-card-icon"><Icon icon={TIPO_OBRA_ICON[t]} size={28} /></span>
                         <CBadge color={TYPE_COLOR[t]}>{TYPE_LABEL[t]}</CBadge>
                       </div>
                       <div className="fs-3 fw-bold mono">{b.count}</div>

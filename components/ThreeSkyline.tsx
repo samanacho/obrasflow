@@ -143,6 +143,9 @@ export default function ThreeSkyline({ projects }: { projects: ProjectDTO[] }) {
         groundGeo.dispose();
         groundMat.dispose();
         renderer.dispose();
+        // dispose() no suelta el contexto WebGL: sin esto, cada vuelta al
+        // inicio deja uno vivo y el navegador termina descartando los viejos.
+        renderer.forceContextLoss();
       };
     })();
 

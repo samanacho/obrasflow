@@ -6,7 +6,7 @@ import {
   CForm, CFormLabel, CFormInput, CFormSelect, CFormTextarea, CFormCheck,
   CBadge, CAlert, CRow, CCol,
 } from "@coreui/react";
-import { MapPin, Phone, Plus, User } from "@phosphor-icons/react";
+import { MapPin, Phone, Plus, Truck, User } from "@phosphor-icons/react";
 import Icon from "@/components/ui/Icon";
 import AppShell from "@/components/AppShell";
 import { confirmarAccion } from "@/lib/ui/alerts";
@@ -138,7 +138,7 @@ export default function ProveedoresPage() {
         </CButton>
       }
     >
-      <h1 className="of-page-title">🚚 Directorio de proveedores</h1>
+      <h1 className="of-page-title d-flex align-items-center gap-2"><Icon icon={Truck} size={30} /> Directorio de proveedores</h1>
       <p className="module-desc mb-4">Proveedores de materiales y servicios para todas las obras.</p>
 
       <CRow className="g-2 mb-4">

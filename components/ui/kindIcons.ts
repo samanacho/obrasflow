@@ -6,8 +6,10 @@
 import {
   Ruler, CurrencyCircleDollar, HardHat, Notebook, Coins, Truck, FileText, Camera,
   ListChecks, Flag, Calculator, ClockCounterClockwise, Folder,
-  Wall, UsersThree, Tractor, Broom, Handshake, Archive, Question, type Icon,
+  Wall, UsersThree, Tractor, Broom, Handshake, Archive, Question,
+  BuildingOffice, Plug, RoadHorizon, Wrench, type Icon,
 } from "@phosphor-icons/react";
+import type { ProjectType } from "@/lib/types";
 
 export const KIND_ICON: Record<string, Icon> = {
   rfi: Ruler,               // Relevamiento
@@ -34,4 +36,12 @@ export const TIPO_INSUMO_ICON: Record<string, Icon> = {
   "Subcontrato": Handshake,
   "Gastos administrativos / Varios": Archive,
   "Sin clasificar": Question,
+};
+
+// Rubro de la obra (civil, eléctrico, vial, otro).
+export const TIPO_OBRA_ICON: Record<ProjectType, Icon> = {
+  civil: BuildingOffice,
+  electrico: Plug,
+  vial: RoadHorizon,
+  otro: Wrench,
 };

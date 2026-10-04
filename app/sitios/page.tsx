@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CCard, CCardBody, CBadge } from "@coreui/react";
+import { MapPin } from "@phosphor-icons/react";
 import AppShell from "@/components/AppShell";
+import Icon from "@/components/ui/Icon";
 import type { SitioDTO, ProjectType } from "@/lib/types";
 
 const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
@@ -34,7 +36,7 @@ export default function SitiosPage() {
 
   return (
     <AppShell crumbs={[{ label: "Obras por rubro", href: "/rubros" }, { label: "Sitios" }]}>
-      <h1 className="of-page-title">📍 Sitios</h1>
+      <h1 className="of-page-title d-flex align-items-center gap-2"><Icon icon={MapPin} size={30} /> Sitios</h1>
       <p className="module-desc mb-4">
         Obras que en realidad son frentes (civil, eléctrico…) de un mismo lugar, agrupadas para ver junto su
         presupuesto, ejecutado y beneficio. Para vincular una obra a un sitio, escribí el mismo nombre de sitio al

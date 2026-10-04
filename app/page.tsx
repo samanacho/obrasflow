@@ -12,7 +12,7 @@ import {
 } from "@coreui/react";
 import { CChartDoughnut, CChartBar } from "@coreui/react-chartjs";
 import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
-import { ArrowLeft, ArrowRight, ArrowSquareOut, Calculator, Flag, Gauge, Kanban, Lightbulb, ListBullets, PencilSimple, Plus, Scales, UsersThree } from "@phosphor-icons/react";
+import { Alarm, ArrowLeft, ArrowRight, ArrowSquareOut, Calculator, ClipboardText, Factory, Flag, Gauge, Kanban, Lightbulb, ListBullets, PencilSimple, Plus, Scales, UsersThree, WarningCircle } from "@phosphor-icons/react";
 import Icon from "@/components/ui/Icon";
 import AppShell from "@/components/AppShell";
 import ProjectsTable from "@/components/home/ProjectsTable";
@@ -452,7 +452,7 @@ function DashboardView({
           {dueSoon.length > 0 && (
             <div className="col-md-6">
               <CAlert color="warning" className="mb-0">
-                <div className="fw-semibold mb-1">⏰ Vencimientos próximos</div>
+                <div className="fw-semibold mb-1 d-flex align-items-center gap-2"><Icon icon={Alarm} size={18} /> Vencimientos próximos</div>
                 <ul className="mb-0 ps-3 small">
                   {dueSoon.map(({ p, daysLeft }) => (
                     <li key={p.id}>
@@ -466,7 +466,7 @@ function DashboardView({
           {overBudget.length > 0 && (
             <div className="col-md-6">
               <CAlert color="danger" className="mb-0">
-                <div className="fw-semibold mb-1">💸 Sobre presupuesto</div>
+                <div className="fw-semibold mb-1 d-flex align-items-center gap-2"><Icon icon={WarningCircle} size={18} /> Sobre presupuesto</div>
                 <ul className="mb-0 ps-3 small">
                   {overBudget.map((p) => (
                     <li key={p.id}>
@@ -634,7 +634,7 @@ function DashboardView({
       <CCard className="mt-4">
         <CCardHeader className="fw-semibold">
           <div className="d-flex justify-content-between align-items-center">
-            <span>🏭 Fábrica de Postes</span>
+            <span className="d-inline-flex align-items-center gap-2"><Icon icon={Factory} size={18} /> Fábrica de Postes</span>
             <Link href="/postes" className="small">Ver módulo →</Link>
           </div>
         </CCardHeader>
@@ -652,7 +652,7 @@ function DashboardView({
 
               {fiscalizacionesProximas.length > 0 && (
                 <CAlert color="info" className="mb-0 mt-3">
-                  <div className="fw-semibold mb-1">🔍 Fiscalizaciones próximas</div>
+                  <div className="fw-semibold mb-1 d-flex align-items-center gap-2"><Icon icon={ClipboardText} size={18} /> Fiscalizaciones próximas</div>
                   <ul className="mb-0 ps-3 small">
                     {fiscalizacionesProximas.map(({ l, fecha, daysLeft }) => (
                       <li key={l.id}>

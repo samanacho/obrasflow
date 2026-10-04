@@ -28,8 +28,6 @@ import MontoInput from "@/components/ui/MontoInput";
  * hasta recargar la página).
  */
 export const QUICK_EXPENSES_CHANGED = "obrasflow:quick-expenses-changed";
-/** Evento para abrir el formulario de Registro rápido desde otro lado (atajo "G"). */
-export const OPEN_QUICK_EXPENSE = "obrasflow:open-quick-expense";
 
 export function notifyQuickExpensesChanged() {
   window.dispatchEvent(new Event(QUICK_EXPENSES_CHANGED));
@@ -56,14 +54,6 @@ export default function QuickExpenseButton() {
     refreshCount();
     window.addEventListener(QUICK_EXPENSES_CHANGED, refreshCount);
     return () => window.removeEventListener(QUICK_EXPENSES_CHANGED, refreshCount);
-  }, []);
-
-  // Atajo de teclado "G" (ver lib/ui/shortcuts.ts): abre este mismo formulario.
-  useEffect(() => {
-    const open = () => openModal();
-    window.addEventListener(OPEN_QUICK_EXPENSE, open);
-    return () => window.removeEventListener(OPEN_QUICK_EXPENSE, open);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function openModal() {
@@ -130,18 +120,18 @@ export default function QuickExpenseButton() {
                 <MontoInput id="rapido-monto" autoFocus value={monto} onChange={(v) => setMonto(v === null ? "" : String(v))} required placeholder="0" />
               </div>
               <div className="mb-3">
-                <CFormLabel>Medio de pago</CFormLabel>
-                <CFormSelect value={medioPago} onChange={(e) => setMedioPago(e.target.value)} required>
+                <CFormLabel htmlFor="rapido-medio">Medio de pago</CFormLabel>
+                <CFormSelect id="rapido-medio" value={medioPago} onChange={(e) => setMedioPago(e.target.value)} required>
                   {MEDIO_PAGO_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
                 </CFormSelect>
               </div>
               <div className="mb-3">
-                <CFormLabel>Fecha</CFormLabel>
-                <CFormInput type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required />
+                <CFormLabel htmlFor="rapido-fecha">Fecha</CFormLabel>
+                <CFormInput id="rapido-fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required />
               </div>
               <div className="mb-1">
-                <CFormLabel>Nota (opcional, pero ayuda después)</CFormLabel>
-                <CFormInput value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Ej. combustible, materiales ferretería…" />
+                <CFormLabel htmlFor="rapido-nota">Nota (opcional, pero ayuda después)</CFormLabel>
+                <CFormInput id="rapido-nota" value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Ej. combustible, materiales ferretería…" />
               </div>
             </CModalBody>
             <CModalFooter>

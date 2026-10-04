@@ -16,6 +16,8 @@ import {
   type FilterFn,
   type SortingState,
 } from "@tanstack/react-table";
+import { DotsThree, DownloadSimple, PencilSimple, Printer, Trash } from "@phosphor-icons/react";
+import Icon from "@/components/ui/Icon";
 import type { ProjectDTO, ProjectStatus, ProjectType } from "@/lib/types";
 import { exportObrasXlsx, printObras } from "@/lib/ui/exportObras";
 import { budgetState, daysLeft, fmtGs, fmtGsShort, STATUS_LABEL, TYPE_LABEL } from "./HomeWidgets";
@@ -144,14 +146,15 @@ export default function ProjectsTable({
         header: "",
         cell: (c) => (
           <span className="d-inline-flex gap-1">
-            <button type="button" className="home-tool sm" title="Acciones rápidas" onClick={() => setActionsFor(c.row.original.id)}>
-              ⋯
+            {/* Solo ícono: el aria-label dice qué hace y sobre qué obra. */}
+            <button type="button" className="home-tool sm" title="Acciones rápidas" aria-label={`Acciones rápidas de ${c.row.original.name}`} onClick={() => setActionsFor(c.row.original.id)}>
+              <Icon icon={DotsThree} size={16} weight="bold" />
             </button>
-            <button type="button" className="home-tool sm" title="Editar datos de la obra" onClick={() => onEdit(c.row.original)}>
-              ✎
+            <button type="button" className="home-tool sm" title="Editar datos de la obra" aria-label={`Editar ${c.row.original.name}`} onClick={() => onEdit(c.row.original)}>
+              <Icon icon={PencilSimple} size={16} />
             </button>
-            <button type="button" className="home-tool sm is-danger" title="Eliminar" onClick={() => onDelete(c.row.original)}>
-              🗑
+            <button type="button" className="home-tool sm is-danger" title="Eliminar" aria-label={`Eliminar ${c.row.original.name}`} onClick={() => onDelete(c.row.original)}>
+              <Icon icon={Trash} size={16} />
             </button>
           </span>
         ),
@@ -187,10 +190,10 @@ export default function ProjectsTable({
         <h2 className="home-h2">Todas las obras</h2>
         <div className="home-obras-tools">
           <button type="button" className="home-tool" disabled={!visible.length} onClick={() => exportObrasXlsx(visible)}>
-            ⬇ Excel
+            <Icon icon={DownloadSimple} size={16} className="me-1" />Excel
           </button>
           <button type="button" className="home-tool" disabled={!visible.length} onClick={() => printObras(visible, label)}>
-            🖨 PDF
+            <Icon icon={Printer} size={16} className="me-1" />PDF
           </button>
         </div>
       </div>

@@ -13,8 +13,18 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es">
+    // suppressHydrationWarning: el script de abajo agrega atributos al <html>
+    // antes de que React tome la página, y eso no es un error.
+    <html lang="es" suppressHydrationWarning>
       <head>
+        {/* Aplica el tema y el menú oculto guardados (ver AppShell) antes del
+            primer pintado: así el modo oscuro no arranca con un destello
+            claro ni el menú se abre y se cierra solo al entrar. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var h=document.documentElement;h.setAttribute("data-coreui-theme",localStorage.getItem("obrasflow-theme")==="dark"?"dark":"light");if(localStorage.getItem("obrasflow-menu")==="oculto")h.setAttribute("data-menu-oculto","")}catch(e){}`,
+          }}
+        />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link

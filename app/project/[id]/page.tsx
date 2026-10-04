@@ -1045,9 +1045,14 @@ function ItemRow({
         <div className="item-row-sub">Cantidad ejecutada: {item.data.cantidadEjecutada} {item.data.unidadMedida || ""}</div>
       )}
       {item.data?.notas && <div className="item-row-notes" style={externo ? { whiteSpace: "pre-line" } : undefined}>{item.data.notas}</div>}
+      {/* Solo http(s) como enlace: un "javascript:..." guardado se ejecutaría al tocarlo. */}
       {externo && item.data?.urlExterna && (
         <div className="item-row-sub">
-          <a href={item.data.urlExterna} target="_blank" rel="noopener noreferrer">Ver el parte en Residente de Obra ↗</a>
+          {/^https?:\/\//i.test(String(item.data.urlExterna).trim()) ? (
+            <a href={item.data.urlExterna} target="_blank" rel="noopener noreferrer">Ver el parte en Residente de Obra ↗</a>
+          ) : (
+            <>Parte en Residente de Obra: {String(item.data.urlExterna)}</>
+          )}
         </div>
       )}
       {externo && fotosExternas.length > 0 && (
