@@ -28,7 +28,12 @@
       "PowerShell(*accept-data-loss*)",
       "PowerShell(*prisma migrate reset*)",
       "PowerShell(*prisma db execute*)",
-      "PowerShell(vercel --prod*)"
+      "PowerShell(vercel --prod*)",
+      "Bash(git push origin main*)",
+      "Bash(git push origin HEAD:main*)",
+      "PowerShell(git push origin main*)",
+      "PowerShell(git push origin HEAD:main*)"
+
     ]
   }
 }
