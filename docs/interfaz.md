@@ -19,6 +19,12 @@ o de otro documento lo contradice, manda este archivo.
   - Tablas largas: `components/ui/DataTable.tsx` (DataTables 3, sin jQuery, en español).
   - Fotos y comprobantes: `components/ui/ImageViewer.tsx` (visor con zoom).
   - Gráficos y mapas: Chart.js, Leaflet, dhtmlx-gantt.
+  - Excepciones que ya existen (no sumar otras):
+    - La tabla de obras del inicio (`components/home/ProjectsTable.tsx`) usa
+      TanStack Table. Es la única: las tablas nuevas van con DataTable.
+    - El medidor de ejecución del inicio (`components/PlotlyGauge.tsx`) usa
+      Plotly, que se carga solo en esa pantalla. Los gráficos nuevos van con
+      Chart.js.
   - Fechas: Day.js vía `lib/dayjs.ts` (español, hora de Paraguay: `fmtFecha`, `haceCuanto`…).
   - Animate.css está cargado, pero movimiento solo donde informa algo (y
     siempre respetando `prefers-reduced-motion`).
