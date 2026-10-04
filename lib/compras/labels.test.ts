@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fmtCant, fmtMiles, parseGs, parseNumero } from "./labels";
+import { fmtCant, fmtMiles, leerMonto, parseGs, parseNumero } from "./labels";
 
 describe("parseNumero (cantidades y números escritos a mano)", () => {
   it("formato de Paraguay e internacional", () => {
@@ -31,6 +31,21 @@ describe("parseGs (montos en guaraníes)", () => {
     expect(parseGs("1.234,50")).toBe(1234.5);
     expect(parseGs("")).toBeNull();
     expect(parseGs(1500)).toBe(1500);
+  });
+});
+
+describe("leerMonto (campo de monto mientras se escribe)", () => {
+  it("puntos, comas y espacios son miles", () => {
+    expect(leerMonto("1.500.000")).toBe(1_500_000);
+    expect(leerMonto("1,500,000")).toBe(1_500_000);
+    expect(leerMonto("1 500 000")).toBe(1_500_000);
+    expect(leerMonto("Gs. 45.000")).toBe(45_000);
+    expect(leerMonto("")).toBeNull();
+    expect(leerMonto("abc")).toBeNull();
+  });
+  it("negativo solo si se permite", () => {
+    expect(leerMonto("-500")).toBe(500);
+    expect(leerMonto("-500", true)).toBe(-500);
   });
 });
 

@@ -99,6 +99,16 @@
 .bud-preview tr.is-error td{background:var(--crit-soft);}
 .bud-preview tr.is-titulo td{color:var(--ink-soft);font-style:italic;}
 
+/* Volver a importar: cada caso que hay que decidir. */
+.reimp-caso{padding:10px 12px;border:1px solid var(--line);border-radius:8px;margin-bottom:10px;}
+.reimp-caso.is-pendiente{border-color:var(--crit);}
+.reimp-caso .reimp-datos{display:grid;grid-template-columns:110px minmax(0,1fr);gap:2px 10px;font-size:.85rem;margin:6px 0;}
+.reimp-caso .reimp-datos dt{font-weight:600;color:var(--ink-soft);}
+.reimp-caso .reimp-datos dd{margin:0;}
+.reimp-aviso{font-size:.82rem;color:var(--crit);margin:4px 0 6px;}
+.reimp-falta{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:.88rem;}
+.reimp-falta:last-child{border-bottom:0;}
+
 /* Chips dentro de tablas: en una sola línea. */
 .of-dtable .status-chip,.cmp-lineas .status-chip{white-space:nowrap;}
 .of-dtable td.bud-desc{min-width:220px;}

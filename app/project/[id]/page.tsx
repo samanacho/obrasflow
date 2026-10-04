@@ -28,6 +28,7 @@ import { ITEM_KINDS, ITEM_KIND_ORDER, ItemKindConfig } from "@/lib/itemKinds";
 import { PUBLIC_FIELDS, PRIVATE_FIELDS } from "@/lib/sectorFields";
 import { MOVIMIENTO_TIPOS } from "@/lib/movimientos";
 import { daysBetween, todayLocal } from "@/lib/dates";
+import MontoInput from "@/components/ui/MontoInput";
 
 const TYPE_LABEL: Record<string, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
 const TYPE_COLOR: Record<string, string> = { civil: "info", electrico: "warning", vial: "secondary", otro: "dark" };
@@ -403,11 +404,11 @@ export default function ProjectDetail({ params }: { params: { id: string } }) {
         <CForm onSubmit={handleBudgetSubmit}>
           <CModalBody>
             {budgetError && <CAlert color="danger">{budgetError}</CAlert>}
-            <CFormLabel>Presupuesto (Gs.)</CFormLabel>
-            <CFormInput
-              type="number" min={0} step="1" autoFocus
+            <CFormLabel htmlFor="presupuesto-obra">Presupuesto (Gs.)</CFormLabel>
+            <MontoInput
+              id="presupuesto-obra" autoFocus
               value={budgetValue}
-              onChange={(e) => setBudgetValue(e.target.value)}
+              onChange={(v) => setBudgetValue(v === null ? "" : String(v))}
               required
             />
             <p className="module-desc mt-2 mb-0">

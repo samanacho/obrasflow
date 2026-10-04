@@ -42,7 +42,7 @@ export const PUBLIC_EXTRA_FIELDS: SectorField[] = [
     required: false,
     placeholder: "Ciudad o ciudades donde se ejecuta la obra",
   },
-  { key: "monto_adjudicado", label: "Monto adjudicado del contrato (Gs.)", type: "number", required: false, placeholder: "Ej. 850000000" },
+  { key: "monto_adjudicado", label: "Monto adjudicado del contrato (Gs.)", type: "number", required: false, placeholder: "Ej. 850.000.000" },
 ];
 
 export const PRIVATE_FIELDS: SectorField[] = [
@@ -54,7 +54,7 @@ export const PRIVATE_FIELDS: SectorField[] = [
     options: ["Precio cerrado (ajuste alzado)", "Por administración", "Unidad de medida (precios unitarios)", "Coste y costas"],
     required: false,
   },
-  { key: "monto_contractual", label: "Monto contractual (Gs.)", type: "number", required: false, placeholder: "Ej. 450000000" },
+  { key: "monto_contractual", label: "Monto contractual (Gs.)", type: "number", required: false, placeholder: "Ej. 450.000.000" },
   {
     key: "forma_pago",
     label: "Forma de pago",

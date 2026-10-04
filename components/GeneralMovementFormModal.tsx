@@ -8,6 +8,7 @@ import {
 import { COST_CENTER_SUGGESTIONS } from "@/lib/itemKinds";
 import type { GeneralMovementDTO, GeneralMovementInput, GeneralMovementTipo } from "@/lib/types";
 import { todayLocal } from "@/lib/dates";
+import MontoInput from "@/components/ui/MontoInput";
 
 // Extraído de app/movimientos/page.tsx (mismo criterio que components/
 // ItemFormModal.tsx) para poder reusarlo también desde /registro-rapido al
@@ -152,12 +153,11 @@ export default function GeneralMovementFormModal({
               </datalist>
             </CCol>
             <CCol md={6}>
-              <CFormLabel>Monto (Gs.)</CFormLabel>
-              <CFormInput
-                type="number"
-                min={0}
-                value={form.monto}
-                onChange={(e) => setForm({ ...form, monto: Number(e.target.value) })}
+              <CFormLabel htmlFor="general-monto">Monto (Gs.)</CFormLabel>
+              <MontoInput
+                id="general-monto"
+                value={form.monto || ""}
+                onChange={(v) => setForm({ ...form, monto: v ?? 0 })}
                 required
               />
             </CCol>

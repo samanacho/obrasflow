@@ -87,6 +87,18 @@ export function parseGs(raw: unknown): number | null {
   return parseNumero(raw);
 }
 
+/**
+ * Lo que se va escribiendo en un campo de guaraníes (components/ui/MontoInput)
+ * → número. Sin decimales, así que puntos, comas y espacios son separadores
+ * de miles: "1.500.000", "1,500,000" y "1 500 000" son lo mismo. Vacío → null.
+ */
+export function leerMonto(texto: string, permitirNegativo = false): number | null {
+  const digitos = texto.replace(/\D/g, "");
+  if (!digitos) return null;
+  const n = Number(digitos);
+  return permitirNegativo && texto.trim().startsWith("-") ? -n : n;
+}
+
 /** Hoy en Paraguay como "YYYY-MM-DD" (para los campos de fecha). */
 export function hoyPy(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Asuncion" }).format(new Date());

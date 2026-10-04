@@ -18,6 +18,10 @@ o de otro documento lo contradice, manda este archivo.
     solo en listas largas (obras, proveedores, contratistas, ciudades).
   - Tablas largas: `components/ui/DataTable.tsx` (DataTables 3, sin jQuery, en español).
   - Fotos y comprobantes: `components/ui/ImageViewer.tsx` (visor con zoom).
+  - Montos en guaraníes: SOLO `components/ui/MontoInput.tsx` (puntos de miles
+    al escribir, teclado numérico). Nunca `<input type="number">` para plata:
+    "1.500.000" ahí da vacío o 1,5. En los formularios de `lib/itemKinds.ts`,
+    el campo es `type: "money"`.
   - Gráficos y mapas: Chart.js, Leaflet, dhtmlx-gantt.
   - Excepciones que ya existen (no sumar otras):
     - La tabla de obras del inicio (`components/home/ProjectsTable.tsx`) usa
