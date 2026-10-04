@@ -18,11 +18,31 @@ import {
 import { fmtCant, fmtCantUnidad, fmtGs } from "@/lib/compras/labels";
 import { fmtDia, fmtFechaHora, haceCuanto } from "@/lib/dayjs";
 import { confirmar, confirmarAccion, confirmarConTexto, notificar } from "@/lib/ui/alerts";
+import { requiereNuevaAprobacion } from "@/lib/compras/calculos";
 import { useMediaQuery } from "@/lib/ui/useMediaQuery";
 import type { PurchaseLineDTO, PurchaseOrderDTO } from "@/lib/compras/core";
 import type { ProjectItemDTO } from "@/lib/types";
 
 const EDITABLE = ["pendiente", "aprobado"];
+
+// Decisión del 04/10/2026: un pedido aprobado al que le cambian materiales,
+// cantidades u obra vuelve a esperar aprobación. Lo decide el servidor; acá
+// solo se avisa antes de guardar para que no sea una sorpresa.
+const REAPROBAR_TEXTO = "Ya estaba aprobado. Si cambiás materiales, cantidades u obra, vuelve a \"Esperando aprobación\" y hay que aprobarlo de nuevo antes de pagarlo.";
+
+async function confirmarReaprobacion(o: PurchaseOrderDTO): Promise<boolean> {
+  return confirmar({
+    titulo: `¿Guardar y volver a pedir aprobación del pedido #${o.numero}?`,
+    texto: `${REAPROBAR_TEXTO}${o.origen === "whatsapp" ? " En el grupo se avisa que no compren hasta que se apruebe." : ""}`,
+    confirmar: "Guardar igual",
+  });
+}
+
+/** Avisa el estado nuevo si la edición lo devolvió a pendiente (el servidor manda). */
+function avisarGuardado(antes: PurchaseOrderDTO, despues: PurchaseOrderDTO, ok: string) {
+  if (antes.status === "aprobado" && despues.status === "pendiente") notificar(`Pedido #${despues.numero} guardado: vuelve a esperar aprobación`, "warning");
+  else notificar(ok);
+}
 
 /** " por Ignacio" / " desde la app" (la app firma "Desde la app"). */
 const quien = (por: string | null) => (!por ? "" : /^desde /i.test(por) ? ` ${por.toLowerCase()}` : ` por ${por}`);
@@ -139,19 +159,25 @@ export default function PedidoDetalle({ params }: { params: { id: string } }) {
     if (!order) return;
     const problema = validarRenglones(renglones);
     if (problema) { setErrorEdicion(problema); return; }
+    const lines = renglonesParaApi(renglones);
+    const cambia = requiereNuevaAprobacion(
+      { projectId: order.projectId, lines: order.lines },
+      { projectId: order.projectId, lines: lines.map((l) => ({ ...l, budgetItemId: l.budgetItemId ?? null })) }
+    );
+    if (order.status === "aprobado" && cambia && !(await confirmarReaprobacion(order))) return;
     setGuardando(true);
     setErrorEdicion(null);
     try {
       const res = await fetch(`/api/compras/${order.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lines: renglonesParaApi(renglones), notas: notas.trim() || null, fechaNecesaria: fechaNecesaria || null }),
+        body: JSON.stringify({ lines, notas: notas.trim() || null, fechaNecesaria: fechaNecesaria || null }),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error || "No se pudo guardar.");
       setOrder(d);
       setEditando(false);
-      notificar("Pedido actualizado");
+      avisarGuardado(order, d, "Pedido actualizado");
     } catch (err: any) {
       setErrorEdicion(err.message);
     } finally {
@@ -161,6 +187,10 @@ export default function PedidoDetalle({ params }: { params: { id: string } }) {
 
   async function cambiarObra(projectId: string) {
     if (!order || projectId === (order.projectId ?? "")) return;
+    if (order.status === "aprobado" && !(await confirmarReaprobacion(order))) {
+      cargar(); // vuelve el selector a la obra de antes
+      return;
+    }
     try {
       const res = await fetch(`/api/compras/${order.id}`, {
         method: "PATCH",
@@ -170,7 +200,7 @@ export default function PedidoDetalle({ params }: { params: { id: string } }) {
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error || "No se pudo cambiar la obra.");
       setOrder(d);
-      notificar(projectId ? "Obra actualizada" : "Se quitó la obra");
+      avisarGuardado(order, d, projectId ? "Obra actualizada" : "Se quitó la obra");
     } catch (err: any) {
       notificar(err.message, "error");
       cargar();
@@ -406,6 +436,7 @@ export default function PedidoDetalle({ params }: { params: { id: string } }) {
           {editando ? (
             <>
               {errorEdicion && <CAlert color="danger" role="alert">{errorEdicion}</CAlert>}
+              {o.status === "aprobado" && <CAlert color="warning" className="py-2">{REAPROBAR_TEXTO} Notas y fecha no cambian la aprobación.</CAlert>}
               <RenglonesEditor renglones={renglones} onChange={setRenglones} presupuesto={presupuesto} permitirFuera pedidoPropio={pedidoPropio} sinObra={!o.projectId} />
               <CRow className="g-3 mt-1">
                 <CCol md={4}>

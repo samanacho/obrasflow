@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CompraError, compararPresupuesto, validarIva, validarPago, type ItemPresupuesto } from "./calculos";
+import { CompraError, compararPresupuesto, requiereNuevaAprobacion, validarIva, validarPago, type ItemPresupuesto, type RenglonComparable } from "./calculos";
 
 const item = (over: Partial<ItemPresupuesto>): ItemPresupuesto => ({
   id: "cemento",
@@ -93,5 +93,35 @@ describe("validarIva", () => {
   it("rechaza un IVA más grande que lo posible para ese total", () => {
     expect(() => validarIva(1_100_000, 110_000, null)).toThrow(CompraError);
     expect(() => validarIva(1_050_000, null, 100_000)).toThrow("IVA 5 %");
+  });
+});
+
+describe("requiereNuevaAprobacion (editar un pedido aprobado)", () => {
+  const r = (over: Partial<RenglonComparable> = {}): RenglonComparable => ({ descripcion: "Cemento", unidad: "bolsa", cantidad: 50, budgetItemId: "cem", ...over });
+  const antes = { projectId: "obra1", lines: [r(), r({ descripcion: "Varilla 10mm", unidad: null, cantidad: 20, budgetItemId: null })] };
+
+  it("sin cambios de materiales ni obra no pide aprobar de nuevo", () => {
+    expect(requiereNuevaAprobacion(antes, { projectId: "obra1", lines: antes.lines.map((l) => ({ ...l })) })).toBe(false);
+  });
+  it("espacios, mayúsculas, el orden de los renglones o 50 vs 50,0 no cuentan", () => {
+    const mismos = [r({ descripcion: "Varilla  10mm ", unidad: null, cantidad: 20.0, budgetItemId: null }), r({ descripcion: "cemento", unidad: " Bolsa" })];
+    expect(requiereNuevaAprobacion(antes, { projectId: "obra1", lines: mismos })).toBe(false);
+  });
+  it("cambiar una cantidad pide aprobar de nuevo", () => {
+    expect(requiereNuevaAprobacion(antes, { projectId: "obra1", lines: [r({ cantidad: 60 }), antes.lines[1]] })).toBe(true);
+    expect(requiereNuevaAprobacion(antes, { projectId: "obra1", lines: [r({ cantidad: 50.5 }), antes.lines[1]] })).toBe(true);
+  });
+  it("cambiar, agregar o sacar un material pide aprobar de nuevo", () => {
+    expect(requiereNuevaAprobacion(antes, { projectId: "obra1", lines: [r({ descripcion: "Cal" }), antes.lines[1]] })).toBe(true);
+    expect(requiereNuevaAprobacion(antes, { projectId: "obra1", lines: [...antes.lines, r({ descripcion: "Arena" })] })).toBe(true);
+    expect(requiereNuevaAprobacion(antes, { projectId: "obra1", lines: [antes.lines[0]] })).toBe(true);
+  });
+  it("cambiar la unidad o el ítem del presupuesto pide aprobar de nuevo", () => {
+    expect(requiereNuevaAprobacion(antes, { projectId: "obra1", lines: [r({ unidad: "kg" }), antes.lines[1]] })).toBe(true);
+    expect(requiereNuevaAprobacion(antes, { projectId: "obra1", lines: [r({ budgetItemId: null }), antes.lines[1]] })).toBe(true);
+  });
+  it("cambiar la obra (o quitarla) pide aprobar de nuevo", () => {
+    expect(requiereNuevaAprobacion(antes, { projectId: "obra2", lines: antes.lines })).toBe(true);
+    expect(requiereNuevaAprobacion(antes, { projectId: null, lines: antes.lines })).toBe(true);
   });
 });

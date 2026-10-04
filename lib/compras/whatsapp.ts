@@ -94,10 +94,11 @@ function fechaCorta(iso: string | null) {
   return `${weekdayOf(ymd)} ${fmtYmd(ymd)}`;
 }
 
-/** Tarjeta que le llega al dueño por privado para aprobar o rechazar. */
-export function approvalCardBody(o: PurchaseOrderDTO): string {
+/** Tarjeta que le llega al dueño por privado para aprobar o rechazar. `reaprobar`: ya se había aprobado y lo editaron. */
+export function approvalCardBody(o: PurchaseOrderDTO, opts: { reaprobar?: boolean } = {}): string {
   const lines = [
     `🛒 *Pedido de compra #${o.numero}*`,
+    ...(opts.reaprobar ? ["✏️ Se modificó después de aprobado: hay que aprobarlo de nuevo."] : []),
     o.projectName ? `📍 ${o.projectName}` : `⚠️ No reconocí la obra${o.obraTexto ? ` ("${o.obraTexto}")` : ""}: elegila en la app antes de pagar.`,
     `👷 Pide: ${o.solicitante}${o.origen === "whatsapp" ? " · por el grupo" : ""}`,
   ];
@@ -117,9 +118,17 @@ export function approvalCardBody(o: PurchaseOrderDTO): string {
   return lines.join("\n");
 }
 
-/** Aviso al grupo cuando cambia el estado del pedido (null = no se avisa). */
-export function groupStatusText(o: PurchaseOrderDTO): string | null {
+/**
+ * Aviso al grupo cuando cambia el estado del pedido (null = no se avisa).
+ * `avisadoAntes`: el último estado que se avisó en el grupo (grupoAvisado).
+ */
+export function groupStatusText(o: PurchaseOrderDTO, avisadoAntes?: string | null): string | null {
   const obra = o.projectName ? ` (${o.projectName})` : "";
+  // Ya les habíamos dicho "aprobado, compren" y lo editaron (vuelve a pendiente,
+  // decisión del 04/10/2026): que nadie compre con lo que se aprobó antes.
+  if (o.status === "pendiente") {
+    return avisadoAntes === "aprobado" ? `✏️ Pedido #${o.numero}${obra} *se modificó* y vuelve a esperar aprobación. No compren hasta que se apruebe de nuevo.` : null;
+  }
   if (o.status === "aprobado") return `✅ Pedido #${o.numero}${obra} *aprobado*. Ya pueden comprar.`;
   if (o.status === "rechazado") return `❌ Pedido #${o.numero}${obra} *rechazado*.${o.rechazoMotivo ? `\nMotivo: ${o.rechazoMotivo}` : ""}`;
   if (o.status === "pagado") {
@@ -233,8 +242,8 @@ export async function handleGroupPurchaseRequest(msg: GroupMessage, ownerPhone: 
   return { groupReply, card };
 }
 
-async function createApprovalCard(dto: PurchaseOrderDTO, ownerPhone: string): Promise<{ actionId: string; body: string }> {
-  const body = approvalCardBody(dto);
+async function createApprovalCard(dto: PurchaseOrderDTO, ownerPhone: string, opts: { reaprobar?: boolean } = {}): Promise<{ actionId: string; body: string }> {
+  const body = approvalCardBody(dto, opts);
   const action = await prisma.whatsAppPendingAction.create({
     data: {
       phone: ownerPhone,
@@ -280,10 +289,26 @@ export async function handleGroupInvoice(numero: number, mediaId: string, sender
   };
 }
 
+export interface GroupNotice {
+  id: string;
+  groupJid: string;
+  status: string;
+  text: string | null;
+  /** Volvió a pendiente por una edición después de aprobado: hay que mandarle al dueño una tarjeta nueva. */
+  reaprobar: boolean;
+}
+
 /** Pedidos del grupo cuyo cambio de estado todavía no se avisó ahí. */
-export async function pendingGroupNotices(): Promise<{ id: string; groupJid: string; status: string; text: string | null }[]> {
+export async function pendingGroupNotices(): Promise<GroupNotice[]> {
   const rows = await prisma.purchaseOrder.findMany({
-    where: { grupoJid: { not: null }, status: { in: ["aprobado", "rechazado", "pagado", "anulado"] } },
+    where: {
+      grupoJid: { not: null },
+      OR: [
+        { status: { in: ["aprobado", "rechazado", "pagado", "anulado"] } },
+        // Aprobado (y avisado) que después editaron: vuelve a pendiente (core.ts updateOrder).
+        { status: "pendiente", grupoAvisado: "aprobado" },
+      ],
+    },
     select: { id: true, status: true, grupoAvisado: true },
     orderBy: { updatedAt: "desc" },
     take: 50,
@@ -293,11 +318,29 @@ export async function pendingGroupNotices(): Promise<{ id: string; groupJid: str
   const ids = rows.filter((r) => r.grupoAvisado !== r.status).map((r) => r.id);
   if (!ids.length) return [];
   const orders = await prisma.purchaseOrder.findMany({ where: { id: { in: ids } }, include: ORDER_INCLUDE, orderBy: { updatedAt: "desc" } });
-  const out: { id: string; groupJid: string; status: string; text: string | null }[] = [];
+  const out: GroupNotice[] = [];
   for (const o of orders) {
-    out.push({ id: o.id, groupJid: o.grupoJid!, status: o.status, text: groupStatusText(await serializeOrder(o, false)) });
+    const reaprobar = o.status === "pendiente" && o.grupoAvisado === "aprobado";
+    out.push({ id: o.id, groupJid: o.grupoJid!, status: o.status, text: groupStatusText(await serializeOrder(o, false), o.grupoAvisado), reaprobar });
   }
   return out;
+}
+
+/**
+ * Tarjeta nueva para un pedido que volvió a pendiente por una edición. Las
+ * tarjetas viejas ya quedaron canceladas al editar (core.ts updateOrder), así
+ * que con ellas no se puede aprobar la versión nueva. null si ya no hace falta
+ * (lo aprobaron o rechazaron desde la app) o si ya hay una abierta.
+ */
+export async function reapprovalCard(orderId: string, ownerPhone: string): Promise<{ actionId: string; body: string } | null> {
+  const open = await prisma.whatsAppPendingAction.findFirst({
+    where: { kind: "aprobar_pedido", status: "pendiente", payload: { path: ["pedidoId"], equals: orderId } },
+    select: { id: true },
+  });
+  if (open) return null;
+  const order = await getOrder(orderId);
+  if (!order || order.status !== "pendiente") return null;
+  return createApprovalCard(await serializeOrder(order), ownerPhone, { reaprobar: true });
 }
 
 export async function markGroupNotified(id: string, status: string) {
