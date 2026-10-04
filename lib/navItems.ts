@@ -23,6 +23,8 @@ export interface NavItem {
   highlightFirstLetter?: boolean;
   /** Dibuja un separador antes de este ítem. */
   groupStart?: boolean;
+  /** Solo para quien tiene permiso de Personal (verPersonal de /api/auth/yo). */
+  soloPersonal?: boolean;
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -35,12 +37,21 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "contratistas", label: "Contratistas", href: "/contratistas", icon: UsersThree, groupStart: true },
   { key: "proveedores", label: "Proveedores", href: "/proveedores", icon: Truck },
   { key: "inventario", label: "Inventario", href: "/inventario", icon: Package },
-  // Módulo todavía sin funcionalidad propia a propósito — el usuario va a
-  // dar el contexto/requerimientos para desarrollarlo en un paso aparte.
-  { key: "personal", label: "Personal", href: "/personal", icon: IdentificationBadge, highlightFirstLetter: true },
+  // Reparto de beneficios. Solo para ciertos usuarios (lib/auth/personal.ts):
+  // a los demás no les aparece.
+  { key: "personal", label: "Personal", href: "/personal", icon: IdentificationBadge, highlightFirstLetter: true, soloPersonal: true },
   // Asistente de WhatsApp (docs/WHATSAPP_AGENT.md).
   { key: "agente", label: "Memby", href: "/agente-whatsapp", icon: ChatCircleDots, also: ["/memby"] },
 ];
+
+/**
+ * Ítems que le corresponden a quien usa la app. Mientras no se sabe quién es
+ * (undefined) se esconde Personal: mejor que aparezca un instante después a
+ * que se le muestre a quien no puede.
+ */
+export function navItemsPara(verPersonal: boolean | undefined): NavItem[] {
+  return NAV_ITEMS.filter((i) => !i.soloPersonal || verPersonal === true);
+}
 
 export function isNavActive(item: NavItem, pathname: string) {
   if (item.href === "/") return pathname === "/";

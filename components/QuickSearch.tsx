@@ -6,7 +6,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CModal, CModalBody } from "@coreui/react";
-import { NAV_ITEMS } from "@/lib/navItems";
+import { navItemsPara } from "@/lib/navItems";
+import { useSesion } from "@/lib/ui/session";
 import { MagnifyingGlass } from "@phosphor-icons/react";
 import Icon from "@/components/ui/Icon";
 import type { ProjectDTO } from "@/lib/types";
@@ -46,6 +47,8 @@ export default function QuickSearch() {
   const [projects, setProjects] = useState<ProjectDTO[] | null>(null);
   const input = useRef<HTMLInputElement | null>(null);
   const list = useRef<HTMLUListElement | null>(null);
+  // Personal solo para quien la puede ver (el servidor igual la frena).
+  const verPersonal = useSesion()?.verPersonal ?? false;
 
   // Atajos globales.
   useEffect(() => {
@@ -86,12 +89,12 @@ export default function QuickSearch() {
       haystack: norm([p.name, p.reference ?? "", p.sitioNombre ?? "", p.city ?? "", p.manager].join(" ")),
     }));
     const pages: Entry[] = [
-      ...NAV_ITEMS.map((n) => ({ label: n.label, href: n.href, hint: undefined as string | undefined })),
+      ...navItemsPara(verPersonal).map((n) => ({ label: n.label, href: n.href, hint: undefined as string | undefined })),
       ...EXTRA_PAGES,
     ].map((p) => ({ id: `p-${p.href}`, group: "Pantallas" as const, label: p.label, hint: p.hint, href: p.href, haystack: norm(p.label) }));
     const actions: Entry[] = ACTIONS.map((a) => ({ id: `a-${a.href}`, group: "Acciones", label: a.label, hint: a.hint, href: a.href, haystack: norm(a.label) }));
     return [...actions, ...obras, ...pages];
-  }, [projects]);
+  }, [projects, verPersonal]);
 
   const results = useMemo(() => {
     const words = norm(q.trim()).split(/\s+/).filter(Boolean);

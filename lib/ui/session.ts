@@ -16,6 +16,8 @@ export interface Yo {
   local: boolean;
   nombre: string;
   usuario: string | null;
+  /** Si ve "Personal" en el menú (lib/auth/personal.ts). Al abrirla, el servidor lo vuelve a controlar. */
+  verPersonal: boolean;
 }
 
 const RENOVAR_CADA_MS = 10 * 60_000;
