@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CompraError, compararPresupuesto, validarPago, type ItemPresupuesto } from "./calculos";
+import { CompraError, compararPresupuesto, validarIva, validarPago, type ItemPresupuesto } from "./calculos";
 
 const item = (over: Partial<ItemPresupuesto>): ItemPresupuesto => ({
   id: "cemento",
@@ -28,6 +28,13 @@ describe("validarPago", () => {
     expect(() => validarPago(aprobado, 0)).toThrow("mayor a cero");
     expect(() => validarPago(aprobado, -5)).toThrow("mayor a cero");
     expect(() => validarPago(aprobado, Number.NaN)).toThrow("mayor a cero");
+  });
+
+  it("rechaza montos infinitos o que no entran en la base", () => {
+    const aprobado = { status: "aprobado", numero: 1, projectId: "obra" };
+    expect(() => validarPago(aprobado, Infinity)).toThrow(CompraError);
+    expect(() => validarPago(aprobado, 1_000_000_000_000)).toThrow("demasiado grande");
+    expect(validarPago(aprobado, 999_999_999_999)).toBe(999_999_999_999);
   });
 });
 
@@ -72,5 +79,19 @@ describe("compararPresupuesto", () => {
     expect(r.items.every((f) => f.pedido === 0 && f.gastado === 0 && f.alerta === "ok")).toBe(true);
     expect(r.items[0].total).toBe(83_333);
     expect(r.totales).toEqual({ presupuestado: Math.round(2.5 * 33_333 + 450_000), pedido: 0, gastado: 0 });
+  });
+});
+
+describe("validarIva", () => {
+  it("acepta el IVA que corresponde al total, con margen de redondeo", () => {
+    expect(() => validarIva(1_100_000, 100_000, null)).not.toThrow();
+    expect(() => validarIva(1_050_000, null, 50_000)).not.toThrow();
+    expect(() => validarIva(1_000_000, 90_910, null)).not.toThrow();
+    expect(() => validarIva(1_000_000, null, null)).not.toThrow();
+  });
+
+  it("rechaza un IVA más grande que lo posible para ese total", () => {
+    expect(() => validarIva(1_100_000, 110_000, null)).toThrow(CompraError);
+    expect(() => validarIva(1_050_000, null, 100_000)).toThrow("IVA 5 %");
   });
 });

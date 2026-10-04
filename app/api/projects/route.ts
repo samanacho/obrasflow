@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { sitioNombre, ...data } = parseProjectInput(body);
+    // Obra nueva: sin "sitioNombre" en el pedido queda sin Sitio.
     const sitioId = await resolveSitioId(sitioNombre ?? null, data.manager);
     const created = await prisma.project.create({
       data: {
@@ -33,7 +34,8 @@ export async function POST(req: NextRequest) {
       include: { sitio: { select: { nombre: true, responsable: true } } },
     });
     // Partes de Residente de Obra que llegaron antes de que existiera esta obra.
-    if (created.code) await reprocessPending();
+    // La obra ya quedó guardada: si esto falla se anota, pero no se responde error.
+    if (created.code) await reprocessPending().catch((err) => console.error("No se pudieron reprocesar los partes de Residente de Obra:", err));
     return NextResponse.json(serializeProject(created), { status: 201 });
   } catch (err) {
     if (err instanceof ValidationError) {

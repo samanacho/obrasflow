@@ -2,7 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../prisma";
 import { fmtGs, normalizeText } from "../agent/format";
 import { todayInParaguay, fmtYmd, weekdayOf } from "../dates";
-import { CompraError, ESTADO_LABEL, createOrder, getOrder, orderLinesText, registerInvoice, serializeOrder, type PurchaseOrderDTO } from "./core";
+import { CompraError, ESTADO_LABEL, ORDER_INCLUDE, createOrder, getOrder, orderLinesText, registerInvoice, serializeOrder, type PurchaseOrderDTO } from "./core";
 import { isPurchaseRequest, parsePurchaseRequest, type ParsedRequest } from "./parse";
 import { extractWithAI } from "./extract";
 
@@ -43,6 +43,8 @@ function words(s: string) {
   return normalizeText(s).replace(/[^a-z0-9 ]/g, " ").split(" ").filter((w) => w.length > 2 && !["obra", "del", "los", "las", "para"].includes(w));
 }
 
+const MIN_LARGO_OBRA = 4;
+
 /** Obra por código, nombre exacto, nombre contenido o palabras en común. */
 export function matchObra(texto: string | null, obras: ObraLite[]): ObraLite | null {
   if (!texto) return null;
@@ -51,7 +53,14 @@ export function matchObra(texto: string | null, obras: ObraLite[]): ObraLite | n
   if (byCode) return byCode;
   const exact = obras.find((o) => normalizeText(o.name) === t || (o.reference && normalizeText(`${o.name} ${o.reference}`) === t));
   if (exact) return exact;
-  const contains = obras.filter((o) => t.includes(normalizeText(o.name)) || normalizeText(o.name).includes(t));
+  // Con textos muy cortos el "contiene" y las palabras adivinan ("san" →
+  // "Sanatorio…"): por debajo de 4 letras solo vale código o nombre exacto.
+  const largo = (s: string) => s.replace(/[^a-z0-9]/g, "").length;
+  if (largo(t) < MIN_LARGO_OBRA) return null;
+  const contains = obras.filter((o) => {
+    const n = normalizeText(o.name);
+    return (largo(n) >= MIN_LARGO_OBRA && t.includes(n)) || n.includes(t);
+  });
   if (contains.length === 1) return contains[0];
   const q = new Set(words(texto));
   let best: { o: ObraLite; score: number } | null = null;
@@ -279,11 +288,13 @@ export async function pendingGroupNotices(): Promise<{ id: string; groupJid: str
     orderBy: { updatedAt: "desc" },
     take: 50,
   });
+  // Los pendientes (casi siempre ninguno) se traen completos en una sola
+  // consulta: uno por uno era un pedido HTTP por pedido con la base remota.
+  const ids = rows.filter((r) => r.grupoAvisado !== r.status).map((r) => r.id);
+  if (!ids.length) return [];
+  const orders = await prisma.purchaseOrder.findMany({ where: { id: { in: ids } }, include: ORDER_INCLUDE, orderBy: { updatedAt: "desc" } });
   const out: { id: string; groupJid: string; status: string; text: string | null }[] = [];
-  for (const r of rows) {
-    if (r.grupoAvisado === r.status) continue;
-    const o = await getOrder(r.id);
-    if (!o) continue;
+  for (const o of orders) {
     out.push({ id: o.id, groupJid: o.grupoJid!, status: o.status, text: groupStatusText(await serializeOrder(o, false)) });
   }
   return out;

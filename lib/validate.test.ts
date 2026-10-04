@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_MONTO_GS, normalizeMovimientoData, parseProjectInput, ValidationError } from "./validate";
+import { enlaceInvalido, esUrlSegura, MAX_MONTO_GS, normalizeMovimientoData, parseProjectInput, ValidationError } from "./validate";
 
 const base = {
   name: "Puente Río Claro",
@@ -18,6 +18,7 @@ describe("parseProjectInput", () => {
     expect(p.progress).toBe(51);
     expect(p.status).toBe("planificado");
     expect(p.code).toBeUndefined(); // sin "code" no se toca el que ya estaba
+    expect(p.sitioNombre).toBeUndefined(); // ídem el Sitio
     expect(p.coordinates).toBeNull();
   });
 
@@ -55,5 +56,33 @@ describe("normalizeMovimientoData", () => {
     expect(normalizeMovimientoData(undefined)).toEqual({ data: {} });
     expect(normalizeMovimientoData({ tipo: "Gasto", monto: "" })).toEqual({ data: { tipo: "Gasto", monto: "" } });
     expect(normalizeMovimientoData([1])).toHaveProperty("error");
+  });
+});
+
+describe("sitioNombre", () => {
+  it("vacío o null desasigna; ausente no toca", () => {
+    expect(parseProjectInput({ ...base, sitioNombre: "" }).sitioNombre).toBeNull();
+    expect(parseProjectInput({ ...base, sitioNombre: null }).sitioNombre).toBeNull();
+    expect(parseProjectInput({ ...base, sitioNombre: "  Cnel. Oviedo " }).sitioNombre).toBe("Cnel. Oviedo");
+  });
+});
+
+describe("enlaces (esUrlSegura / enlaceInvalido)", () => {
+  it("acepta solo http y https", () => {
+    expect(esUrlSegura("https://drive.google.com/x")).toBe(true);
+    expect(esUrlSegura("  HTTP://ejemplo.com ")).toBe(true);
+    expect(esUrlSegura("javascript:alert(1)")).toBe(false);
+    expect(esUrlSegura(" JavaScript:alert(1)")).toBe(false);
+    expect(esUrlSegura("data:text/html,<script>")).toBe(false);
+    expect(esUrlSegura("//evil.com")).toBe(false);
+    expect(esUrlSegura("www.ejemplo.com")).toBe(false);
+  });
+  it("data.url vacío o ausente está bien; texto u otro tipo raro no", () => {
+    expect(enlaceInvalido(undefined)).toBe(false);
+    expect(enlaceInvalido({})).toBe(false);
+    expect(enlaceInvalido({ url: "" })).toBe(false);
+    expect(enlaceInvalido({ url: "https://a.com" })).toBe(false);
+    expect(enlaceInvalido({ url: "javascript:alert(1)" })).toBe(true);
+    expect(enlaceInvalido({ url: 5 })).toBe(true);
   });
 });

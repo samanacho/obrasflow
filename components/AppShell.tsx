@@ -147,6 +147,12 @@ function useDropComprobante(activo: boolean) {
   return arrastrando;
 }
 
+// ── Menú lateral oculto (solo PC) ────────────────────────────────────────
+// Misma clave que lee el script de app/layout.tsx. 992 px es el corte de
+// CoreUI entre menú fijo (PC) y menú que se despliega encima (celular).
+const MENU_KEY = "obrasflow-menu";
+const esEscritorio = () => window.matchMedia("(min-width: 992px)").matches;
+
 export default function AppShell({
   children,
   crumbs,
@@ -164,16 +170,46 @@ export default function AppShell({
   const arrastrando = useDropComprobante(!pathname.startsWith("/agente-whatsapp") && !pathname.startsWith("/memby"));
 
   useEffect(() => {
-    const saved = (localStorage.getItem("obrasflow-theme") as "light" | "dark" | null) ?? "light";
+    let saved: "light" | "dark" = "light";
+    try {
+      saved = (localStorage.getItem("obrasflow-theme") as "light" | "dark" | null) ?? "light";
+    } catch {
+      // Sin acceso al almacenamiento (modo privado): tema claro.
+    }
     setTheme(saved);
     document.documentElement.setAttribute("data-coreui-theme", saved);
   }, []);
+
+  // Menú oculto en la PC: cada pantalla monta su propio AppShell, así que la
+  // preferencia se guarda para que no se vuelva a abrir al navegar. El
+  // script de app/layout.tsx marca <html data-menu-oculto> antes de pintar
+  // (ver globals.css) y acá se alinea el estado. En el celular el menú se
+  // abre y cierra solo, así que eso no se guarda.
+  useEffect(() => {
+    if (document.documentElement.hasAttribute("data-menu-oculto") && esEscritorio()) setSidebarVisible(false);
+  }, []);
+
+  function alternarMenu() {
+    const next = !sidebarVisible;
+    setSidebarVisible(next);
+    if (!esEscritorio()) return;
+    document.documentElement.toggleAttribute("data-menu-oculto", !next);
+    try {
+      localStorage.setItem(MENU_KEY, next ? "visible" : "oculto");
+    } catch {
+      // Sin acceso al almacenamiento (modo privado): vale hasta recargar la página.
+    }
+  }
 
   function toggleTheme() {
     const next = theme === "dark" ? "light" : "dark";
     setTheme(next);
     document.documentElement.setAttribute("data-coreui-theme", next);
-    localStorage.setItem("obrasflow-theme", next);
+    try {
+      localStorage.setItem("obrasflow-theme", next);
+    } catch {
+      // Modo privado: vale hasta recargar la página.
+    }
   }
 
   return (
@@ -218,7 +254,7 @@ export default function AppShell({
           })}
         </CSidebarNav>
         <CSidebarFooter className="border-top d-none d-lg-flex">
-          <CSidebarToggler onClick={() => setSidebarVisible(!sidebarVisible)} />
+          <CSidebarToggler onClick={alternarMenu} />
         </CSidebarFooter>
       </CSidebar>
 
@@ -228,7 +264,7 @@ export default function AppShell({
             {/* Visible también en escritorio: si el menú se oculta (con el
                 botón del pie del menú, o por error), tiene que haber una
                 forma de volver a abrirlo. */}
-            <CHeaderToggler onClick={() => setSidebarVisible(!sidebarVisible)} title={sidebarVisible ? "Ocultar menú" : "Mostrar menú"}>
+            <CHeaderToggler onClick={alternarMenu} title={sidebarVisible ? "Ocultar menú" : "Mostrar menú"}>
               <Icon icon={List} size={22} weight="bold" label={sidebarVisible ? "Ocultar menú" : "Mostrar menú"} />
             </CHeaderToggler>
             <CBreadcrumb className="mb-0 flex-grow-1">

@@ -35,6 +35,14 @@ describe("matchObra", () => {
     expect(matchObra("Sucursal", obras)).toBeNull();
     expect(matchObra(null, obras)).toBeNull();
   });
+  it("un texto muy corto no adivina por 'contiene' ni por palabras", () => {
+    const conSanatorio = [...obras, { id: "4", name: "Sanatorio Central", reference: null, code: null }, { id: "5", name: "Lago", reference: null, code: "SB" }];
+    expect(matchObra("san", conSanatorio)).toBeNull();
+    expect(matchObra("sur", conSanatorio)).toBeNull();
+    expect(matchObra("sb", conSanatorio)?.id).toBe("5"); // el código corto sigue valiendo
+    expect(matchObra("sanatorio", conSanatorio)?.id).toBe("4");
+    expect(matchObra("Obra Lago 2", conSanatorio)?.id).toBe("5");
+  });
 });
 
 describe("approvalCardBody", () => {

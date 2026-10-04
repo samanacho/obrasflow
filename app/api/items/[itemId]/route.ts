@@ -7,7 +7,7 @@ import { recomputeProjectSpent } from "@/lib/spent";
 import { logChanges } from "@/lib/history";
 import { appSource } from "@/lib/auth/server";
 import { fmtGs } from "@/lib/agent/format";
-import { normalizeMovimientoData } from "@/lib/validate";
+import { enlaceInvalido, ERROR_ENLACE, normalizeMovimientoData } from "@/lib/validate";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +51,16 @@ function describeEdit(
   return `${cfg?.icon ?? "📝"} ${cfg?.singular ?? "registro"} "${after.title}": ${parts.join(" · ")}`;
 }
 
+/** Un solo registro (lo usa la ficha de un pedido de compra para no traer todos los movimientos de la obra). */
+export async function GET(_req: NextRequest, { params }: Params) {
+  const item = await prisma.projectItem.findUnique({
+    where: { id: params.itemId },
+    include: { attachments: { select: ATTACHMENT_META_SELECT, orderBy: { createdAt: "desc" }, take: 1 } },
+  });
+  if (!item) return NextResponse.json({ error: "No encontrado." }, { status: 404 });
+  return NextResponse.json(serializeItem(item));
+}
+
 export async function PUT(req: NextRequest, { params }: Params) {
   try {
     const body = (await req.json()) as { title?: string; status?: string | null; data?: unknown };
@@ -72,25 +82,31 @@ export async function PUT(req: NextRequest, { params }: Params) {
       if ("error" in n) return NextResponse.json({ error: n.error }, { status: 400 });
       data = n.data;
     }
+    if (enlaceInvalido(data)) return NextResponse.json({ error: ERROR_ENLACE }, { status: 400 });
 
-    const updated = await prisma.projectItem.update({
-      where: { id: params.itemId },
-      data: {
-        title,
-        status: body.status === undefined ? existing.status : body.status,
-        data: (data as any) ?? existing.data,
-      },
-      include: { attachments: { select: ATTACHMENT_META_SELECT, orderBy: { createdAt: "desc" }, take: 1 } },
-    });
+    // Todo o nada: el registro, el Ejecutado de la obra y el monto del pedido
+    // de compra quedan iguales entre sí (mismo criterio que lib/items.ts).
+    const updated = await prisma.$transaction(async (tx) => {
+      const updated = await tx.projectItem.update({
+        where: { id: params.itemId },
+        data: {
+          title,
+          status: body.status === undefined ? existing.status : body.status,
+          data: (data as any) ?? existing.data,
+        },
+        include: { attachments: { select: ATTACHMENT_META_SELECT, orderBy: { createdAt: "desc" }, take: 1 } },
+      });
 
-    if (existing.kind === "change_order") {
-      await recomputeProjectSpent(existing.projectId);
-      // Si es el gasto de un pedido de compra pagado, el pedido muestra el mismo monto.
-      const monto = Number(asObj(updated.data).monto);
-      if (Number.isFinite(monto) && monto !== Number(asObj(existing.data).monto)) {
-        await prisma.purchaseOrder.updateMany({ where: { gastoItemId: existing.id, status: "pagado" }, data: { montoPagado: monto } });
+      if (existing.kind === "change_order") {
+        await recomputeProjectSpent(existing.projectId, tx);
+        // Si es el gasto de un pedido de compra pagado, el pedido muestra el mismo monto.
+        const monto = Number(asObj(updated.data).monto);
+        if (Number.isFinite(monto) && monto !== Number(asObj(existing.data).monto)) {
+          await tx.purchaseOrder.updateMany({ where: { gastoItemId: existing.id, status: "pagado" }, data: { montoPagado: monto } });
+        }
       }
-    }
+      return updated;
+    });
 
     const detail = describeEdit(existing.kind, existing, updated);
     if (detail) {
@@ -115,14 +131,18 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     if (existing.externalSource) {
       return NextResponse.json({ error: "Este registro viene de otra app y se corrige allá." }, { status: 400 });
     }
-    const deleted = await prisma.projectItem.delete({ where: { id: params.itemId } });
-    if (deleted.kind === "change_order") await recomputeProjectSpent(deleted.projectId);
-    // Era el gasto de un pedido de compra: el pedido vuelve a "por pagar" (la factura cargada se conserva).
-    if (deleted.kind === "change_order") {
-      await prisma.purchaseOrder
-        .updateMany({ where: { gastoItemId: deleted.id, status: "pagado" }, data: { status: "aprobado", gastoItemId: null, montoPagado: null, pagadoAt: null, grupoAvisado: "aprobado" } })
-        .catch((err) => console.error("No se pudo devolver el pedido de compra a 'por pagar':", err));
-    }
+    // Todo o nada: no queda un Ejecutado viejo ni un pedido "pagado" con un gasto que ya no existe.
+    await prisma.$transaction(async (tx) => {
+      const deleted = await tx.projectItem.delete({ where: { id: params.itemId } });
+      if (deleted.kind === "change_order") {
+        await recomputeProjectSpent(deleted.projectId, tx);
+        // Era el gasto de un pedido de compra: el pedido vuelve a "por pagar" (la factura cargada se conserva).
+        await tx.purchaseOrder.updateMany({
+          where: { gastoItemId: deleted.id, status: "pagado" },
+          data: { status: "aprobado", gastoItemId: null, montoPagado: null, pagadoAt: null, grupoAvisado: "aprobado" },
+        });
+      }
+    });
     if (existing.kind !== "activity") {
       const cfg = ITEM_KINDS[existing.kind];
       const monto = asObj(existing.data).monto;

@@ -8,7 +8,7 @@ import {
   CFormInput, CFormSelect, CButton, CRow, CCol, CBadge, CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell,
 } from "@coreui/react";
 import { CChartDoughnut, CChartLine } from "@coreui/react-chartjs";
-import { ArrowLeft, DownloadSimple, FileText } from "@phosphor-icons/react";
+import { ArrowLeft, Coins, DownloadSimple, FileText, Paperclip } from "@phosphor-icons/react";
 import Icon from "@/components/ui/Icon";
 import AppShell from "@/components/AppShell";
 import { MOVIMIENTO_TIPOS } from "@/lib/movimientos";
@@ -136,7 +136,7 @@ function EjecucionInner() {
 
   return (
     <AppShell crumbs={[{ label: "Ejecución Presupuestaria" }]}>
-      <h1 className="of-page-title">💰 Ejecución Presupuestaria</h1>
+      <h1 className="of-page-title d-flex align-items-center gap-2"><Icon icon={Coins} size={30} /> Ejecución Presupuestaria</h1>
       <p className="module-desc mb-4">Buscá una obra para revisar todos sus gastos ya cargados — en proceso o ya concluida.</p>
 
       <CCard className="mb-4">
@@ -397,7 +397,7 @@ function PlanillaGastosView({ project, items }: { project: ProjectDTO; items: Pr
                     <CTableDataCell className="mono">{fmtMoney(Number(i.data?.monto ?? 0))}</CTableDataCell>
                     <CTableDataCell>{i.data?.medioPago || "—"}</CTableDataCell>
                     <CTableDataCell>{i.status && <span className={"status-chip status-generic status-" + i.status.toLowerCase().replace(/\s+/g, "_")}>{i.status}</span>}</CTableDataCell>
-                    <CTableDataCell>{i.attachment || i.data?.comprobante ? "📎" : "—"}</CTableDataCell>
+                    <CTableDataCell>{i.attachment || i.data?.comprobante ? <Icon icon={Paperclip} size={16} label="Tiene comprobante" /> : "—"}</CTableDataCell>
                   </CTableRow>
                 ))}
               </CTableBody>
@@ -457,7 +457,7 @@ function ArchivosView({ items }: { items: ProjectItemDTO[] }) {
                       <div className="fw-semibold">{i.title}</div>
                       <div className="item-row-sub">{itemDate(i)} · {fmtMoney(Number(i.data?.monto ?? 0))}</div>
                       {i.data?.tipo && <div className="item-row-sub">{i.data.tipo}</div>}
-                      {i.attachment && <div className="item-row-notes">📄 {i.attachment.filename}</div>}
+                      {i.attachment && <div className="item-row-notes"><Icon icon={FileText} size={14} className="me-1" />{i.attachment.filename}</div>}
                       {!i.attachment && comprobante && !comprobanteEsImagen && <div className="item-row-notes">Comprobante: {comprobante}</div>}
                     </CCardBody>
                   </CCard>

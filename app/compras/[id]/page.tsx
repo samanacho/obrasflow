@@ -75,6 +75,9 @@ export default function PedidoDetalle({ params }: { params: { id: string } }) {
   const [guardando, setGuardando] = useState(false);
 
   const [pagando, setPagando] = useState(false);
+  // Mientras se aprueba, el botón queda deshabilitado: un doble toque mandaba
+  // dos aprobaciones y la segunda volvía con un error falso.
+  const [aprobando, setAprobando] = useState(false);
   const [facturando, setFacturando] = useState(false);
   const [gasto, setGasto] = useState<ProjectItemDTO | null>(null);
   const [verImagen, setVerImagen] = useState<string | null>(null);
@@ -98,14 +101,14 @@ export default function PedidoDetalle({ params }: { params: { id: string } }) {
   }, [id]);
   useEffect(() => { cargar(); }, [cargar]);
 
-  // El comprobante ya pasó al gasto de la obra: se busca para mostrarlo.
+  // El comprobante ya pasó al gasto de la obra: se busca ese solo gasto para mostrarlo.
   useEffect(() => {
-    if (!order?.gastoItemId || !order.projectId) { setGasto(null); return; }
-    fetch(`/api/projects/${order.projectId}/items?kind=change_order`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((items: ProjectItemDTO[]) => setGasto(items.find((i) => i.id === order.gastoItemId) ?? null))
+    if (!order?.gastoItemId) { setGasto(null); return; }
+    fetch(`/api/items/${order.gastoItemId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((item: ProjectItemDTO | null) => setGasto(item))
       .catch(() => setGasto(null));
-  }, [order?.gastoItemId, order?.projectId, order?.facturaAt]);
+  }, [order?.gastoItemId, order?.facturaAt]);
 
   const pasados = useMemo(() => (order?.lines ?? []).filter((l) => l.presupuesto && l.presupuesto.restante < 0), [order]);
   // Pedido aprobado: su cantidad ya está sumada en "pedido" del presupuesto; al editar no se cuenta dos veces.
@@ -175,7 +178,7 @@ export default function PedidoDetalle({ params }: { params: { id: string } }) {
   }
 
   async function aprobar() {
-    if (!order) return;
+    if (!order || aprobando) return;
     if (pasados.length) {
       const ok = await confirmar({
         titulo: "Se pasa del presupuesto",
@@ -184,12 +187,15 @@ export default function PedidoDetalle({ params }: { params: { id: string } }) {
       });
       if (!ok) return;
     }
+    setAprobando(true);
     try {
       setOrder(await postAccion(order.id, "aprobar"));
       notificar(`Pedido #${order.numero} aprobado`);
     } catch (err: any) {
       notificar(err.message, "error");
       cargar();
+    } finally {
+      setAprobando(false);
     }
   }
 
@@ -249,8 +255,8 @@ export default function PedidoDetalle({ params }: { params: { id: string } }) {
         : "Revisá los materiales y cómo quedan contra el presupuesto.",
       acciones: (
         <>
-          <CButton color="secondary" variant="outline" onClick={rechazar} className="d-inline-flex align-items-center gap-1"><Icon icon={X} size={18} /> Rechazar</CButton>
-          <CButton color="primary" onClick={aprobar} className="d-inline-flex align-items-center gap-1"><Icon icon={Check} size={18} weight="bold" /> Aprobar</CButton>
+          <CButton color="secondary" variant="outline" onClick={rechazar} disabled={aprobando} className="d-inline-flex align-items-center gap-1"><Icon icon={X} size={18} /> Rechazar</CButton>
+          <CButton color="primary" onClick={aprobar} disabled={aprobando} className="d-inline-flex align-items-center gap-1"><Icon icon={Check} size={18} weight="bold" /> {aprobando ? "Aprobando…" : "Aprobar"}</CButton>
         </>
       ),
     };

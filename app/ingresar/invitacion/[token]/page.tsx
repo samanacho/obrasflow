@@ -21,7 +21,8 @@ function limpiarUsuario(u: string): string {
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
-    .replace(/[^a-z0-9._-]/g, "");
+    .replace(/[^a-z0-9._-]/g, "")
+    .slice(0, 40); // mismo tope que el servidor (lib/auth/password.ts)
 }
 
 const MIN_CONTRASENA = 8;

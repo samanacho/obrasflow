@@ -102,9 +102,19 @@ export function serializeHistoryEntry(h: ContractorHistoryEntry): ContractorHist
   };
 }
 
-export function serializeContractor(c: Contractor & { history?: { rating: number | null }[] }): ContractorDTO {
+export function serializeContractor(
+  c: Contractor & {
+    history?: { rating: number | null }[];
+    /** Ya calculados en la base (listado de contratistas): así no se traen todas las calificaciones. */
+    resumenHistorial?: { avgRating: number | null; count: number };
+  }
+): ContractorDTO {
   const rated = (c.history ?? []).filter((h) => typeof h.rating === "number");
-  const avgRating = rated.length ? rated.reduce((sum, h) => sum + (h.rating ?? 0), 0) / rated.length : null;
+  const avgRating = c.resumenHistorial
+    ? c.resumenHistorial.avgRating
+    : rated.length
+      ? rated.reduce((sum, h) => sum + (h.rating ?? 0), 0) / rated.length
+      : null;
   return {
     id: c.id,
     name: c.name,
@@ -119,7 +129,7 @@ export function serializeContractor(c: Contractor & { history?: { rating: number
     status: c.status as ContractorDTO["status"],
     notes: c.notes,
     avgRating,
-    historyCount: c.history?.length ?? 0,
+    historyCount: c.resumenHistorial?.count ?? c.history?.length ?? 0,
     createdAt: c.createdAt.toISOString(),
   };
 }
@@ -193,6 +203,8 @@ export function serializeSupplier(s: Supplier): SupplierDTO {
 
 type SpecWithRecipe = PoleSpec & {
   lots?: { id: string }[];
+  /** Cantidad de lotes contada en la base (listado): así no se traen los ids. */
+  _count?: { lots?: number };
   recipeItems?: (PoleRecipeItem & { material: RawMaterial })[];
 };
 
@@ -209,7 +221,7 @@ export function serializePoleSpec(s: SpecWithRecipe): PoleSpecDTO {
     normaAnde: s.normaAnde,
     notas: s.notas,
     activo: s.activo,
-    lotCount: s.lots?.length ?? 0,
+    lotCount: s._count?.lots ?? s.lots?.length ?? 0,
     recipeCount: recipeItems.length,
     costoEstimadoPorPosteGs: recipeItems.reduce((sum, ri) => sum + Number(ri.cantidadPorPoste) * Number(ri.material.costoUnitarioGs), 0),
     createdAt: s.createdAt.toISOString(),
@@ -228,12 +240,15 @@ export function serializeRawMaterial(
     recipeItems?: { id: string }[];
     consumptions?: { cantidadTotal: any; costoTotalGs: any }[];
     purchases?: { cantidad: any }[];
+    /** Ya sumados en la base (listado del catálogo): así no se traen todos los consumos y compras. */
+    _count?: { recipeItems?: number };
+    sumas?: { consumido: number; costoConsumido: number; comprado: number };
   }
 ): RawMaterialDTO {
   const consumptions = m.consumptions ?? [];
   const purchases = m.purchases ?? [];
-  const consumidoTotal = consumptions.reduce((sum, c) => sum + Number(c.cantidadTotal), 0);
-  const compradoTotal = purchases.reduce((sum, p) => sum + Number(p.cantidad), 0);
+  const consumidoTotal = m.sumas?.consumido ?? consumptions.reduce((sum, c) => sum + Number(c.cantidadTotal), 0);
+  const compradoTotal = m.sumas?.comprado ?? purchases.reduce((sum, p) => sum + Number(p.cantidad), 0);
   return {
     id: m.id,
     nombre: m.nombre,
@@ -242,9 +257,9 @@ export function serializeRawMaterial(
     proveedor: m.proveedor,
     notas: m.notas,
     activo: m.activo,
-    recipeCount: m.recipeItems?.length ?? 0,
+    recipeCount: m._count?.recipeItems ?? m.recipeItems?.length ?? 0,
     consumidoTotal,
-    costoTotalConsumidoGs: consumptions.reduce((sum, c) => sum + Number(c.costoTotalGs), 0),
+    costoTotalConsumidoGs: m.sumas?.costoConsumido ?? consumptions.reduce((sum, c) => sum + Number(c.costoTotalGs), 0),
     compradoTotal,
     stockDisponible: compradoTotal - consumidoTotal,
     createdAt: m.createdAt.toISOString(),

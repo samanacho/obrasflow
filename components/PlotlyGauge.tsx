@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useIsDarkTheme } from "@/lib/useIsDarkTheme";
 
 /**
  * Gauge de ejecución presupuestaria con Plotly (indicator + gauge) — un tipo
@@ -20,6 +21,8 @@ export default function PlotlyGauge({
   color: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  // Se vuelve a dibujar al cambiar de tema, para que los colores acompañen.
+  const isDark = useIsDarkTheme();
 
   useEffect(() => {
     let cancelled = false;
@@ -29,7 +32,6 @@ export default function PlotlyGauge({
       if (cancelled || !ref.current) return;
       plotted = Plotly;
 
-      const isDark = document.documentElement.getAttribute("data-coreui-theme") === "dark";
       const inkColor = isDark ? "#e6e2d9" : "#33312c";
       const gridColor = isDark ? "#3d3930" : "#e1ddd3";
 
@@ -69,7 +71,7 @@ export default function PlotlyGauge({
       cancelled = true;
       if (plotted && ref.current) plotted.purge(ref.current);
     };
-  }, [value, max, color]);
+  }, [value, max, color, isDark]);
 
   return <div ref={ref} role="img" aria-label={`${label}: ${value}%`} />;
 }

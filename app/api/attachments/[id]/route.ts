@@ -22,6 +22,10 @@ export async function GET(_req: NextRequest, { params }: Params) {
       // los links a comprobantes externos.
       "Content-Disposition": `inline; filename="${encodeURIComponent(attachment.filename)}"`,
       "Cache-Control": "private, max-age=3600",
+      // Un HTML/SVG subido se muestra como archivo, sin ejecutar nada en el dominio de la app.
+      // Al PDF no se le pone sandbox: Chrome bloquea su visor dentro de un documento con sandbox.
+      "X-Content-Type-Options": "nosniff",
+      ...(attachment.mimeType === "application/pdf" ? {} : { "Content-Security-Policy": "sandbox" }),
     },
   });
 }

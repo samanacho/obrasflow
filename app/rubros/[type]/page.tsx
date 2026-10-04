@@ -5,13 +5,13 @@ import Link from "next/link";
 import { CCard, CCardBody, CCardHeader, CBadge, CButton } from "@coreui/react";
 import { PencilSimple, Plus, Trash } from "@phosphor-icons/react";
 import Icon from "@/components/ui/Icon";
+import { TIPO_OBRA_ICON } from "@/components/ui/kindIcons";
 import AppShell from "@/components/AppShell";
 import NewProjectWizard from "@/components/NewProjectWizard";
 import { confirmarAccion } from "@/lib/ui/alerts";
 import type { ProjectDTO, ProjectStatus, ProjectType } from "@/lib/types";
 
 const TYPE_LABEL: Record<ProjectType, string> = { civil: "Civil", electrico: "Eléctrico", vial: "Vial", otro: "Otro" };
-const TYPE_ICON: Record<ProjectType, string> = { civil: "🏢", electrico: "⚡", vial: "🛣️", otro: "🔧" };
 const VALID_TYPES: string[] = ["civil", "electrico", "vial", "otro"];
 
 const COLUMNS: { key: string; label: string; statuses: ProjectStatus[] }[] = [
@@ -124,7 +124,7 @@ export default function RubroDetailPage({ params }: { params: { type: string } }
         </CButton>
       }
     >
-      <h1 className="of-page-title">{TYPE_ICON[t]} Obras — {TYPE_LABEL[t]}</h1>
+      <h1 className="of-page-title d-flex align-items-center gap-2"><Icon icon={TIPO_OBRA_ICON[t]} size={30} /> Obras — {TYPE_LABEL[t]}</h1>
       <p className="module-desc mb-4">
         {projects.length} obra{projects.length === 1 ? "" : "s"} de este rubro, clasificadas por estado.
       </p>
@@ -165,7 +165,7 @@ export default function RubroDetailPage({ params }: { params: { type: string } }
                                   href={`https://www.openstreetmap.org/?mlat=${coords.lat}&mlon=${coords.lng}#map=17/${coords.lat}/${coords.lng}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  title="📍 Ver ubicación en el mapa ↗"
+                                  title="Ver ubicación en el mapa (se abre aparte)"
                                   className="rubro-project-city-link"
                                   onClick={(e) => e.stopPropagation()}
                                 >

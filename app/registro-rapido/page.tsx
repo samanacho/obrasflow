@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { CCard, CCardBody, CBadge, CButton, CFormSelect } from "@coreui/react";
-import { CheckCircle, Trash } from "@phosphor-icons/react";
+import { CheckCircle, Lightning, Paperclip, Trash } from "@phosphor-icons/react";
 import Icon from "@/components/ui/Icon";
 import AppShell from "@/components/AppShell";
 import { confirmarAccion, notificar } from "@/lib/ui/alerts";
@@ -176,7 +176,7 @@ export default function RegistroRapidoPage() {
               {item.nota && <div className="mt-1">{item.nota}</div>}
               {item.comprobanteMediaId && (
                 <a href={`/api/inbound-media/${item.comprobanteMediaId}`} target="_blank" rel="noopener noreferrer" className="small d-inline-block mt-1">
-                  📎 Ver comprobante
+                  <Icon icon={Paperclip} size={14} className="me-1" />Ver comprobante
                 </a>
               )}
             </div>
@@ -232,7 +232,7 @@ export default function RegistroRapidoPage() {
 
   return (
     <AppShell crumbs={[{ label: "Registro rápido" }]}>
-      <h1 className="of-page-title">⚡ Registro rápido</h1>
+      <h1 className="of-page-title d-flex align-items-center gap-2"><Icon icon={Lightning} size={30} /> Registro rápido</h1>
       <p className="module-desc mb-4">
         Todo lo que fuiste anotando al momento (con el botón &quot;Registro rápido&quot; de arriba), esperando a que lo
         clasifiques. Cada captura ya tiene el monto, la fecha y el medio de pago tal cual pasó — al cargarlo acá como
@@ -254,7 +254,7 @@ export default function RegistroRapidoPage() {
             Pendientes {pendientes.length > 0 && <CBadge color="warning">{pendientes.length}</CBadge>}
           </h2>
           {pendientes.length === 0 ? (
-            <p className="empty-col mb-4">No tenés capturas sin clasificar — al día. 🎉</p>
+            <p className="empty-col mb-4">No tenés capturas sin clasificar: estás al día.</p>
           ) : (
             <div className="d-flex flex-column gap-3 mb-4">
               {pendientes.map(renderCard)}

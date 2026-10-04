@@ -7,8 +7,9 @@ import {
   CForm, CFormLabel, CFormInput, CFormSelect, CFormTextarea,
   CBadge, CAlert, CRow, CCol,
 } from "@coreui/react";
-import { ArrowsLeftRight, Briefcase, CalendarBlank, Plus, User } from "@phosphor-icons/react";
+import { ArrowsLeftRight, Briefcase, CalendarBlank, Package, Plus, User } from "@phosphor-icons/react";
 import Icon from "@/components/ui/Icon";
+import MontoInput from "@/components/ui/MontoInput";
 import AppShell from "@/components/AppShell";
 import { confirmarAccion } from "@/lib/ui/alerts";
 import type { ToolDTO, ToolInput, ToolStatus, SupplierDTO } from "@/lib/types";
@@ -171,7 +172,7 @@ export default function InventarioPage() {
         </CButton>
       }
     >
-      <h1 className="of-page-title">🧰 Inventario de herramientas</h1>
+      <h1 className="of-page-title d-flex align-items-center gap-2"><Icon icon={Package} size={30} /> Inventario de herramientas</h1>
       <p className="module-desc mb-4">
         Herramientas y equipos de la empresa. Al cargar una con costo unitario, se genera (o actualiza) automáticamente
         un <Link href="/movimientos">movimiento general</Link> por ese gasto, que ya se descuenta de &quot;Costos vs. beneficios&quot; en Inicio.
@@ -266,7 +267,7 @@ export default function InventarioPage() {
             <CRow className="mb-3 g-2">
               <CCol>
                 <CFormLabel>Cantidad</CFormLabel>
-                <CFormInput type="number" min={1} step={1} value={form.cantidad} onChange={(e) => setForm({ ...form, cantidad: Number(e.target.value) })} required />
+                <CFormInput type="number" inputMode="numeric" min={1} step={1} value={form.cantidad} onChange={(e) => setForm({ ...form, cantidad: Number(e.target.value) })} required />
               </CCol>
               <CCol>
                 <CFormLabel>Estado</CFormLabel>
@@ -277,11 +278,11 @@ export default function InventarioPage() {
             </CRow>
             <CRow className="mb-1 g-2">
               <CCol>
-                <CFormLabel>Costo unitario (Gs.)</CFormLabel>
-                <CFormInput
-                  type="number" min={0}
+                <CFormLabel htmlFor="herramienta-costo">Costo unitario (Gs.)</CFormLabel>
+                <MontoInput
+                  id="herramienta-costo"
                   value={form.costoUnitarioGs ?? ""}
-                  onChange={(e) => setForm({ ...form, costoUnitarioGs: e.target.value === "" ? null : Number(e.target.value) })}
+                  onChange={(v) => setForm({ ...form, costoUnitarioGs: v })}
                   placeholder="Opcional"
                 />
               </CCol>

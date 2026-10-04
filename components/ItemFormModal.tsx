@@ -218,8 +218,9 @@ export default function ItemFormModal({
         <CModalBody>
           {error && <CAlert color="danger">{error}</CAlert>}
           <div className="mb-3">
-            <CFormLabel>{cfg.titleLabel}</CFormLabel>
+            <CFormLabel htmlFor="item-titulo">{cfg.titleLabel}</CFormLabel>
             <CFormInput
+              id="item-titulo"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
@@ -239,19 +240,22 @@ export default function ItemFormModal({
           </div>
           {cfg.statusOptions && (
             <div className="mb-3">
-              <CFormLabel>Estado</CFormLabel>
-              <CFormSelect value={status} onChange={(e) => setStatus(e.target.value)}>
+              <CFormLabel htmlFor="item-estado">Estado</CFormLabel>
+              <CFormSelect id="item-estado" value={status} onChange={(e) => setStatus(e.target.value)}>
                 {cfg.statusOptions.map((s) => <option key={s} value={s}>{s}</option>)}
               </CFormSelect>
             </div>
           )}
-          {cfg.fields.filter((f) => !f.showIf || f.showIf(data)).map((f: ItemField) => (
+          {cfg.fields.filter((f) => !f.showIf || f.showIf(data)).map((f: ItemField) => {
+            // Mapa y zona de archivo son controles compuestos: su etiqueta no apunta a un solo campo.
+            const id = f.type === "location" || f.type === "file" ? undefined : `item-${f.key}`;
+            return (
             <div className="mb-3" key={f.key}>
-              <CFormLabel>{f.label}</CFormLabel>
+              <CFormLabel htmlFor={id}>{f.label}</CFormLabel>
               {f.type === "textarea" ? (
-                <CFormTextarea rows={3} value={data[f.key] ?? ""} onChange={(e) => setField(f.key, e.target.value)} required={f.required} />
+                <CFormTextarea id={id} rows={3} value={data[f.key] ?? ""} onChange={(e) => setField(f.key, e.target.value)} required={f.required} />
               ) : f.type === "contractor" ? (
-                <CFormSelect value={data[f.key] ?? ""} onChange={(e) => setContractorField(f.key, e.target.value)} required={f.required}>
+                <CFormSelect id={id} value={data[f.key] ?? ""} onChange={(e) => setContractorField(f.key, e.target.value)} required={f.required}>
                   <option value="">Seleccioná un contratista…</option>
                   {contractors.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -260,14 +264,14 @@ export default function ItemFormModal({
                   ))}
                 </CFormSelect>
               ) : f.type === "supplier" ? (
-                <CFormSelect value={data[f.key] ?? ""} onChange={(e) => setSupplierField(f.key, e.target.value)} required={f.required}>
+                <CFormSelect id={id} value={data[f.key] ?? ""} onChange={(e) => setSupplierField(f.key, e.target.value)} required={f.required}>
                   <option value="">Seleccioná un proveedor…</option>
                   {suppliers.map((s) => (
                     <option key={s.id} value={s.id}>{s.name}{s.city ? ` — ${s.city}` : ""}</option>
                   ))}
                 </CFormSelect>
               ) : f.type === "quote" ? (
-                <CFormSelect value={data[f.key] ?? ""} onChange={(e) => setQuoteField(f.key, e.target.value)} required={f.required}>
+                <CFormSelect id={id} value={data[f.key] ?? ""} onChange={(e) => setQuoteField(f.key, e.target.value)} required={f.required}>
                   <option value="">Seleccioná una cotización…</option>
                   {quotes.map((q) => (
                     <option key={q.id} value={q.id}>
@@ -276,13 +280,14 @@ export default function ItemFormModal({
                   ))}
                 </CFormSelect>
               ) : f.type === "select" ? (
-                <CFormSelect value={data[f.key] ?? ""} onChange={(e) => setField(f.key, e.target.value)} required={f.required}>
+                <CFormSelect id={id} value={data[f.key] ?? ""} onChange={(e) => setField(f.key, e.target.value)} required={f.required}>
                   <option value="">Seleccioná…</option>
                   {f.options?.map((o) => <option key={o} value={o}>{o}</option>)}
                 </CFormSelect>
               ) : f.type === "select-search" ? (
                 <>
                   <CFormInput
+                    id={id}
                     list={`${f.key}-suggestions`}
                     value={data[f.key] ?? ""}
                     onChange={(e) => setField(f.key, e.target.value)}
@@ -300,6 +305,7 @@ export default function ItemFormModal({
                 />
               ) : f.type === "money" ? (
                 <MontoInput
+                  id={id}
                   value={data[f.key]}
                   onChange={(v) => setField(f.key, v ?? "")}
                   required={f.required}
@@ -316,10 +322,11 @@ export default function ItemFormModal({
                   onToggleRemove={() => setRemoveAttachment(true)}
                 />
               ) : (
-                <CFormInput type={f.type} value={data[f.key] ?? ""} onChange={(e) => setField(f.key, e.target.value)} required={f.required} placeholder={f.placeholder} />
+                <CFormInput id={id} type={f.type} value={data[f.key] ?? ""} onChange={(e) => setField(f.key, e.target.value)} required={f.required} placeholder={f.placeholder} />
               )}
             </div>
-          ))}
+            );
+          })}
           {cfg.fields.some((f) => f.type === "contractor") && contractors.length === 0 && (
             <p className="form-hint">No hay contratistas activos todavía. <Link href="/contratistas">Cargá uno en el directorio</Link> primero.</p>
           )}

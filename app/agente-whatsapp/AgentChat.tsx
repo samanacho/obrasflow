@@ -4,6 +4,7 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { CButton, CFormTextarea, CSpinner } from "@coreui/react";
 import { dayjs, TZ } from "@/lib/dayjs";
 import MembyAvatar from "./MembyAvatar";
+import { useVisiblePolling } from "./useVisiblePolling";
 
 // Chat con Memby dentro de /agente-whatsapp (modo local). Es la misma
 // conversación que el chat "Tú" de WhatsApp: lo que se escribe acá se envía
@@ -35,6 +36,9 @@ const SUGGESTIONS = [
   "¿Qué tengo pendiente de confirmar?",
   "Dame un resumen general",
 ];
+
+/** Cuánto quedan apagados Confirmar/Descartar esperando que la propuesta cambie de estado. */
+const ANSWER_WAIT_MS = 30_000;
 
 const ACCEPT = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 const MAX_FILE = 4 * 1024 * 1024;
@@ -126,11 +130,7 @@ export default function AgentChat({ connected }: { connected: boolean }) {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-    const id = setInterval(load, 2500);
-    return () => clearInterval(id);
-  }, [load]);
+  useVisiblePolling(load, 2500);
 
   // Scroll al final cuando llega algo nuevo.
   useEffect(() => {
@@ -157,9 +157,26 @@ export default function AgentChat({ connected }: { connected: boolean }) {
     return () => clearTimeout(t);
   }, [messages, loaded]);
 
-  async function send(text: string) {
+  // Propuestas ya respondidas (id → cuándo). Los botones siguen apagados hasta
+  // que el chat traiga el estado nuevo: si se reactivaban antes, un segundo
+  // toque mandaba otro "OK código".
+  const [answered, setAnswered] = useState<Record<string, number>>({});
+  const awaitingAnswer = (id: string) => answered[id] !== undefined && Date.now() - answered[id] < ANSWER_WAIT_MS;
+  async function answer(id: string, text: string) {
+    setAnswered((a) => ({ ...a, [id]: Date.now() }));
+    if (!(await send(text))) {
+      // No salió: se puede volver a intentar.
+      setAnswered((a) => {
+        const rest = { ...a };
+        delete rest[id];
+        return rest;
+      });
+    }
+  }
+
+  async function send(text: string): Promise<boolean> {
     const t = text.trim();
-    if (!t) return;
+    if (!t) return false;
     setSending(true);
     setError(null);
     try {
@@ -173,8 +190,10 @@ export default function AgentChat({ connected }: { connected: boolean }) {
       setDraft("");
       setWaitingReply(true);
       setTimeout(load, 1200);
+      return true;
     } catch (err) {
       setError((err as Error).message);
+      return false;
     } finally {
       setSending(false);
     }
@@ -289,10 +308,10 @@ export default function AgentChat({ connected }: { connected: boolean }) {
                       <WaText text={cleanBot(m.text)} />
                       {p.status === "pendiente" && p.code && (
                         <div className="memby-ticket-actions">
-                          <CButton size="sm" color="success" disabled={sending || !connected} onClick={() => send(`OK ${p.code}`)}>
+                          <CButton size="sm" color="success" disabled={sending || !connected || awaitingAnswer(p.id)} onClick={() => answer(p.id, `OK ${p.code}`)}>
                             ✅ Confirmar
                           </CButton>
-                          <CButton size="sm" color="secondary" variant="outline" disabled={sending || !connected} onClick={() => send(`NO ${p.code}`)}>
+                          <CButton size="sm" color="secondary" variant="outline" disabled={sending || !connected || awaitingAnswer(p.id)} onClick={() => answer(p.id, `NO ${p.code}`)}>
                             Descartar
                           </CButton>
                           <span className="small text-body-secondary">código {p.code}</span>

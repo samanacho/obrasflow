@@ -9,8 +9,6 @@ Panel de gestión de proyectos de obras civiles, eléctricas y viales — Next.j
 - **Postgres** — pensado para [Neon](https://neon.tech) o Vercel Postgres (ambos son Postgres serverless compatibles con Prisma).
 - **Bootstrap 5 + CoreUI** (`@coreui/react`) — admin template open source elegido tras comparar AdminLTE, Tabler y CoreUI; se usó CoreUI por tener componentes React reales en vez de HTML/jQuery estático. Layout tipo Odoo: sidebar izquierdo persistente ([components/AppShell.tsx](components/AppShell.tsx)) + breadcrumbs, en vez de las pestañas horizontales de la primera versión.
 
-El prototipo estático original (un solo `index.html` con datos embebidos) quedó en [`legacy/index.html`](legacy/index.html) como referencia.
-
 ## Sin diálogos nativos del navegador ([components/ConfirmDialog.tsx](components/ConfirmDialog.tsx), [components/Toast.tsx](components/Toast.tsx))
 
 Ningún `window.confirm()` ni `window.alert()` en toda la app. El motivo: esos diálogos nativos pueden quedar silenciados sin ningún aviso (el navegador los bloquea solo después de varios usos seguidos en la misma pestaña, o una extensión los suprime) — ahí el botón que los dispara "no hace nada" y no queda ningún rastro de error. Se reemplazaron por:
@@ -70,35 +68,31 @@ prisma/
 
 ## Desarrollo local
 
-1. **Base de datos**: creá un proyecto en [Neon](https://neon.tech) (tiene capa gratuita) o un Vercel Postgres storage. Copiá las connection strings.
-2. Copiá `.env.example` a `.env` y completá `DATABASE_URL` (pooled) y `DIRECT_URL` (directa, la usa Prisma para migraciones):
+En esta PC la app corre con su **propia base local** (carpeta `.local-db/`), nunca contra la de producción. El detalle completo (producción, previews, CI y login) está en [docs/entorno.md](docs/entorno.md).
 
-   ```bash
-   cp .env.example .env
-   ```
-
-3. Instalá dependencias:
+1. Instalá dependencias:
 
    ```bash
    npm install
    ```
 
-4. Creá las tablas y cargá los datos de ejemplo:
+2. Arrancá el modo local completo (sección siguiente):
 
    ```bash
-   npm run db:migrate
-   npm run db:seed
+   npm run local
    ```
 
-5. Corré el servidor:
+   La primera vez crea la base local, sus tablas y carga obras de ejemplo. Además escribe en `.env.local` la conexión a esa base (`POSTGRES_PRISMA_URL` y `POSTGRES_URL_NON_POOLING`, los nombres que usa `prisma/schema.prisma`).
 
-   ```bash
-   npm run dev
-   ```
+   **Si Memby de producción está prendido**, usá `npm run local -- --sin-conector`: los dos conectores comparten la sesión de WhatsApp y se pisarían (ver [worker/CLAUDE.md](worker/CLAUDE.md)).
 
-   Abrí `http://localhost:3000`.
+3. Abrí `http://localhost:3000`.
 
-Otros comandos útiles: `npm run db:studio` (explorador visual de la base) y `npm run build` (build de producción, corre `prisma generate` antes).
+Variables de entorno: van en `.env.local` (git lo ignora); [`.env.example`](.env.example) lista cuáles existen. No se usa un archivo `.env`.
+
+Otros comandos: `npm test` (tests, sin base ni red) y `npm run build` (compilación de producción; corre `prisma generate` antes).
+
+> **Cuidado**: `npm run db:seed` **borra todas las obras** de la base y carga las de ejemplo. Por eso se niega a correr contra una base que no sea de esta PC. No hace falta correrlo a mano: `npm run local` lo hace solo, la primera vez.
 
 ## Modo local completo (esta PC)
 
@@ -110,30 +104,30 @@ Levanta todo sin Vercel ni base en la nube: PostgreSQL embebido (`.local-db/`, p
 | `npm run local:prod` | Modo **prod**: compila (`npm run build`) solo si el código cambió y sirve lo compilado. |
 | `npm run local:web -- --dev --port=3100` | Solo el servidor web (con la base ya corriendo). Útil para pruebas en otro puerto. |
 
-Opciones de `scripts/local.mjs`: `--dev` / `--prod` (o `OBRASFLOW_MODO=dev|prod`), `--port=3000`, `--sin-conector`.
+Opciones de `scripts/local.mjs`: `--dev` / `--prod` (o `OBRASFLOW_MODO=dev|prod`), `--port=3000`, `--sin-conector` (no levanta WhatsApp), `--sin-web` (no levanta la app; solo la base y, si no se pide `--sin-conector`, el conector).
+
+Al arrancar, `scripts/local.mjs` lleva la base local al esquema con `prisma db push` (solo agrega lo que falta).
 
 - **Salud**: `GET /__salud` devuelve el estado de la app, la base y el conector (JSON; 200 si la app y la base andan).
 - **Logs**: una línea por evento, con hora y origen (`local`, `web`, `whatsapp`).
 - **Conector**: se reinicia solo cuando cambian archivos de `worker/` o de `lib/` que el conector importa; la sesión vinculada (`.baileys-auth/`) se conserva.
 - **Apagado**: Ctrl+C apaga en orden la app, el conector y la base (en Windows se les pide por IPC y, si no responden en 8 s, se cortan con `taskkill /T`). Si el orquestador muere de golpe, la app y el conector se apagan solos; si la base queda corriendo, el próximo arranque la reutiliza.
-- **Arranque con Windows**: `scripts/start-local.cmd [dev|prod]` en un bucle que reinicia todo si se cae, con log en `logs/conector-whatsapp.log` (rota a `.anterior` al pasar 10 MB).
+- **Arranque con Windows**: `scripts/start-local.cmd [dev|prod]` levanta **solo la base local** (`--sin-web --sin-conector`) en un bucle que la reinicia si se cae, con log en `logs/conector-whatsapp.log` (rota a `.anterior` al pasar 10 MB). La app y Memby se arrancan aparte; el porqué está en [docs/entorno.md](docs/entorno.md).
 
 ## Deploy en Vercel
 
-1. Subí este repo a GitHub/GitLab y hacé "Import Project" en [vercel.com](https://vercel.com).
-2. En **Environment Variables** del proyecto en Vercel, agregá `DATABASE_URL` y `DIRECT_URL` con los valores de tu base (Neon o Vercel Postgres — si usás Vercel Postgres, podés conectarlo directo desde el marketplace de integraciones y las variables se cargan solas).
-3. El build command ya está fijado en [`vercel.json`](vercel.json):
+Ya está armado; el detalle está en [docs/entorno.md](docs/entorno.md). En resumen:
 
-   ```
-   prisma generate && prisma migrate deploy && next build
-   ```
+- **Producción** (https://obrasflow-app.vercel.app) se despliega sola con cada merge a `main`. Cada rama subida a GitHub tiene su **preview**, con su propia copia de la base.
+- **Base**: Neon, conectada por la integración de Vercel, que carga sola las variables `POSTGRES_PRISMA_URL` (con pooling) y `POSTGRES_URL_NON_POOLING` (directa). [`scripts/resolve-db-env.sh`](scripts/resolve-db-env.sh) elige cuáles usar (también acepta `POSTGRES_URL` o `DATABASE_URL` si faltan las anteriores).
+- **Build** ([`vercel.json`](vercel.json)):
 
-   Esto aplica las migraciones pendientes en cada deploy, así producción queda siempre con el schema al día.
-4. Deploy. Si es la primera vez, corré el seed una sola vez apuntando `DATABASE_URL`/`DIRECT_URL` de producción en tu máquina:
+  ```
+  . ./scripts/resolve-db-env.sh && prisma generate && prisma db push --skip-generate && next build
+  ```
 
-   ```bash
-   npm run db:seed
-   ```
+  No hay migraciones versionadas (no existe `prisma/migrations`): `prisma db push` lleva la base al esquema de `prisma/schema.prisma`. Va **sin `--accept-data-loss`**: si un cambio de esquema fuera a borrar datos, el deploy falla en vez de borrarlos. Por eso los cambios de esquema son solo aditivos (agregar tablas o columnas opcionales). Nunca agregues ese flag.
+- Contra la base de producción no se corre nada a mano: ni el seed ni `prisma db push` ni `prisma migrate`.
 
 ## API
 

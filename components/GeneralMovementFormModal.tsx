@@ -115,12 +115,13 @@ export default function GeneralMovementFormModal({
           {error && <CAlert color="danger">{error}</CAlert>}
           <CRow className="mb-3 g-2">
             <CCol md={6}>
-              <CFormLabel>Fecha</CFormLabel>
-              <CFormInput type="date" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} required />
+              <CFormLabel htmlFor="general-fecha">Fecha</CFormLabel>
+              <CFormInput id="general-fecha" type="date" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} required />
             </CCol>
             <CCol md={6}>
-              <CFormLabel>Tipo</CFormLabel>
+              <CFormLabel htmlFor="general-tipo">Tipo</CFormLabel>
               <CFormSelect
+                id="general-tipo"
                 value={form.tipo}
                 onChange={(e) => setForm({ ...form, tipo: e.target.value as GeneralMovementTipo })}
                 required
@@ -131,8 +132,9 @@ export default function GeneralMovementFormModal({
             </CCol>
           </CRow>
           <div className="mb-3">
-            <CFormLabel>Concepto</CFormLabel>
+            <CFormLabel htmlFor="general-concepto">Concepto</CFormLabel>
             <CFormInput
+              id="general-concepto"
               value={form.concepto}
               onChange={(e) => setForm({ ...form, concepto: e.target.value })}
               required
@@ -141,8 +143,9 @@ export default function GeneralMovementFormModal({
           </div>
           <CRow className="mb-3 g-2">
             <CCol md={6}>
-              <CFormLabel>Categoría</CFormLabel>
+              <CFormLabel htmlFor="general-categoria">Categoría</CFormLabel>
               <CFormInput
+                id="general-categoria"
                 list="categoria-general-suggestions"
                 value={form.categoria ?? ""}
                 onChange={(e) => setForm({ ...form, categoria: e.target.value })}
@@ -164,31 +167,33 @@ export default function GeneralMovementFormModal({
           </CRow>
           <CRow className="mb-3 g-2">
             <CCol md={6}>
-              <CFormLabel>Medio de pago</CFormLabel>
-              <CFormSelect value={form.medioPago ?? ""} onChange={(e) => setForm({ ...form, medioPago: e.target.value })}>
+              <CFormLabel htmlFor="general-medio">Medio de pago</CFormLabel>
+              <CFormSelect id="general-medio" value={form.medioPago ?? ""} onChange={(e) => setForm({ ...form, medioPago: e.target.value })}>
                 <option value="">Seleccioná…</option>
                 {MEDIO_PAGO_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
               </CFormSelect>
             </CCol>
             <CCol md={6}>
-              <CFormLabel>Estado</CFormLabel>
-              <CFormSelect value={form.estado ?? "Pendiente"} onChange={(e) => setForm({ ...form, estado: e.target.value })}>
+              <CFormLabel htmlFor="general-estado">Estado</CFormLabel>
+              <CFormSelect id="general-estado" value={form.estado ?? "Pendiente"} onChange={(e) => setForm({ ...form, estado: e.target.value })}>
                 {ESTADO_GENERAL_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
               </CFormSelect>
             </CCol>
           </CRow>
           <CRow className="mb-3 g-2">
             <CCol md={6}>
-              <CFormLabel>Procesado por</CFormLabel>
+              <CFormLabel htmlFor="general-procesado">Procesado por</CFormLabel>
               <CFormInput
+                id="general-procesado"
                 value={form.procesadoPor ?? ""}
                 onChange={(e) => setForm({ ...form, procesadoPor: e.target.value })}
                 placeholder="Nombre de quien gestionó/cargó este movimiento"
               />
             </CCol>
             <CCol md={6}>
-              <CFormLabel>Responsable{form.tipo === "ingreso" && <span className="text-danger"> *</span>}</CFormLabel>
+              <CFormLabel htmlFor="general-responsable">Responsable{form.tipo === "ingreso" && <span className="text-danger"> *</span>}</CFormLabel>
               <CFormInput
+                id="general-responsable"
                 list="responsable-general-suggestions"
                 value={form.responsable ?? ""}
                 onChange={(e) => setForm({ ...form, responsable: e.target.value })}
@@ -204,8 +209,8 @@ export default function GeneralMovementFormModal({
             </CCol>
           </CRow>
           <div className="mb-1">
-            <CFormLabel>Notas</CFormLabel>
-            <CFormTextarea rows={3} value={form.notas ?? ""} onChange={(e) => setForm({ ...form, notas: e.target.value })} />
+            <CFormLabel htmlFor="general-notas">Notas</CFormLabel>
+            <CFormTextarea id="general-notas" rows={3} value={form.notas ?? ""} onChange={(e) => setForm({ ...form, notas: e.target.value })} />
           </div>
         </CModalBody>
         <CModalFooter>

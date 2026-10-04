@@ -7,7 +7,7 @@ import {
   CForm, CFormLabel, CFormInput, CFormSelect, CFormTextarea, CFormCheck,
   CBadge, CAlert, CRow, CCol,
 } from "@coreui/react";
-import { MapPin, Phone, Plus, User } from "@phosphor-icons/react";
+import { MapPin, Phone, Plus, User, UsersThree } from "@phosphor-icons/react";
 import Icon from "@/components/ui/Icon";
 import AppShell from "@/components/AppShell";
 import { confirmarAccion } from "@/lib/ui/alerts";
@@ -155,7 +155,7 @@ export default function ContratistasPage() {
         </CButton>
       }
     >
-      <h1 className="of-page-title">🧰 Directorio de contratistas</h1>
+      <h1 className="of-page-title d-flex align-items-center gap-2"><Icon icon={UsersThree} size={30} /> Directorio de contratistas</h1>
       <p className="module-desc mb-4">Todas las obras, todos los rubros — comparalos antes de contratar.</p>
 
       <CRow className="g-2 mb-4">

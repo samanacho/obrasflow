@@ -10,8 +10,14 @@ import { prisma } from "../prisma";
 // Es un lease en una fila (no un advisory lock de Postgres): no ocupa una
 // conexión mientras el modelo piensa y funciona igual detrás del pooler.
 
-/** Más largo que maxDuration del webhook: si la función muere a mitad, el lock vence solo poco después. */
-const LEASE_MS = 75_000;
+/**
+ * Más largo que el turno más largo: el del conector de la PC (TURN_BUDGET_MS,
+ * 120 s en worker/whatsapp-baileys.mts; el webhook de Vercel corta a los 60 s).
+ * Con 75 s el lock vencía a mitad de un turno del conector y entraba otro.
+ * Si la función muere a mitad, el lock vence solo; mientras tanto el que
+ * espera se procesa igual a los 25 s (handle.ts), así que no traba a nadie.
+ */
+const LEASE_MS = 150_000;
 const POLL_MS = 800;
 
 /** Espera el turno hasta `waitUntilMs` (epoch ms). Devuelve el token del lock, o null si no llegó a tomarlo. */

@@ -4,7 +4,7 @@ import { serializeItem } from "@/lib/serialize";
 import { ITEM_KINDS } from "@/lib/itemKinds";
 import { createProjectItem } from "@/lib/items";
 import { appSource } from "@/lib/auth/server";
-import { normalizeMovimientoData } from "@/lib/validate";
+import { enlaceInvalido, ERROR_ENLACE, normalizeMovimientoData } from "@/lib/validate";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +45,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       if ("error" in n) return NextResponse.json({ error: n.error }, { status: 400 });
       data = n.data;
     }
+    if (enlaceInvalido(data)) return NextResponse.json({ error: ERROR_ENLACE }, { status: 400 });
 
     const project = await prisma.project.findUnique({ where: { id: params.id }, select: { id: true } });
     if (!project) return NextResponse.json({ error: "Obra no encontrada." }, { status: 404 });

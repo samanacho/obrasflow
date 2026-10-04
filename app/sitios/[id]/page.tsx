@@ -7,7 +7,7 @@ import {
   CCard, CCardBody, CCardHeader, CBadge, CButton, CRow, CCol,
   CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter, CForm, CFormLabel, CFormInput, CFormSelect, CFormTextarea, CAlert,
 } from "@coreui/react";
-import { LinkBreak, PencilSimple, Plus, Trash } from "@phosphor-icons/react";
+import { LinkBreak, MapPin, PencilSimple, Plus, Trash } from "@phosphor-icons/react";
 import Icon from "@/components/ui/Icon";
 import AppShell from "@/components/AppShell";
 import { confirmarAccion, notificar } from "@/lib/ui/alerts";
@@ -182,7 +182,7 @@ export default function SitioDetailPage() {
     <AppShell crumbs={[{ label: "Sitios", href: "/sitios" }, { label: sitio.nombre }]}>
       <div className="project-hero">
         <div>
-          <h1 className="of-page-title mb-2">📍 {sitio.nombre}</h1>
+          <h1 className="of-page-title mb-2 d-flex align-items-center gap-2"><Icon icon={MapPin} size={30} /> {sitio.nombre}</h1>
           <div className="project-hero-meta">
             <span>{sitio.frentes.length} frente{sitio.frentes.length === 1 ? "" : "s"}</span>
             <span>· Responsable: {sitio.responsable}</span>

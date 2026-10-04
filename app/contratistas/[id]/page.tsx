@@ -6,7 +6,7 @@ import {
   CCard, CCardBody, CCardHeader, CButton, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
   CForm, CFormLabel, CFormInput, CFormSelect, CFormTextarea, CBadge, CAlert, CListGroup, CListGroupItem, CRow, CCol,
 } from "@coreui/react";
-import { Plus, Trash } from "@phosphor-icons/react";
+import { MapPin, Plus, Trash } from "@phosphor-icons/react";
 import Icon from "@/components/ui/Icon";
 import AppShell from "@/components/AppShell";
 import { confirmarAccion } from "@/lib/ui/alerts";
@@ -133,7 +133,7 @@ export default function ContractorDetail({ params }: { params: { id: string } })
           <div className="project-hero-meta">
             {contractor.rubros.map((r) => <CBadge key={r} color={RUBRO_COLOR[r]}>{RUBRO_LABEL[r]}</CBadge>)}
             <CBadge color={contractor.status === "activo" ? "success" : "secondary"}>{contractor.status}</CBadge>
-            {contractor.city && <span>📍 {contractor.city}{contractor.department ? `, ${contractor.department}` : ""}</span>}
+            {contractor.city && <span><Icon icon={MapPin} size={14} className="me-1" />{contractor.city}{contractor.department ? `, ${contractor.department}` : ""}</span>}
           </div>
         </div>
         <div className="project-hero-kpis">

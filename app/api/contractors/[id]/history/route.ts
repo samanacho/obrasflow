@@ -12,7 +12,8 @@ interface Params {
 export async function GET(_req: NextRequest, { params }: Params) {
   const entries = await prisma.contractorHistoryEntry.findMany({
     where: { contractorId: params.id },
-    orderBy: { fecha: "desc" },
+    // Las entradas sin fecha van al final, no arriba (Postgres pone los null primero en "desc").
+    orderBy: { fecha: { sort: "desc", nulls: "last" } },
   });
   return NextResponse.json(entries.map(serializeHistoryEntry));
 }

@@ -10,6 +10,9 @@ describe("parseNumero (cantidades y números escritos a mano)", () => {
     expect(parseNumero("1 500 000")).toBe(1_500_000);
     expect(parseNumero("2,5")).toBe(2.5);
     expect(parseNumero(3)).toBe(3);
+    // Empieza con "0.": es decimal, no miles (antes "0.500" daba 500).
+    expect(parseNumero("0.500")).toBe(0.5);
+    expect(parseNumero("0.250 kg")).toBe(0.25);
   });
   it("lo que no es número → null", () => {
     expect(parseNumero("")).toBeNull();

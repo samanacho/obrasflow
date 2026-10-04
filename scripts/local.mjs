@@ -204,7 +204,9 @@ async function main() {
   log.info(`ObrasFlow local — modo ${MODO === "dev" ? "dev (recarga en caliente)" : "prod (compilado)"}${CON_CONECTOR ? "" : ", sin conector"}`);
 
   // 0. ¿Ya hay otra copia corriendo? Mejor avisar que pelear por los puertos.
-  for (const [port, que] of [[APP_PORT, "la app"], ...(CON_CONECTOR ? [[CONECTOR_PORT, "el conector de WhatsApp"]] : [])]) {
+  //    Solo se revisan los puertos de lo que esta copia va a levantar: con --sin-web
+  //    el 3000 puede estar ocupado por otra copia de la app y no es problema.
+  for (const [port, que] of [...(CON_WEB ? [[APP_PORT, "la app"]] : []), ...(CON_CONECTOR ? [[CONECTOR_PORT, "el conector de WhatsApp"]] : [])]) {
     if (await puertoOcupado(port)) {
       log.error(`El puerto ${port} (${que}) ya está en uso: parece que ObrasFlow ya está corriendo. Cerralo antes de arrancar otra copia.`);
       process.exit(1);

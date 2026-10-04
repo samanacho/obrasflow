@@ -10,8 +10,9 @@ import {
   CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell,
 } from "@coreui/react";
 import { CChartDoughnut } from "@coreui/react-chartjs";
-import { PencilSimple, Plus, Trash } from "@phosphor-icons/react";
+import { Factory, PencilSimple, Plus, Trash } from "@phosphor-icons/react";
 import Icon from "@/components/ui/Icon";
+import MontoInput from "@/components/ui/MontoInput";
 import AppShell from "@/components/AppShell";
 import { confirmarAccion, notificar } from "@/lib/ui/alerts";
 import { useIsDarkTheme } from "@/lib/useIsDarkTheme";
@@ -97,7 +98,7 @@ export default function PostesPage() {
 
   return (
     <AppShell crumbs={[{ label: "Fábrica de Postes" }]}>
-      <h1 className="of-page-title">🏭 Fábrica de Postes</h1>
+      <h1 className="of-page-title d-flex align-items-center gap-2"><Icon icon={Factory} size={30} /> Fábrica de Postes</h1>
       <p className="module-desc mb-4">Control de producción de postes de hormigón bajo especificaciones técnicas de la ANDE.</p>
 
       <CNav variant="underline" className="mb-4">
@@ -334,15 +335,15 @@ function SpecsView({
             <CRow className="mb-3 g-2">
               <CCol>
                 <CFormLabel>Longitud (m)</CFormLabel>
-                <CFormInput type="number" step="0.1" min={0} value={form.longitud || ""} onChange={(e) => setForm({ ...form, longitud: Number(e.target.value) })} required />
+                <CFormInput type="number" inputMode="decimal" step="0.1" min={0} value={form.longitud || ""} onChange={(e) => setForm({ ...form, longitud: Number(e.target.value) })} required />
               </CCol>
               <CCol>
                 <CFormLabel>Esfuerzo nominal (kgf)</CFormLabel>
-                <CFormInput type="number" step="1" min={0} value={form.esfuerzoNominal || ""} onChange={(e) => setForm({ ...form, esfuerzoNominal: Number(e.target.value) })} required />
+                <CFormInput type="number" inputMode="numeric" step="1" min={0} value={form.esfuerzoNominal || ""} onChange={(e) => setForm({ ...form, esfuerzoNominal: Number(e.target.value) })} required />
               </CCol>
               <CCol>
                 <CFormLabel>Diámetro en la base (cm)</CFormLabel>
-                <CFormInput type="number" step="0.1" min={0} value={form.diametroBase || ""} onChange={(e) => setForm({ ...form, diametroBase: e.target.value ? Number(e.target.value) : null })} />
+                <CFormInput type="number" inputMode="decimal" step="0.1" min={0} value={form.diametroBase || ""} onChange={(e) => setForm({ ...form, diametroBase: e.target.value ? Number(e.target.value) : null })} />
               </CCol>
             </CRow>
             <CRow className="mb-3 g-2">
@@ -528,7 +529,7 @@ function MaterialesView({
             <CRow className="mb-3 g-2">
               <CCol>
                 <CFormLabel>Costo unitario (Gs.)</CFormLabel>
-                <CFormInput type="number" min={0} step="1" value={form.costoUnitarioGs || ""} onChange={(e) => setForm({ ...form, costoUnitarioGs: Number(e.target.value) })} required />
+                <MontoInput value={form.costoUnitarioGs || ""} onChange={(v) => setForm({ ...form, costoUnitarioGs: v ?? 0 })} required />
               </CCol>
               <CCol>
                 <CFormLabel>Proveedor (opcional)</CFormLabel>
@@ -706,11 +707,11 @@ function PurchasesView({
             <CRow className="mb-3 g-2">
               <CCol>
                 <CFormLabel>Cantidad</CFormLabel>
-                <CFormInput type="number" min={0} step="any" value={form.cantidad || ""} onChange={(e) => setForm({ ...form, cantidad: Number(e.target.value) })} required />
+                <CFormInput type="number" inputMode="decimal" min={0} step="any" value={form.cantidad || ""} onChange={(e) => setForm({ ...form, cantidad: Number(e.target.value) })} required />
               </CCol>
               <CCol>
                 <CFormLabel>Costo unitario pagado (Gs.)</CFormLabel>
-                <CFormInput type="number" min={0} step="1" value={form.costoUnitarioGs || ""} onChange={(e) => setForm({ ...form, costoUnitarioGs: Number(e.target.value) })} required />
+                <MontoInput value={form.costoUnitarioGs || ""} onChange={(v) => setForm({ ...form, costoUnitarioGs: v ?? 0 })} required />
               </CCol>
             </CRow>
             <CRow className="mb-3 g-2">
@@ -906,16 +907,16 @@ function LotesView({
             <CRow className="mb-3 g-2">
               <CCol>
                 <CFormLabel>Cantidad de postes</CFormLabel>
-                <CFormInput type="number" min={1} step={1} value={form.cantidad || ""} onChange={(e) => setForm({ ...form, cantidad: Number(e.target.value) })} required />
+                <CFormInput type="number" inputMode="numeric" min={1} step={1} value={form.cantidad || ""} onChange={(e) => setForm({ ...form, cantidad: Number(e.target.value) })} required />
               </CCol>
               <CCol>
                 <CFormLabel>Para ensayo (destructivo)</CFormLabel>
-                <CFormInput type="number" min={0} step={1} value={form.cantidadParaEnsayo ?? 1} onChange={(e) => setForm({ ...form, cantidadParaEnsayo: Number(e.target.value) })} />
+                <CFormInput type="number" inputMode="numeric" min={0} step={1} value={form.cantidadParaEnsayo ?? 1} onChange={(e) => setForm({ ...form, cantidadParaEnsayo: Number(e.target.value) })} />
                 <div className="module-desc small mt-1">Se descuenta de la cantidad para calcular el disponible para despacho — por defecto 1 (de 101 postes, 100 se entregan y 1 se rompe en la fiscalización).</div>
               </CCol>
               <CCol>
                 <CFormLabel>Despachados</CFormLabel>
-                <CFormInput type="number" min={0} step={1} value={form.cantidadDespachada || 0} onChange={(e) => setForm({ ...form, cantidadDespachada: Number(e.target.value) })} />
+                <CFormInput type="number" inputMode="numeric" min={0} step={1} value={form.cantidadDespachada || 0} onChange={(e) => setForm({ ...form, cantidadDespachada: Number(e.target.value) })} />
               </CCol>
               <CCol>
                 <CFormLabel>Estado</CFormLabel>
