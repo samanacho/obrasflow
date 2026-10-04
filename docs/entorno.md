@@ -43,6 +43,15 @@ Lo de Memby (conector de WhatsApp) está en `worker/CLAUDE.md`.
   cada push a `main`). El build corre `prisma db push` sin `--accept-data-loss`:
   los cambios de esquema tienen que ser aditivos (si uno fuera a borrar datos,
   el deploy falla). Nunca vuelvas a agregar ese flag.
+- Migraciones de datos de una sola vez: después del `db push`, el build corre
+  `scripts/migraciones/aplicar.mjs`. Cada migración tiene un id fijo y deja
+  su marca en la tabla `DataMigration`, así no se repite. Corre en producción
+  y en cada preview (cada uno con su base). Si falla, el deploy falla sin
+  dejar nada a medias. Una nueva se agrega al final de la lista y su id no se
+  cambia nunca. Cambiar datos de producción así solo con el OK de Ignacio.
+- `PERSONAL_USUARIOS` (Vercel → Settings → Environment Variables): usuarios de
+  ingreso que ven la pantalla Personal, separados por coma. Sin la variable,
+  solo el primer usuario creado.
 - Vercel: un solo proyecto conectado al repo, `obrasflow-app` (cuenta
   `nachopy`). La base es Neon, conectada por la integración de Vercel
   (`obrasflow-db`); sus variables (`POSTGRES_PRISMA_URL`,

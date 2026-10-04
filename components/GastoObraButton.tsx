@@ -14,7 +14,6 @@ import FileDropZone from "@/components/FileDropZone";
 import MontoInput from "@/components/ui/MontoInput";
 import { notificar } from "@/lib/ui/alerts";
 import { MEDIO_PAGO_OPTIONS } from "@/components/GeneralMovementFormModal";
-import { ITEM_KINDS } from "@/lib/itemKinds";
 import { todayLocal } from "@/lib/dates";
 import type { ProjectDTO, ProjectItemDTO } from "@/lib/types";
 
@@ -36,6 +35,7 @@ export const GASTO_OBRA_OPEN = "obrasflow:gasto-obra-open";
 export const ITEMS_CHANGED = "obrasflow:items-changed";
 
 const KIND = "change_order";
+const ERROR_ESTADO = "Elegí si el gasto está pagado o pendiente.";
 
 export default function GastoObraButton() {
   const pathname = usePathname();
@@ -50,6 +50,10 @@ export default function GastoObraButton() {
   const [proveedorId, setProveedorId] = useState("");
   const [fecha, setFecha] = useState(() => todayLocal());
   const [medioPago, setMedioPago] = useState("Efectivo");
+  // Pagado o Pendiente: sin preelegir (decisión del dueño, 2026-10-04). Un
+  // gasto Pendiente no suma al Ejecutado hasta que se marque pagado, y antes
+  // el estado por defecto dejaba como pendientes gastos que ya se habían pagado.
+  const [estado, setEstado] = useState<"" | "Pagado" | "Pendiente">("");
   const [file, setFile] = useState<File | null>(null);
   const [masDatos, setMasDatos] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -65,6 +69,7 @@ export default function GastoObraButton() {
     setProveedorId("");
     setFecha(todayLocal());
     setMedioPago("Efectivo");
+    setEstado("");
     setFile(conArchivo);
     setMasDatos(false);
     setError(null);
@@ -116,6 +121,7 @@ export default function GastoObraButton() {
     if (!obraId) return setError("Elegí la obra.");
     if (!(montoNum > 0)) return setError("Cargá un monto mayor a cero.");
     if (!concepto.trim()) return setError("Escribí en qué se gastó.");
+    if (!estado) return setError(ERROR_ESTADO);
     setSaving(true);
     setError(null);
     try {
@@ -125,7 +131,7 @@ export default function GastoObraButton() {
       const res = await fetch(`/api/projects/${obraId}/items`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: KIND, title: concepto.trim(), status: ITEM_KINDS[KIND].defaultStatus ?? null, data }),
+        body: JSON.stringify({ kind: KIND, title: concepto.trim(), status: estado, data }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -192,6 +198,19 @@ export default function GastoObraButton() {
                   <datalist id="gasto-conceptos">{rubrosObra.map((r) => <option key={r} value={r} />)}</datalist>
                 </div>
               </div>
+
+              {/* Radios nativos con estilo de botones: se eligen con teclado (flechas) y el lector de pantalla los anuncia como grupo. */}
+              <fieldset className="mb-3">
+                <legend className="form-label fs-6 mb-2">¿Ya está pagado?</legend>
+                <div className="btn-group w-100" role="group" aria-describedby={error === ERROR_ESTADO ? "gasto-estado-error" : undefined}>
+                  <input type="radio" className="btn-check" name="gasto-estado" id="gasto-estado-pagado" value="Pagado" checked={estado === "Pagado"} onChange={() => setEstado("Pagado")} />
+                  <label className="btn btn-outline-primary" htmlFor="gasto-estado-pagado">Pagado</label>
+                  <input type="radio" className="btn-check" name="gasto-estado" id="gasto-estado-pendiente" value="Pendiente" checked={estado === "Pendiente"} onChange={() => setEstado("Pendiente")} />
+                  <label className="btn btn-outline-warning" htmlFor="gasto-estado-pendiente">Pendiente de pago</label>
+                </div>
+                {error === ERROR_ESTADO && <p id="gasto-estado-error" className="small alert-text mb-0 mt-1">Elegí una de las dos opciones.</p>}
+                {estado === "Pendiente" && <p className="form-hint mb-0 mt-1">No suma al Ejecutado hasta que lo marques pagado.</p>}
+              </fieldset>
 
               <div className="mb-3">
                 <CFormLabel htmlFor="gasto-proveedor">Proveedor <span className="text-body-secondary fw-normal">(opcional)</span></CFormLabel>

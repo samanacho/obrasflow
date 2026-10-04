@@ -277,8 +277,9 @@ export default function RegistroRapidoPage() {
           projectId={obraFormFor.projectId}
           kind="change_order"
           existing={null}
-          // La captura ya es un pago hecho (efectivo/transferencia), no algo a pagar.
-          initialStatus="Pagado"
+          // Sin estado preelegido (decisión del dueño, 2026-10-04): quien
+          // clasifica elige Pagado o Pendiente, igual que en cualquier gasto
+          // nuevo — un "Pendiente" no suma al Ejecutado.
           contextLabel={(() => {
             const p = projects.find((x) => x.id === obraFormFor.projectId);
             return p ? `${p.name}${p.reference ? ` (${p.reference})` : ""}` : undefined;

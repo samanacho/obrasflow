@@ -4,7 +4,7 @@ import { createProjectItem } from "../items";
 import { logChanges } from "../history";
 import { fmtGs, normalizeText } from "../agent/format";
 import { todayInParaguay } from "../dates";
-import { CompraError, ESTADO_LABEL, compararPresupuesto, validarIva, validarPago, type ComparacionPresupuesto } from "./calculos";
+import { CompraError, ESTADO_LABEL, compararPresupuesto, requiereNuevaAprobacion, validarIva, validarPago, type ComparacionPresupuesto } from "./calculos";
 
 export { CompraError, ESTADO_LABEL, type BudgetRowDTO } from "./calculos";
 
@@ -317,7 +317,14 @@ export async function annulOrder(id: string) {
   return prisma.purchaseOrder.findUniqueOrThrow({ where: { id }, include: ORDER_INCLUDE });
 }
 
-/** Cambios mientras el pedido no está pagado: obra, proveedor, notas y renglones. */
+/**
+ * Cambios mientras el pedido no está pagado: obra, proveedor, notas y renglones.
+ * Si estaba aprobado y cambian materiales, cantidades u obra, vuelve a
+ * "pendiente" y hay que aprobarlo de nuevo (decisión del 04/10/2026, ver
+ * requiereNuevaAprobacion). Si es del grupo, el conector avisa ahí y le manda
+ * al dueño la tarjeta nueva (lib/compras/whatsapp.ts pendingGroupNotices).
+ * Corre solo en la app (usa transacción).
+ */
 export async function updateOrder(
   id: string,
   input: {
@@ -329,40 +336,71 @@ export async function updateOrder(
     lines?: { id?: string; descripcion: string; unidad?: string | null; cantidad: number; budgetItemId?: string | null }[];
   }
 ) {
-  const o = await prisma.purchaseOrder.findUnique({ where: { id }, select: { status: true, projectId: true } });
+  const o = await prisma.purchaseOrder.findUnique({
+    where: { id },
+    select: { status: true, projectId: true, lines: { select: { descripcion: true, unidad: true, cantidad: true, budgetItemId: true } } },
+  });
   if (!o) throw new CompraError("Ese pedido ya no existe.");
   if (!["pendiente", "aprobado"].includes(o.status)) throw new CompraError("Un pedido pagado, rechazado o anulado ya no se modifica.");
   const projectId = input.projectId !== undefined ? input.projectId : o.projectId;
   const budget = projectId ? await prisma.budgetItem.findMany({ where: { projectId }, select: { id: true, descripcion: true, unidad: true } }) : [];
   const valid = new Set(budget.map((b) => b.id));
+
+  // Renglones como van a quedar guardados (con el vínculo al presupuesto ya
+  // resuelto), para compararlos con los actuales antes de escribir nada.
+  let newLines: { descripcion: string; unidad: string | null; cantidad: number; budgetItemId: string | null }[] | null = null;
+  if (input.lines) {
+    const clean = input.lines.filter((l) => l.descripcion.trim() && Number(l.cantidad) > 0);
+    if (!clean.length) throw new CompraError("El pedido tiene que tener al menos un material con cantidad.");
+    newLines = clean.map((l) => ({
+      descripcion: l.descripcion.trim(),
+      unidad: l.unidad?.trim() || null,
+      cantidad: Number(l.cantidad),
+      budgetItemId: l.budgetItemId === null ? null : l.budgetItemId && valid.has(l.budgetItemId) ? l.budgetItemId : matchBudgetItem(l.descripcion, budget),
+    }));
+  }
+  const oldLines = o.lines.map((l) => ({ descripcion: l.descripcion, unidad: l.unidad, cantidad: Number(l.cantidad), budgetItemId: l.budgetItemId }));
+  const cambiaContenido = requiereNuevaAprobacion({ projectId: o.projectId, lines: oldLines }, { projectId, lines: newLines ?? oldLines });
+
+  const data: Prisma.PurchaseOrderUncheckedUpdateManyInput = {
+    ...(input.projectId !== undefined ? { projectId: input.projectId, ...(input.projectId ? { obraTexto: null } : {}) } : {}),
+    ...(input.supplierId !== undefined ? { supplierId: input.supplierId, ...(input.supplierId ? { proveedorNombre: null } : {}) } : {}),
+    ...(input.proveedorNombre !== undefined && !input.supplierId ? { proveedorNombre: input.proveedorNombre?.trim() || null } : {}),
+    ...(input.notas !== undefined ? { notas: input.notas?.trim() || null } : {}),
+    ...(input.fechaNecesaria !== undefined ? { fechaNecesaria: input.fechaNecesaria } : {}),
+  };
+
   await prisma.$transaction(async (tx) => {
-    // El estado se vuelve a mirar acá adentro: si lo pagaron entre la lectura
-    // de arriba y este punto, no se tocan los renglones de un pedido ya pagado.
-    const claimed = await tx.purchaseOrder.updateMany({
-      where: { id, status: { in: ["pendiente", "aprobado"] } },
-      data: {
-        ...(input.projectId !== undefined ? { projectId: input.projectId, ...(input.projectId ? { obraTexto: null } : {}) } : {}),
-        ...(input.supplierId !== undefined ? { supplierId: input.supplierId, ...(input.supplierId ? { proveedorNombre: null } : {}) } : {}),
-        ...(input.proveedorNombre !== undefined && !input.supplierId ? { proveedorNombre: input.proveedorNombre?.trim() || null } : {}),
-        ...(input.notas !== undefined ? { notas: input.notas?.trim() || null } : {}),
-        ...(input.fechaNecesaria !== undefined ? { fechaNecesaria: input.fechaNecesaria } : {}),
-      },
-    });
-    if (claimed.count !== 1) throw new CompraError("El pedido cambió mientras lo editabas (¿lo pagaron o anularon desde otro lado?). No se guardó nada.");
-    if (input.lines) {
-      const clean = input.lines.filter((l) => l.descripcion.trim() && Number(l.cantidad) > 0);
-      if (!clean.length) throw new CompraError("El pedido tiene que tener al menos un material con cantidad.");
-      await tx.purchaseOrderLine.deleteMany({ where: { orderId: id } });
-      await tx.purchaseOrderLine.createMany({
-        data: clean.map((l, i) => ({
-          orderId: id,
-          descripcion: l.descripcion.trim(),
-          unidad: l.unidad?.trim() || null,
-          cantidad: Number(l.cantidad),
-          budgetItemId: l.budgetItemId === null ? null : l.budgetItemId && valid.has(l.budgetItemId) ? l.budgetItemId : matchBudgetItem(l.descripcion, budget),
-          orden: i,
-        })),
+    // El estado se vuelve a mirar acá adentro (cada updateMany lleva el estado
+    // esperado en el where): si lo pagaron o aprobaron entre la lectura de
+    // arriba y este punto, no se pisa lo que pasó en el medio.
+    let claimed: { count: number };
+    if (cambiaContenido) {
+      // Aprobado + cambio de materiales/obra: vuelve a pendiente en la MISMA
+      // operación que guarda la edición; nunca queda aprobada una versión que nadie aprobó.
+      claimed = await tx.purchaseOrder.updateMany({
+        where: { id, status: "aprobado" },
+        data: { ...data, status: "pendiente", aprobadoPor: null, aprobadoAt: null },
       });
+      if (claimed.count === 1) {
+        // Las tarjetas de aprobación abiertas eran de la versión anterior: se
+        // cancelan para que nadie apruebe lo editado con ellas. Va adentro de
+        // la transacción: la tarjeta nueva la crea el conector recién cuando
+        // ve el pedido pendiente, así que esto nunca cancela la nueva.
+        await tx.whatsAppPendingAction.updateMany({
+          where: { kind: "aprobar_pedido", status: "pendiente", payload: { path: ["pedidoId"], equals: id } },
+          data: { status: "cancelada", error: "El pedido se modificó después de aprobado." },
+        });
+      } else {
+        claimed = await tx.purchaseOrder.updateMany({ where: { id, status: "pendiente" }, data });
+      }
+    } else {
+      claimed = await tx.purchaseOrder.updateMany({ where: { id, status: { in: ["pendiente", "aprobado"] } }, data });
+    }
+    if (claimed.count !== 1) throw new CompraError("El pedido cambió mientras lo editabas (¿lo pagaron o anularon desde otro lado?). No se guardó nada.");
+    if (newLines) {
+      await tx.purchaseOrderLine.deleteMany({ where: { orderId: id } });
+      await tx.purchaseOrderLine.createMany({ data: newLines.map((l, i) => ({ orderId: id, ...l, orden: i })) });
     } else if (input.projectId !== undefined && input.projectId !== o.projectId) {
       // Cambió la obra: los vínculos al presupuesto de la obra anterior ya no sirven; se vuelven a emparejar.
       const lines = await tx.purchaseOrderLine.findMany({ where: { orderId: id } });

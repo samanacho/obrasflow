@@ -187,8 +187,11 @@ export const ITEM_KINDS: Record<string, ItemKindConfig> = {
     icon: "💸",
     description: "Gastos, adelantos, pagos a contratistas y demás movimientos de plata de la obra — el Ejecutado de la ficha se calcula solo a partir de esto.",
     titleLabel: "Nombre del rubro",
+    // Sin defaultStatus a propósito (decisión del dueño, 2026-10-04): un
+    // "Pendiente" no suma al Ejecutado, y el estado por defecto dejaba como
+    // pendientes gastos ya pagados. Quien carga elige siempre Pagado o
+    // Pendiente (la API lo exige, ver app/api/projects/[id]/items/route.ts).
     statusOptions: ["Pendiente", "Pagado", "Conciliado"],
-    defaultStatus: "Pendiente",
     fields: [
       { key: "tipo", label: "Tipo de movimiento", type: "select", required: true, options: MOVIMIENTO_TIPOS.map((t) => t.value) },
       { key: "monto", label: "Monto (Gs.)", type: "money", required: true },

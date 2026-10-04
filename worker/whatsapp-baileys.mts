@@ -38,6 +38,7 @@ import {
   isPurchaseRequest,
   markGroupNotified,
   pendingGroupNotices,
+  reapprovalCard,
 } from "../lib/compras/whatsapp";
 import type { InboundMessage } from "../lib/whatsapp/parse";
 import type { Transport } from "../lib/whatsapp/transport";
@@ -431,7 +432,11 @@ async function handleGroupMessage(m: WAMessage) {
   }
 }
 
-/** Avisa en el grupo los pedidos aprobados, rechazados, pagados o anulados (desde WhatsApp o desde la app). */
+/**
+ * Avisa en el grupo los pedidos aprobados, rechazados, pagados o anulados (desde
+ * WhatsApp o desde la app), y los aprobados que editaron y vuelven a esperar
+ * aprobación: a esos, además, le manda al dueño la tarjeta Sí/No de nuevo.
+ */
 let groupTickRunning = false;
 async function purchaseGroupTick() {
   if (COMPRAS_OFF || groupTickRunning || !sock || local.status !== "conectado") return;
@@ -441,6 +446,11 @@ async function purchaseGroupTick() {
       // Se marca antes de mandar: ante un error se pierde un aviso, pero nunca se repite en loop.
       await markGroupNotified(n.id, n.status);
       if (n.text) await sendToGroup(n.groupJid, n.text);
+      const approver = approverPhone();
+      if (n.reaprobar && approver) {
+        const card = await reapprovalCard(n.id, approver);
+        if (card) await sendApprovalCard(transport, approver, card.actionId, card.body);
+      }
     }
   } catch (err) {
     console.error("Compras: avisos al grupo:", (err as Error).message);

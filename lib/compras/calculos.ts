@@ -149,3 +149,36 @@ export function compararPresupuesto(items: ItemPresupuesto[], renglones: Renglon
   });
   return { items: rows, totales: { presupuestado: Math.round(presupuestado), pedido: Math.round(pedidoTotal), gastado: Math.round(gastadoTotal) } };
 }
+
+// ------------------------- edición de un pedido aprobado -------------------------
+
+export interface RenglonComparable {
+  descripcion: string;
+  unidad: string | null;
+  cantidad: number;
+  budgetItemId: string | null;
+}
+
+function claveRenglon(l: RenglonComparable): string {
+  const txt = (s: string | null) => (s ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+  // Redondeo: la base guarda Decimal y la pantalla manda number; 2,5 y "2.50" son lo mismo.
+  return [txt(l.descripcion), txt(l.unidad), Math.round(Number(l.cantidad) * 10_000), l.budgetItemId ?? ""].join("|");
+}
+
+/**
+ * Decisión de Ignacio (04/10/2026): si a un pedido YA APROBADO le cambian
+ * materiales, cantidades u obra, vuelve a "esperando aprobación". Esto dice
+ * si la edición cambió algo de eso: renglones (descripción, unidad, cantidad o
+ * vínculo al presupuesto) u obra. Cambiar solo el orden de los renglones no
+ * cuenta. Notas, fecha y proveedor ni se miran: no devuelven a pendiente.
+ */
+export function requiereNuevaAprobacion(
+  antes: { projectId: string | null; lines: RenglonComparable[] },
+  despues: { projectId: string | null; lines: RenglonComparable[] }
+): boolean {
+  if ((antes.projectId ?? null) !== (despues.projectId ?? null)) return true;
+  if (antes.lines.length !== despues.lines.length) return true;
+  const a = antes.lines.map(claveRenglon).sort();
+  const b = despues.lines.map(claveRenglon).sort();
+  return a.some((k, i) => k !== b[i]);
+}

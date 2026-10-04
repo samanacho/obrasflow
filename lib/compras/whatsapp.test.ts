@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { approvalCardBody, invoiceOrderNumber, matchObra } from "./whatsapp";
+import { approvalCardBody, groupStatusText, invoiceOrderNumber, matchObra } from "./whatsapp";
 import { mergeInvoiceIntoGasto, type PurchaseOrderDTO } from "./core";
 
 describe("invoiceOrderNumber (foto de factura en el grupo → pedido)", () => {
@@ -57,6 +57,29 @@ describe("approvalCardBody", () => {
     const presupuesto = { descripcion: "Cemento", unidad: "bolsa", cantidad: 100, precioUnitario: 60_000, pedidoAntes: 0, restante: 50 };
     expect(approvalCardBody(dto([{ presupuesto }]))).not.toContain("sin precio");
     expect(approvalCardBody(dto([{ presupuesto }, { descripcion: "varilla 10mm" }]))).toContain("sin contar 1 material sin precio");
+  });
+  it("la tarjeta de reaprobación dice que se modificó después de aprobado", () => {
+    expect(approvalCardBody(dto([{}]), { reaprobar: true })).toContain("Se modificó después de aprobado");
+    expect(approvalCardBody(dto([{}]))).not.toContain("Se modificó");
+  });
+});
+
+describe("groupStatusText (avisos al grupo)", () => {
+  const o = (status: string) => ({ numero: 12, projectName: "Sucursal Norte", status, rechazoMotivo: null, medioPago: null, facturaNumero: null, facturaMediaId: null }) as unknown as PurchaseOrderDTO;
+
+  it("aprobado y después editado: vuelve a pendiente y avisa que no compren", () => {
+    const t = groupStatusText(o("pendiente"), "aprobado");
+    expect(t).toContain("Pedido #12 (Sucursal Norte)");
+    expect(t).toContain("se modificó");
+    expect(t).toContain("No compren hasta que se apruebe de nuevo");
+  });
+  it("un pendiente que nunca se aprobó no avisa nada (el 'recibido' ya se dijo al llegar)", () => {
+    expect(groupStatusText(o("pendiente"), "pendiente")).toBeNull();
+    expect(groupStatusText(o("pendiente"), null)).toBeNull();
+    expect(groupStatusText(o("pendiente"))).toBeNull();
+  });
+  it("al reaprobarse vuelve a avisar 'aprobado'", () => {
+    expect(groupStatusText(o("aprobado"), "pendiente")).toContain("*aprobado*. Ya pueden comprar.");
   });
 });
 

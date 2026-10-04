@@ -20,7 +20,8 @@ import {
 } from "@coreui/react";
 import { HardHat, List, Moon, Sun, Receipt } from "@phosphor-icons/react";
 import Icon from "@/components/ui/Icon";
-import { NAV_ITEMS, isNavActive, type NavFlagKey } from "@/lib/navItems";
+import { navItemsPara, isNavActive, type NavFlagKey } from "@/lib/navItems";
+import { useSesion } from "@/lib/ui/session";
 import QuickExpenseButton, { QUICK_EXPENSES_CHANGED } from "@/components/QuickExpenseButton";
 import QuickSearch from "@/components/QuickSearch";
 import GastoObraButton, { GASTO_OBRA_OPEN } from "@/components/GastoObraButton";
@@ -166,6 +167,8 @@ export default function AppShell({
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const flags = useNavFlags();
+  // Personal solo aparece para quien la puede ver (el servidor igual lo controla).
+  const navItems = navItemsPara(useSesion()?.verPersonal);
   // En Memby el chat tiene su propia zona para soltar archivos.
   const arrastrando = useDropComprobante(!pathname.startsWith("/agente-whatsapp") && !pathname.startsWith("/memby"));
 
@@ -222,7 +225,7 @@ export default function AppShell({
           </CSidebarBrand>
         </CSidebarHeader>
         <CSidebarNav>
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const active = isNavActive(item, pathname);
             const flag = item.flag ? flags[item.flag] : undefined;
             return (

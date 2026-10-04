@@ -1,5 +1,5 @@
 import { prisma } from "../prisma";
-import { MOVIMIENTO_TIPOS } from "../movimientos";
+import { MOVIMIENTO_TIPOS, cuentaEnEjecutado, efectoDelTipo, resumenPendientes } from "../movimientos";
 import { BUSINESS_TIME_ZONE, fmtYmd } from "../dates";
 import { normalizeText } from "./format";
 
@@ -84,8 +84,9 @@ export async function verObra(obraId: string) {
   });
   const budget = num(p.budget);
   const spent = num(p.spent);
+  // Un adelanto "Pendiente" todavía no se entregó: no cuenta (misma regla que el Ejecutado).
   const adelantado = items
-    .filter((i) => (i.data as any)?.tipo === "Adelanto")
+    .filter((i) => (i.data as any)?.tipo === "Adelanto" && cuentaEnEjecutado(i.status))
     .reduce((s, i) => s + num((i.data as any)?.monto), 0);
   const rubros = Array.from(new Set(items.map((i) => i.title.trim()).filter(Boolean))).sort();
 
@@ -123,6 +124,8 @@ export async function verObra(obraId: string) {
     avisoPresupuesto: budget <= 0 && spent > 0 ? "La obra no tiene presupuesto cargado pero ya tiene gastos." : undefined,
     adelantado,
     cantidadMovimientos: items.length,
+    // Gastos cargados como "Pendiente": no están en el ejecutado hasta marcarlos pagados.
+    pendientesNoSuman: resumenPendientes(items),
     rubrosYaCargados: rubros,
     ultimosMovimientos: ultimos,
     sitio: p.sitio ? { sitioId: p.sitio.id, nombre: p.sitio.nombre } : null,
@@ -197,7 +200,9 @@ export async function listarMovimientos(opts: {
     include: { project: { select: { name: true, reference: true } } },
   });
 
-  type Row = { fecha: string; obra: string; concepto: string; tipo: string | null; monto: number; medioPago: string | null; estado: string | null; proveedor: string | null; efecto: string };
+  // `cuenta`: false si es un movimiento de obra "Pendiente" — no suma al
+  // Ejecutado hasta que se marque pagado (regla de lib/movimientos.ts).
+  type Row = { fecha: string; obra: string; concepto: string; tipo: string | null; monto: number; medioPago: string | null; estado: string | null; proveedor: string | null; efecto: string; cuenta: boolean };
   // Sin fecha cargada se usa el día de creación en Paraguay: el día UTC
   // (toISOString) ya es "mañana" entre las 21:00 y las 24:00.
   const diaParaguay = new Intl.DateTimeFormat("en-CA", { timeZone: BUSINESS_TIME_ZONE });
@@ -212,7 +217,10 @@ export async function listarMovimientos(opts: {
       medioPago: d.medioPago ?? null,
       estado: i.status,
       proveedor: d.proveedorNombre || d.contratistaNombre || null,
-      efecto: EFFECT.get(String(d.tipo ?? "")) === "subtract" ? "resta" : EFFECT.get(String(d.tipo ?? "")) === "none" ? "no suma al ejecutado" : "suma al ejecutado",
+      efecto: !cuentaEnEjecutado(i.status)
+        ? "pendiente: no suma al ejecutado"
+        : EFFECT.get(String(d.tipo ?? "")) === "subtract" ? "resta" : EFFECT.get(String(d.tipo ?? "")) === "none" ? "no suma al ejecutado" : "suma al ejecutado",
+      cuenta: cuentaEnEjecutado(i.status),
     };
   });
 
@@ -229,6 +237,7 @@ export async function listarMovimientos(opts: {
         estado: g.estado,
         proveedor: null,
         efecto: g.tipo,
+        cuenta: true,
       });
     }
   }
@@ -249,14 +258,21 @@ export async function listarMovimientos(opts: {
   return {
     cantidad: filtered.length,
     totales: {
-      gastoNetoDeObras: sum((r) => obraRow(r) && eff(r) === "add") - sum((r) => obraRow(r) && eff(r) === "subtract"),
+      // Los "Pendiente" quedan fuera, igual que del Ejecutado.
+      gastoNetoDeObras: sum((r) => obraRow(r) && r.cuenta && eff(r) === "add") - sum((r) => obraRow(r) && r.cuenta && eff(r) === "subtract"),
       noSumanAlEjecutado: sum((r) => obraRow(r) && eff(r) === "none"),
+      // Gastos cargados como "Pendiente": cuánto entraría al Ejecutado al marcarlos pagados.
+      pendientesNoSuman: {
+        cantidad: filtered.filter((r) => obraRow(r) && !r.cuenta && efectoDelTipo(r.tipo) !== 0).length,
+        monto: filtered.filter((r) => obraRow(r) && !r.cuenta).reduce((a, r) => a + efectoDelTipo(r.tipo) * r.monto, 0),
+      },
       ...(opts.incluirGenerales && !projectIds
         ? { ingresosGenerales: sum((r) => r.efecto === "ingreso"), egresosGenerales: sum((r) => r.efecto === "egreso") }
         : {}),
       porTipo,
     },
-    movimientos: filtered.slice(0, opts.limite).map((r) => ({ ...r, fecha: fmtYmd(r.fecha) })),
+    // `cuenta` no se manda: `efecto` ya lo dice en palabras ("pendiente: no suma al ejecutado").
+    movimientos: filtered.slice(0, opts.limite).map(({ cuenta: _cuenta, ...r }) => ({ ...r, fecha: fmtYmd(r.fecha) })),
     nota: filtered.length > opts.limite ? `Se muestran los ${opts.limite} más recientes de ${filtered.length}; los totales cubren todos.` : undefined,
   };
 }

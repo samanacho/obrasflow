@@ -11,7 +11,7 @@ import {
   CDropdown, CDropdownToggle, CDropdownMenu, CDropdownItem,
 } from "@coreui/react";
 import { CChartDoughnut, CChartLine } from "@coreui/react-chartjs";
-import { PencilSimple, Trash, Plus, MapPin, CalendarBlank, FilePdf, Check, DotsThree, ArrowBendDownRight, Calculator, CloudArrowDown, Images } from "@phosphor-icons/react";
+import { PencilSimple, Trash, Plus, MapPin, CalendarBlank, FilePdf, Check, DotsThree, ArrowBendDownRight, Calculator, CloudArrowDown, Images, HourglassMedium, CheckCircle } from "@phosphor-icons/react";
 import Icon from "@/components/ui/Icon";
 import ImageViewer from "@/components/ui/ImageViewer";
 import { kindIcon, TIPO_INSUMO_ICON } from "@/components/ui/kindIcons";
@@ -26,7 +26,7 @@ import { useIsDarkTheme } from "@/lib/useIsDarkTheme";
 import type { ProjectDTO, ProjectItemDTO } from "@/lib/types";
 import { ITEM_KINDS, ITEM_KIND_ORDER, ItemKindConfig } from "@/lib/itemKinds";
 import { PUBLIC_FIELDS, PRIVATE_FIELDS } from "@/lib/sectorFields";
-import { MOVIMIENTO_TIPOS } from "@/lib/movimientos";
+import { MOVIMIENTO_TIPOS, ESTADO_PAGADO, aporteAlEjecutado, cuentaEnEjecutado, esPendiente, resumenPendientes } from "@/lib/movimientos";
 import { daysBetween, todayLocal } from "@/lib/dates";
 import MontoInput from "@/components/ui/MontoInput";
 
@@ -53,10 +53,6 @@ const TIPO_INSUMO_COLOR: Record<string, string> = {
   "Sin clasificar": "light",
 };
 
-// Mismo mapeo que lib/spent.ts (servidor) — acá se usa para armar el
-// gráfico de ejecución en el tiempo del lado del cliente, sin pegarle de
-// nuevo a la API (los items ya están cargados en `items`).
-const EFFECT_BY_TIPO: Record<string, string> = Object.fromEntries(MOVIMIENTO_TIPOS.map((t) => [t.value, t.effect]));
 
 // Paleta cálida/apagada ya usada en el resto del sitio — misma familia de
 // colores que TYPE_HEX en app/page.tsx, para el donut de gastos por categoría.
@@ -525,8 +521,11 @@ function ModuleView({
   // Movimientos: mismo tipo de planilla resumen, pero contra el Ejecutado
   // real (que el servidor recalcula solo a partir de estos items).
   const isMovimientos = kind === "change_order";
+  // Un adelanto "Pendiente" todavía no se entregó: no cuenta (misma regla que el Ejecutado).
   const sumByTipo = (tipo: string) =>
-    items.filter((i) => i.data?.tipo === tipo).reduce((acc, i) => acc + Number(i.data?.monto ?? 0), 0);
+    items.filter((i) => i.data?.tipo === tipo && cuentaEnEjecutado(i.status)).reduce((acc, i) => acc + Number(i.data?.monto ?? 0), 0);
+  // Gastos "Pendiente": no suman al Ejecutado hasta marcarlos pagados — se avisa arriba de la lista.
+  const pendientes = isMovimientos ? resumenPendientes(items) : { cantidad: 0, monto: 0 };
   const adelantado = isMovimientos ? sumByTipo("Adelanto") : 0;
   const saldoDisponible = project.budget - project.spent;
   // Real (para el texto, puede pasar de 100% si hay sobre-ejecución — mismo
@@ -541,16 +540,16 @@ function ModuleView({
   const sinPresupuestoConGastos = project.budget <= 0 && project.spent > 0;
   const ejecucionPct = sinPresupuestoConGastos ? 100 : Math.min(100, ejecucionPctReal);
 
-  // Gasto por categoría, con el mismo criterio que el Ejecutado: un ingreso de
-  // capital o una orden de cambio no son gasto, y una devolución resta (antes
-  // se sumaba todo y el gráfico inflaba el gasto). Una torta no muestra negativos.
+  // Gasto por categoría, con el mismo criterio que el Ejecutado (lib/movimientos.ts):
+  // un ingreso de capital o una orden de cambio no son gasto, una devolución
+  // resta y un "Pendiente" no cuenta hasta pagarse. Una torta no muestra negativos.
   const categoriaSums: Record<string, number> = {};
   if (isMovimientos) {
     items.forEach((i) => {
-      const effect = EFFECT_BY_TIPO[i.data?.tipo ?? ""];
-      if (effect !== "add" && effect !== "subtract") return;
+      const aporte = aporteAlEjecutado(i);
+      if (aporte === 0) return;
       const cat = i.data?.categoria || "Sin categoría";
-      categoriaSums[cat] = (categoriaSums[cat] ?? 0) + Number(i.data?.monto ?? 0) * (effect === "subtract" ? -1 : 1);
+      categoriaSums[cat] = (categoriaSums[cat] ?? 0) + aporte;
     });
   }
   const categoriaLabels = Object.keys(categoriaSums).filter((c) => categoriaSums[c] > 0);
@@ -560,15 +559,14 @@ function ModuleView({
   const gridColor = isDark ? "rgba(255,255,255,.08)" : "rgba(0,0,0,.06)";
 
   // Ejecución acumulada mes a mes — solo movimientos que realmente suman o
-  // restan al Ejecutado (igual criterio que lib/spent.ts en el servidor).
+  // restan al Ejecutado (misma regla que lib/spent.ts en el servidor).
   const monthlyTotals = new Map<string, number>();
   if (isMovimientos) {
     items.forEach((i) => {
-      const effect = EFFECT_BY_TIPO[i.data?.tipo ?? ""];
-      if (effect !== "add" && effect !== "subtract") return;
+      const aporte = aporteAlEjecutado(i);
+      if (aporte === 0) return;
       const month = (i.data?.fecha || i.createdAt).slice(0, 7);
-      const monto = Number(i.data?.monto ?? 0) * (effect === "subtract" ? -1 : 1);
-      monthlyTotals.set(month, (monthlyTotals.get(month) ?? 0) + monto);
+      monthlyTotals.set(month, (monthlyTotals.get(month) ?? 0) + aporte);
     });
   }
   const monthKeys = Array.from(monthlyTotals.keys()).sort();
@@ -632,6 +630,7 @@ function ModuleView({
             const db = (b.data?.fecha || b.createdAt).slice(0, 10);
             return db.localeCompare(da);
           });
+          const pendientesRubro = arr.filter((i) => esPendiente(i.status)).length;
           const typeCounts: Record<string, number> = {};
           arr.forEach((i) => {
             const t = i.data?.tipoInsumo && TIPO_INSUMO_ORDER.includes(i.data.tipoInsumo) ? i.data.tipoInsumo : "Sin clasificar";
@@ -644,6 +643,7 @@ function ModuleView({
             lastFecha: (sorted[0].data?.fecha || sorted[0].createdAt).slice(0, 10),
             lastDateLabel: itemDate(sorted[0]),
             typeCounts,
+            pendientesRubro,
           };
         });
         groups.sort((a, b) => {
@@ -683,6 +683,34 @@ function ModuleView({
     if (!ok) return;
     setItems((cur) => cur.filter((i) => i.id !== item.id));
     if (kind === "change_order") onProjectChanged();
+  }
+
+  // "Marcar pagado": el PUT exige el título; sin `data` conserva la existente.
+  // El servidor recalcula el Ejecutado al cambiar el estado.
+  async function marcarPagado(item: ProjectItemDTO) {
+    let saved: ProjectItemDTO | null = null;
+    const ok = await confirmarAccion({
+      titulo: "Marcar como pagado",
+      texto: `"${item.title}" (${fmtMoney(Number(item.data?.monto ?? 0))}) pasa a Pagado y empieza a sumar al Ejecutado.`,
+      confirmar: "Marcar pagado",
+      accion: async () => {
+        const res = await fetch(`/api/items/${item.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: item.title, status: ESTADO_PAGADO }),
+        }).catch(() => null);
+        if (!res || !res.ok) {
+          const body = res ? await res.json().catch(() => ({})) : {};
+          throw new Error(body.error || "No se pudo marcar como pagado. Probá de nuevo.");
+        }
+        saved = await res.json();
+      },
+    });
+    if (!ok || !saved) return;
+    const actualizado: ProjectItemDTO = saved;
+    setItems((cur) => cur.map((i) => (i.id === actualizado.id ? actualizado : i)));
+    onProjectChanged();
+    notificar("Marcado como pagado: ya suma al Ejecutado", "success");
   }
 
   return (
@@ -742,6 +770,7 @@ function ModuleView({
             onAdd={() => { setEditing(null); setPrefillTitle(openRubro); setShowForm(true); }}
             onEdit={(item) => { setEditing(item); setPrefillTitle(null); setShowForm(true); }}
             onDelete={(item) => performDelete(item)}
+            onMarkPaid={(item) => marcarPagado(item)}
           />
         )}
         {!(isMovimientos && openRubro) && isCotizacion && !loading && (
@@ -849,6 +878,15 @@ function ModuleView({
           </CRow>
         )}
 
+        {isMovimientos && !openRubro && !loading && pendientes.cantidad > 0 && (
+          <AvisoPendientes cantidad={pendientes.cantidad} monto={pendientes.monto}>
+            {" "}Están resaltados adentro de cada rubro.{" "}
+            {filterEstado !== "Pendiente" && (
+              <button type="button" className="btn btn-sm btn-link p-0 align-baseline" onClick={() => setFilterEstado("Pendiente")}>Ver solo los rubros con pendientes</button>
+            )}
+          </AvisoPendientes>
+        )}
+
         {isMovimientos && !openRubro && !loading && items.length > 0 && (
           <CRow className="g-2 mb-3">
             <CCol md={3}><CFormInput placeholder="Buscar por rubro o notas…" value={search} onChange={(e) => setSearch(e.target.value)} /></CCol>
@@ -920,6 +958,14 @@ function ModuleView({
                     <div className="item-row-sub mt-1">
                       {g.items.length} insumo{g.items.length === 1 ? "" : "s"} cargado{g.items.length === 1 ? "" : "s"} · Última carga: {g.lastDateLabel}
                     </div>
+                    {g.pendientesRubro > 0 && (
+                      <div className="mt-2">
+                        <span className="of-pendiente-tag">
+                          <Icon icon={HourglassMedium} size={14} weight="bold" />
+                          {g.pendientesRubro} pendiente{g.pendientesRubro === 1 ? "" : "s"} · no suma{g.pendientesRubro === 1 ? "" : "n"} al Ejecutado
+                        </span>
+                      </div>
+                    )}
                     <div className="d-flex gap-1 flex-wrap mt-2">
                       {TIPO_INSUMO_ORDER.filter((t) => g.typeCounts[t]).map((t) => (
                         <CBadge key={t} color={TIPO_INSUMO_COLOR[t]}><Icon icon={TIPO_INSUMO_ICON[t] ?? TIPO_INSUMO_ICON["Sin clasificar"]} size={14} weight="bold" label={t} /> {g.typeCounts[t]}</CBadge>
@@ -982,7 +1028,7 @@ function ModuleView({
  * agrupada por tipo de insumo. Factorizada acá para no duplicar el bloque
  * de adjunto/comprobante/notas/acciones entre los dos lugares. */
 function ItemRow({
-  item, cfg, kind, isMovimientos, isWinner = false, onEdit, onDelete,
+  item, cfg, kind, isMovimientos, isWinner = false, onEdit, onDelete, onMarkPaid,
 }: {
   item: ProjectItemDTO;
   cfg: ItemKindConfig;
@@ -991,6 +1037,8 @@ function ItemRow({
   isWinner?: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  /** Solo Ejecución: pasa un movimiento "Pendiente" a "Pagado". */
+  onMarkPaid?: () => void;
 }) {
   const comprobante = item.data?.comprobante as string | undefined;
   const comprobanteEsImagen = comprobante && /^https?:\/\//i.test(comprobante);
@@ -999,17 +1047,23 @@ function ItemRow({
   const [viewing, setViewing] = useState<string | null>(null);
   // Registros que llegan de otra app (hoy: partes de Residente de Obra): solo lectura acá.
   const externo = item.data?.origen === "residente-de-obra";
+  // Movimiento "Pendiente": no suma al Ejecutado hasta pagarse — se resalta la fila.
+  const pendiente = isMovimientos && esPendiente(item.status);
   // Links a las fotos del parte (solo http/https; se abren dentro de Residente de Obra).
   const fotosExternas: { url: string; descripcion?: string | null }[] = externo && Array.isArray(item.data?.fotos)
     ? item.data.fotos.filter((f: any) => f && typeof f.url === "string" && /^https?:\/\//i.test(f.url))
     : [];
   return (
-    <CListGroupItem className={"item-row border-0 border-bottom rounded-0 px-0" + (isWinner ? " item-row-winner" : "")}>
+    <CListGroupItem className={"item-row border-0 border-bottom rounded-0 px-0" + (isWinner ? " item-row-winner" : "") + (pendiente ? " item-row-pendiente" : "")}>
       <div className="item-row-main">
         {isWinner && <span className="item-row-winner-badge" title="Cotización ganadora"><Icon icon={Check} size={12} weight="bold" label="Cotización ganadora" /></span>}
         <span className="item-title">{item.title}</span>
         {externo && <span className="status-chip status-generic" title="Llegó de la app Residente de Obra; se corrige allá">Residente de Obra</span>}
-        {item.status && <span className={"status-chip status-generic status-" + item.status.toLowerCase().replace(/\s+/g, "_")}>{item.status}</span>}
+        {pendiente ? (
+          <span className="of-pendiente-tag"><Icon icon={HourglassMedium} size={14} weight="bold" />Pendiente · no suma al Ejecutado</span>
+        ) : (
+          item.status && <span className={"status-chip status-generic status-" + item.status.toLowerCase().replace(/\s+/g, "_")}>{item.status}</span>
+        )}
       </div>
       {item.data?.contratistaId && (
         <div className="item-row-sub">
@@ -1099,6 +1153,11 @@ function ItemRow({
           <div className="item-row-actions-buttons">
             {!cfg.readOnly && !externo && (
               <>
+                {pendiente && onMarkPaid && (
+                  <CButton size="sm" color="success" variant="outline" onClick={onMarkPaid} className="d-inline-flex align-items-center gap-1">
+                    <Icon icon={CheckCircle} size={16} /> Marcar pagado
+                  </CButton>
+                )}
                 <CButton size="sm" color="secondary" variant="outline" onClick={onEdit} title="Editar"><Icon icon={PencilSimple} size={16} label="Editar" /></CButton>
                 <CButton size="sm" color="danger" variant="outline" onClick={onDelete} title="Eliminar"><Icon icon={Trash} size={16} label="Eliminar" /></CButton>
               </>
@@ -1132,7 +1191,7 @@ function ItemRow({
  * dentro de ese rubro puntual, con el detalle (proveedor, cantidad
  * ejecutada, fecha, monto) de cada insumo. */
 function RubroFicha({
-  rubro, items, cfg, kind, onBack, onAdd, onEdit, onDelete,
+  rubro, items, cfg, kind, onBack, onAdd, onEdit, onDelete, onMarkPaid,
 }: {
   rubro: string;
   items: ProjectItemDTO[];
@@ -1142,7 +1201,9 @@ function RubroFicha({
   onAdd: () => void;
   onEdit: (item: ProjectItemDTO) => void;
   onDelete: (item: ProjectItemDTO) => void;
+  onMarkPaid: (item: ProjectItemDTO) => void;
 }) {
+  const pendientesRubro = resumenPendientes(items);
   const total = items.reduce((sum, i) => sum + Number(i.data?.monto ?? 0), 0);
   const sections = TIPO_INSUMO_ORDER.map((tipo) => ({ tipo, items: items.filter((i) => i.data?.tipoInsumo === tipo) })).filter(
     (s) => s.items.length > 0
@@ -1167,6 +1228,8 @@ function RubroFicha({
         <Icon icon={Plus} size={16} weight="bold" className="me-1" /> Agregar insumo a este rubro
       </CButton>
 
+      {pendientesRubro.cantidad > 0 && <AvisoPendientes cantidad={pendientesRubro.cantidad} monto={pendientesRubro.monto} />}
+
       {items.length === 0 && <p className="empty-col">Este rubro todavía no tiene insumos cargados.</p>}
 
       {sections.map((s) => (
@@ -1178,7 +1241,7 @@ function RubroFicha({
           </div>
           <CListGroup>
             {s.items.map((item) => (
-              <ItemRow key={item.id} item={item} cfg={cfg} kind={kind} isMovimientos onEdit={() => onEdit(item)} onDelete={() => onDelete(item)} />
+              <ItemRow key={item.id} item={item} cfg={cfg} kind={kind} isMovimientos onEdit={() => onEdit(item)} onDelete={() => onDelete(item)} onMarkPaid={() => onMarkPaid(item)} />
             ))}
           </CListGroup>
         </div>
@@ -1193,11 +1256,26 @@ function RubroFicha({
           </div>
           <CListGroup>
             {sinClasificar.map((item) => (
-              <ItemRow key={item.id} item={item} cfg={cfg} kind={kind} isMovimientos onEdit={() => onEdit(item)} onDelete={() => onDelete(item)} />
+              <ItemRow key={item.id} item={item} cfg={cfg} kind={kind} isMovimientos onEdit={() => onEdit(item)} onDelete={() => onDelete(item)} onMarkPaid={() => onMarkPaid(item)} />
             ))}
           </CListGroup>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Aviso arriba de la lista: cuántos gastos "Pendiente" hay y cuánto sumarían al pagarse. */
+function AvisoPendientes({ cantidad, monto, children }: { cantidad: number; monto: number; children?: React.ReactNode }) {
+  const uno = cantidad === 1;
+  return (
+    <div className="of-pendientes-aviso" role="status">
+      <Icon icon={HourglassMedium} size={22} />
+      <span>
+        <strong>{cantidad} gasto{uno ? "" : "s"} pendiente{uno ? "" : "s"} por {fmtMoney(monto)}</strong>
+        {" — no suma" + (uno ? "" : "n") + " al Ejecutado hasta marcarl" + (uno ? "o pagado." : "os pagados.")}
+        {children}
+      </span>
     </div>
   );
 }

@@ -858,3 +858,14 @@ model LoginAttempt {
 
   @@index([username, createdAt])
 }
+
+/// Marca de "esta migración de datos ya se aplicó" (scripts/migraciones/aplicar.mjs,
+/// corre en cada deploy después de `prisma db push`). Cada migración de datos
+/// tiene un id fijo y corre una sola vez por base: producción y cada copia de
+/// preview llevan su propia marca.
+model DataMigration {
+  id        String   @id
+  appliedAt DateTime @default(now())
+  /// Qué hizo, en palabras (ej. "12 movimientos pasados a Pagado").
+  detalle   String?
+}
