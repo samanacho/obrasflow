@@ -31,6 +31,24 @@ export function normalizeMovimientoData(data: unknown): { data: Record<string, u
   return { data: d };
 }
 
+/**
+ * Un enlace que se va a mostrar en un href: solo http(s). Un "javascript:..."
+ * guardado en un registro se ejecutaría al hacerle clic.
+ */
+export function esUrlSegura(url: string): boolean {
+  return /^https?:\/\//i.test(url.trim());
+}
+
+export const ERROR_ENLACE = "El enlace tiene que empezar con http:// o https://";
+
+/** data.url de un registro (documentos, fotos): vacío está bien; si viene, tiene que ser http(s). */
+export function enlaceInvalido(data: unknown): boolean {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return false;
+  const url = (data as Record<string, unknown>).url;
+  if (url === undefined || url === null || url === "") return false;
+  return typeof url !== "string" || !esUrlSegura(url);
+}
+
 /** Valida y normaliza el body entrante (create o update completo). Lanza ValidationError con mensaje legible. */
 export function parseProjectInput(body: unknown): ProjectInput {
   if (typeof body !== "object" || body === null) {
@@ -42,7 +60,9 @@ export function parseProjectInput(body: unknown): ProjectInput {
   if (!name) throw new ValidationError("El nombre del proyecto es obligatorio.");
 
   const reference = String(b.reference ?? "").trim().slice(0, 120) || null;
-  const sitioNombre = String(b.sitioNombre ?? "").trim().slice(0, 120) || null;
+  // Sitio: igual que `code`, si el pedido no lo trae no se toca (undefined);
+  // vacío (null) sí lo desasigna.
+  const sitioNombre = "sitioNombre" in b ? String(b.sitioNombre ?? "").trim().slice(0, 120) || null : undefined;
   // Código para emparejar con Residente de Obra. Si el pedido no lo trae, no
   // se toca (undefined) — así un formulario viejo no borra el ya cargado.
   let code: string | null | undefined;

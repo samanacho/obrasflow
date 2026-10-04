@@ -91,11 +91,13 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
 
     // Se borra primero el movimiento (si había uno) — el FK de Tool tiene
     // onDelete: SetNull, así que esto no rompe nada aunque la herramienta
-    // todavía la referencie en este instante.
-    if (existing.generalMovementId) {
-      await prisma.generalMovement.delete({ where: { id: existing.generalMovementId } }).catch(() => {});
-    }
-    await prisma.tool.delete({ where: { id: params.id } });
+    // todavía la referencie en este instante. Todo o nada: no queda un gasto
+    // sin su herramienta. deleteMany no falla si el movimiento ya no existe.
+    const generalMovementId = existing.generalMovementId;
+    await prisma.$transaction(async (tx) => {
+      if (generalMovementId) await tx.generalMovement.deleteMany({ where: { id: generalMovementId } });
+      await tx.tool.delete({ where: { id: params.id } });
+    });
     return new NextResponse(null, { status: 204 });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {

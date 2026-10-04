@@ -23,6 +23,15 @@ async function logFieldChanges(projectId: string, before: Parameters<typeof diff
   await logChanges(prisma, projectId, diffs.map((d) => ({ action: "campo" as const, ...d })), await appSource());
 }
 
+/** La obra ya quedó guardada: si reprocesar falla se anota, pero no se responde error. */
+async function reprocesarSinFallar() {
+  try {
+    await reprocessPending();
+  } catch (err) {
+    console.error("No se pudieron reprocesar los partes de Residente de Obra:", err);
+  }
+}
+
 export async function GET(_req: NextRequest, { params }: Params) {
   const project = await prisma.project.findUnique({ where: { id: params.id }, include: SITIO_INCLUDE });
   if (!project) return NextResponse.json({ error: "Proyecto no encontrado." }, { status: 404 });
@@ -34,12 +43,15 @@ export async function PUT(req: NextRequest, { params }: Params) {
   try {
     const body = await req.json();
     const { sitioNombre, ...data } = parseProjectInput(body);
-    const sitioId = await resolveSitioId(sitioNombre ?? null, data.manager);
-    // Versión anterior, para anotar en el historial qué cambió.
+    // Versión anterior, para anotar en el historial qué cambió. Se lee antes
+    // de resolver el Sitio: con una obra inexistente no se crea un Sitio vacío.
     const before = await prisma.project.findUnique({ where: { id: params.id } });
+    if (!before) return NextResponse.json({ error: "Proyecto no encontrado." }, { status: 404 });
+    // Sin "sitioNombre" en el pedido, el Sitio no se toca.
+    const sitioId = sitioNombre === undefined ? undefined : await resolveSitioId(sitioNombre, data.manager);
     // El avance de las obras de Residente de Obra lo marca esa app (al
     // importar): el formulario de edición no lo puede pisar.
-    if (before?.progressSource === RESIDENTE_SOURCE) data.progress = before.progress;
+    if (before.progressSource === RESIDENTE_SOURCE) data.progress = before.progress;
     const updated = await prisma.project.update({
       where: { id: params.id },
       data: {
@@ -55,9 +67,9 @@ export async function PUT(req: NextRequest, { params }: Params) {
       },
       include: SITIO_INCLUDE,
     });
-    if (before) await logFieldChanges(params.id, before, updated);
+    await logFieldChanges(params.id, before, updated);
     // Si se le acaba de poner el código, aplicar los partes de Residente de Obra que esperaban esta obra.
-    if (updated.code && updated.code !== before?.code) await reprocessPending();
+    if (updated.code && updated.code !== before.code) await reprocesarSinFallar();
     return NextResponse.json(serializeProject(updated));
   } catch (err) {
     if (err instanceof ValidationError) {
@@ -142,7 +154,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const updated = await prisma.project.update({ where: { id: params.id }, data, include: SITIO_INCLUDE });
     if (before) await logFieldChanges(params.id, before, updated);
     // Si se le acaba de poner el código, aplicar los partes de Residente de Obra que esperaban esta obra.
-    if (updated.code && updated.code !== before?.code) await reprocessPending();
+    if (updated.code && updated.code !== before?.code) await reprocesarSinFallar();
     return NextResponse.json(serializeProject(updated));
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {

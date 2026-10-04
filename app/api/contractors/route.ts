@@ -30,11 +30,24 @@ export async function GET(req: NextRequest) {
           }
         : {}),
     },
-    include: { history: { select: { rating: true } } },
     orderBy: { name: "asc" },
   });
 
-  return NextResponse.json(contractors.map(serializeContractor));
+  // Promedio y cantidad de trabajos calculados en la base, sin traer cada
+  // calificación. AVG ignora las entradas sin calificación, igual que antes.
+  const resumen = await prisma.contractorHistoryEntry.groupBy({
+    by: ["contractorId"],
+    where: { contractorId: { in: contractors.map((c) => c.id) } },
+    _avg: { rating: true },
+    _count: { _all: true },
+  });
+  const resumenPor = new Map(resumen.map((r) => [r.contractorId, r]));
+  return NextResponse.json(
+    contractors.map((c) => {
+      const r = resumenPor.get(c.id);
+      return serializeContractor({ ...c, resumenHistorial: { avgRating: r?._avg.rating ?? null, count: r?._count._all ?? 0 } });
+    })
+  );
 }
 
 export async function POST(req: NextRequest) {

@@ -142,6 +142,8 @@ model ProjectItem {
 
   @@unique([externalSource, externalId])
   @@index([projectId, kind])
+  /// /api/movimientos lista las órdenes de cambio de todas las obras, por fecha.
+  @@index([kind, createdAt])
 }
 
 /// Eventos recibidos de sistemas externos (webhooks). Sirve para no procesar
@@ -841,4 +843,18 @@ model UserInvitation {
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())
+}
+
+/// Intento fallido de ingreso (app/api/auth/ingresar). En la base y no en
+/// memoria: el freno vale aunque cambien la IP o caigan en otra instancia de
+/// Vercel. Un ingreso correcto borra los de ese usuario; los de más de un día
+/// se limpian solos al registrar uno nuevo.
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  /// Usuario normalizado que se intentó (exista o no).
+  username  String
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([username, createdAt])
 }

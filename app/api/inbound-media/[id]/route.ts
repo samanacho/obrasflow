@@ -24,6 +24,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
       "Content-Disposition": `inline; filename="${encodeURIComponent(filename)}"`,
       "Cache-Control": "private, max-age=3600",
       "X-Content-Type-Options": "nosniff",
+      // Un HTML/SVG recibido se muestra como archivo, sin ejecutar nada en el dominio de la app.
+      // Al PDF no se le pone sandbox: Chrome bloquea su visor dentro de un documento con sandbox.
+      ...(media.mimeType === "application/pdf" ? {} : { "Content-Security-Policy": "sandbox" }),
     },
   });
 }
