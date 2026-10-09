@@ -11,6 +11,12 @@ descartado, no lo vuelvas a ofrecer salvo que él lo reabra.
 **Descartado:** las opciones que no eligió, para no volver a ofrecerlas.
 -->
 
+## 2026-10-09 — Contraseña olvidada: link de contraseña nueva
+**Decisión:** cualquier usuario puede, desde Usuarios, crear un link para que otra persona elija una contraseña nueva (mismo usuario, un solo uso, 48 h). Si nadie puede entrar, el script `invitar-usuario.mjs --usuario <usuario>` desde la PC.
+**Por qué:** Ignacio se olvidó su usuario y contraseña y no había forma de recuperarlos; la única salida era crear un usuario nuevo.
+**Qué implica en el código:** `UserInvitation.userId`; `/api/auth/invitaciones` acepta `{ usuario }`. Sigue sin haber roles: cualquiera con usuario puede restablecer a otro (igual que hoy puede invitar o desactivar).
+**Descartado:** no se discutieron alternativas (Ignacio aprobó la propuesta). Se dejaron de lado, sin que él las rechazara: que quien restablece escriba la contraseña del otro (la vería) y recuperación por mail (los usuarios no tienen mail cargado).
+
 ## 2026-10-04 — Íconos: un solo estilo (Phosphor)
 **Decisión:** todos los íconos de la app pasan a Phosphor (`components/ui/Icon.tsx`); se desinstala `@coreui/icons`.
 **Por qué:** convivían dos estilos (Phosphor en 19 archivos, CoreUI en 15, incluido el inicio) y la app se veía despareja.

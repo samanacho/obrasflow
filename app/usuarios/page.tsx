@@ -30,6 +30,8 @@ interface Invitacion {
   name: string;
   createdBy: string | null;
   expiresAt: string;
+  /** Si viene, es un link de contraseña nueva para ese usuario. */
+  userId: string | null;
 }
 interface Datos {
   yo: string | null;
@@ -95,6 +97,28 @@ export default function UsuariosPage() {
       link: inv.link,
       mensajeWhatsApp: `Hola ${inv.nombre}, te invito a ObrasFlow. Entrá a este link para crear tu usuario y contraseña (sirve una sola vez y vence en 48 horas): ${inv.link}`,
       nota: `El link sirve una sola vez y vence en 48 horas (${fmtFechaHora(inv.vence)}).`,
+    });
+  }
+
+  async function restablecer(u: Usuario) {
+    let creado: { link: string; vence: string } | null = null;
+    const ok = await confirmarAccion({
+      titulo: `¿Restablecer la contraseña de ${u.name}?`,
+      texto: `Se crea un link para que ${u.name} elija una contraseña nueva. Su usuario sigue siendo "${u.username}" y la contraseña de ahora sirve hasta que use el link.`,
+      confirmar: "Crear link",
+      accion: async () => {
+        creado = await pedir("/api/auth/invitaciones", { method: "POST", json: { usuario: u.username } });
+      },
+    });
+    if (!ok || !creado) return;
+    const inv = creado as { link: string; vence: string };
+    void cargar();
+    await compartirLink({
+      titulo: "Link listo",
+      texto: `Mandale este link a ${u.name}. Ahí elige su contraseña nueva.`,
+      link: inv.link,
+      mensajeWhatsApp: `Hola ${u.name}, entrá a este link para elegir una contraseña nueva de ObrasFlow. Tu usuario es "${u.username}" (el link sirve una sola vez y vence en 48 horas): ${inv.link}`,
+      nota: `El link sirve una sola vez y vence en 48 horas (${fmtFechaHora(inv.vence)}). Si había otro link de contraseña para ${u.name}, ese deja de servir.`,
     });
   }
 
@@ -211,6 +235,11 @@ export default function UsuariosPage() {
                     <CButton size="sm" color="secondary" variant="outline" onClick={() => cambiarNombre(u)} aria-label={`Cambiar el nombre de ${u.name}`}>
                       Cambiar nombre
                     </CButton>
+                    {!esYo && u.active && (
+                      <CButton size="sm" color="secondary" variant="outline" onClick={() => restablecer(u)} aria-label={`Restablecer la contraseña de ${u.name}`}>
+                        Restablecer contraseña
+                      </CButton>
+                    )}
                     {esYo ? (
                       <span className="usr-self" title="No podés desactivarte a vos mismo">
                         Es tu usuario
@@ -239,7 +268,7 @@ export default function UsuariosPage() {
           <ul className="usr-list">
             {invitaciones.map((i) => (
               <li key={i.id} className="usr-inv">
-                <span className="usr-name">{i.name}</span>
+                <span className="usr-name">{i.userId ? `Contraseña nueva para ${i.name}` : i.name}</span>
                 <span className="meta" title={fmtFechaHora(i.expiresAt)}>
                   Vence {haceCuanto(i.expiresAt)}
                   {i.createdBy ? ` · la creó ${i.createdBy}` : ""}
@@ -292,7 +321,7 @@ function MiContrasena({ userId, usuario }: { userId: string; usuario: string }) 
   return (
     <section className="usr-section" aria-labelledby="usr-mi-contrasena">
       <h2 id="usr-mi-contrasena">Mi contraseña</h2>
-      <p className="module-desc">Para cambiarla necesitás la actual. Si te la olvidaste, pedile a quien administra que te desactive y te invite de nuevo.</p>
+      <p className="module-desc">Para cambiarla necesitás la actual. Si te la olvidaste, pedile a otra persona con usuario que entre acá y toque &quot;Restablecer contraseña&quot; al lado de tu nombre.</p>
       <form className="usr-pass" onSubmit={guardar} noValidate>
         {/* Para que el navegador sepa de qué usuario es la contraseña que guarda. */}
         <input type="text" name="username" autoComplete="username" value={usuario} hidden readOnly />

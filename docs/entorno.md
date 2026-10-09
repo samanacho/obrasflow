@@ -62,7 +62,10 @@ Nunca borrar `main`.
   `/terminos` y `/ingresar`. La app local (`OBRASFLOW_LOCAL=1`) no pide login.
   Usuarios nuevos: pantalla Usuarios → "Invitar a alguien" (link de un solo
   uso). El primero: `node --env-file=..\ObrasFlow-versiones\memby.env
-  scripts/invitar-usuario.mjs "Nombre"`. El historial guarda el nombre de
+  scripts/invitar-usuario.mjs "Nombre"`.
+  Contraseña olvidada: otro usuario, en Usuarios → "Restablecer contraseña"
+  (link de un solo uso, `UserInvitation.userId`; el usuario no cambia). Si
+  nadie puede entrar: el mismo script con `--usuario <usuario>`. El historial guarda el nombre de
   quien hizo el cambio (`appSource()`); una ruta nueva que anote historial
   tiene que usarlo. `AUTH_SECRET` (opcional) cambia la firma y cierra todas
   las sesiones.
