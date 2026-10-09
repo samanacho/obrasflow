@@ -65,7 +65,7 @@ export default function IngresarPage() {
     <PantallaIngreso
       titulo="Ingresar"
       subtitulo="Entrá con tu usuario y contraseña."
-      nota="¿No tenés usuario? Pedile un link de invitación a quien administra ObrasFlow."
+      nota="¿No tenés usuario, o te olvidaste la contraseña? Pedile un link a alguien que ya entra a ObrasFlow (pantalla Usuarios)."
     >
       {esLocal && (
         <div className="of-form-info">

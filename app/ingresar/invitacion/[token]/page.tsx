@@ -12,7 +12,8 @@ import { olvidarSesion } from "@/lib/ui/session";
 
 /**
  * Link de invitación: la persona elige su usuario y contraseña y queda
- * adentro. El link sirve una sola vez (app/api/auth/invitacion).
+ * adentro. Si el link es para restablecer la contraseña, solo elige la
+ * contraseña nueva. El link sirve una sola vez (app/api/auth/invitacion).
  */
 
 /** Igual que normalizeUsername (lib/auth/password.ts): lo que se ve es lo que se guarda. */
@@ -34,6 +35,8 @@ export default function InvitacionPage({ params }: { params: { token: string } }
   const [estado, setEstado] = useState<Estado>({ paso: "cargando" });
   const [nombre, setNombre] = useState("");
   const [usuario, setUsuario] = useState("");
+  /** Link para restablecer la contraseña de un usuario que ya existe. */
+  const [restablecer, setRestablecer] = useState(false);
   const [contrasena, setContrasena] = useState("");
   const [repetir, setRepetir] = useState("");
   const [tocado, setTocado] = useState({ contrasena: false, repetir: false });
@@ -46,7 +49,8 @@ export default function InvitacionPage({ params }: { params: { token: string } }
         const data = await r.json().catch(() => ({}));
         if (!r.ok) return setEstado({ paso: "invalido", error: data.error || "Este link de invitación no sirve. Pedí uno nuevo." });
         setNombre(data.nombre ?? "");
-        setUsuario(limpiarUsuario(data.usuarioSugerido ?? ""));
+        setRestablecer(Boolean(data.restablecer));
+        setUsuario(data.restablecer ? data.restablecer.usuario : limpiarUsuario(data.usuarioSugerido ?? ""));
         setEstado({ paso: "formulario" });
       })
       .catch(() => setEstado({ paso: "invalido", error: "No hay conexión con ObrasFlow. Revisá internet y volvé a abrir el link." }));
@@ -60,8 +64,8 @@ export default function InvitacionPage({ params }: { params: { token: string } }
     e.preventDefault();
     if (enviando) return;
     setTocado({ contrasena: true, repetir: true });
-    if (!nombre.trim()) return setError("Escribí tu nombre.");
-    if (usuario.length < 3) return setError("El usuario tiene que tener al menos 3 letras o números.");
+    if (!restablecer && !nombre.trim()) return setError("Escribí tu nombre.");
+    if (!restablecer && usuario.length < 3) return setError("El usuario tiene que tener al menos 3 letras o números.");
     if (contrasena.length < MIN_CONTRASENA || repetir !== contrasena) return setError("Revisá la contraseña: hay un problema marcado abajo.");
     setEnviando(true);
     setError(null);
@@ -69,7 +73,7 @@ export default function InvitacionPage({ params }: { params: { token: string } }
       const r = await fetch("/api/auth/invitacion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, nombre: nombre.trim(), usuario, contrasena }),
+        body: JSON.stringify(restablecer ? { token, contrasena } : { token, nombre: nombre.trim(), usuario, contrasena }),
       });
       const data = await r.json().catch(() => ({}));
       if (r.status === 201) {
@@ -81,7 +85,7 @@ export default function InvitacionPage({ params }: { params: { token: string } }
         setEstado({ paso: "invalido", error: data.error || "Este link de invitación ya se usó o venció. Pedí uno nuevo." });
         return;
       }
-      setError(data.error || "No se pudo crear el usuario. Probá de nuevo.");
+      setError(data.error || (restablecer ? "No se pudo cambiar la contraseña. Probá de nuevo." : "No se pudo crear el usuario. Probá de nuevo."));
       setEnviando(false);
     } catch {
       setError("No hay conexión con ObrasFlow. Revisá internet y probá de nuevo.");
@@ -116,12 +120,22 @@ export default function InvitacionPage({ params }: { params: { token: string } }
 
   return (
     <PantallaIngreso
-      titulo="Crear tu usuario"
-      subtitulo="Te invitaron a ObrasFlow. Elegí con qué usuario y contraseña vas a entrar."
+      titulo={restablecer ? "Contraseña nueva" : "Crear tu usuario"}
+      subtitulo={
+        restablecer
+          ? `Hola ${nombre}. Elegí la contraseña nueva con la que vas a entrar.`
+          : "Te invitaron a ObrasFlow. Elegí con qué usuario y contraseña vas a entrar."
+      }
       nota={
-        <>
-          ¿Ya tenés usuario? <Link href="/ingresar">Entrá acá</Link>
-        </>
+        restablecer ? (
+          <>
+            ¿Te acordaste la contraseña? <Link href="/ingresar">Entrá acá</Link>
+          </>
+        ) : (
+          <>
+            ¿Ya tenés usuario? <Link href="/ingresar">Entrá acá</Link>
+          </>
+        )
       }
     >
       <form onSubmit={crear} noValidate>
@@ -131,31 +145,43 @@ export default function InvitacionPage({ params }: { params: { token: string } }
             <span>{error}</span>
           </div>
         )}
-        <div className="mb-3">
-          <CFormLabel htmlFor="inv-nombre">Tu nombre</CFormLabel>
-          <CFormInput id="inv-nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} autoComplete="name" maxLength={80} aria-describedby="inv-nombre-ayuda" />
-          <div id="inv-nombre-ayuda" className="of-field-hint">
-            Así te van a ver los demás en ObrasFlow.
+        {restablecer ? (
+          <div className="mb-3">
+            <CFormLabel htmlFor="inv-usuario">Tu usuario</CFormLabel>
+            <CFormInput id="inv-usuario" name="username" value={usuario} autoComplete="username" readOnly aria-describedby="inv-usuario-ayuda" />
+            <div id="inv-usuario-ayuda" className="of-field-hint">
+              Es lo que escribís para entrar. No cambia.
+            </div>
           </div>
-        </div>
-        <div className="mb-3">
-          <CFormLabel htmlFor="inv-usuario">Usuario</CFormLabel>
-          <CFormInput
-            id="inv-usuario"
-            name="username"
-            value={usuario}
-            onChange={(e) => setUsuario(limpiarUsuario(e.target.value))}
-            autoComplete="username"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            maxLength={40}
-            aria-describedby="inv-usuario-ayuda"
-          />
-          <div id="inv-usuario-ayuda" className="of-field-hint">
-            Es lo que vas a escribir para entrar. Solo minúsculas, números, punto y guion.
-          </div>
-        </div>
+        ) : (
+          <>
+            <div className="mb-3">
+              <CFormLabel htmlFor="inv-nombre">Tu nombre</CFormLabel>
+              <CFormInput id="inv-nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} autoComplete="name" maxLength={80} aria-describedby="inv-nombre-ayuda" />
+              <div id="inv-nombre-ayuda" className="of-field-hint">
+                Así te van a ver los demás en ObrasFlow.
+              </div>
+            </div>
+            <div className="mb-3">
+              <CFormLabel htmlFor="inv-usuario">Usuario</CFormLabel>
+              <CFormInput
+                id="inv-usuario"
+                name="username"
+                value={usuario}
+                onChange={(e) => setUsuario(limpiarUsuario(e.target.value))}
+                autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                maxLength={40}
+                aria-describedby="inv-usuario-ayuda"
+              />
+              <div id="inv-usuario-ayuda" className="of-field-hint">
+                Es lo que vas a escribir para entrar. Solo minúsculas, números, punto y guion.
+              </div>
+            </div>
+          </>
+        )}
         <CampoContrasena
           id="inv-contrasena"
           etiqueta="Contraseña"
@@ -176,7 +202,7 @@ export default function InvitacionPage({ params }: { params: { token: string } }
           error={errorRepetir}
         />
         <CButton type="submit" color="primary" className="of-auth-submit" disabled={enviando}>
-          {enviando ? "Creando…" : "Crear mi usuario"}
+          {restablecer ? (enviando ? "Guardando…" : "Guardar y entrar") : enviando ? "Creando…" : "Crear mi usuario"}
         </CButton>
       </form>
     </PantallaIngreso>
